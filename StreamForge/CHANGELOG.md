@@ -1,5 +1,13 @@
 # StreamForge Browser Connector – Changelog
 
+## 1.7.0 (in Entwicklung)
+
+- Erste Download-Warteschlange für HLS-/DASH-Aufträge im Offscreen-Dokument: Aufträge werden nacheinander ausgeführt, um paralleles speicherintensives Muxing zu vermeiden.
+- Popup zeigt wartende Aufträge mit ihrer Queue-Position und verhindert doppeltes Starten während des Wartens.
+- Ein fehlgeschlagener Auftrag blockiert nachfolgende Aufträge nicht.
+- Neuer automatisierter Queue-Regressionstest und Versionsprüfung für GitHub Actions.
+- **Noch offen:** Warteschlangen-Persistenz über Browser-Neustarts, Abbruch/Pause, native Direktdownloads, reale End-to-End-Tests und weitere 1.7.0-Funktionen.
+
 ## 1.6.5
 
 - Kritischer MPEG-TS-Muxingfix für H.264/H.265 mit B-Frames: Video wird nach DTS statt PTS in Dekodierreihenfolge ausgegeben.
