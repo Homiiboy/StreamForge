@@ -1,77 +1,75 @@
 # ForgeCore
 
-**ForgeCore-Version: v0.0.1 (Fundament).** Die unabhängige Versionsreihe startet bei v0.0.1; die unter `browser-extension/` eingefrorene StreamForge-Browserkopie bleibt unverändert auf v1.8.1.
+**ForgeCore v0.0.9 — Phase 1 abgeschlossen (Alpha-Fundament).** Eigenständiger ZimaOS-/Docker-Server. Die hier archivierte Browser-Erweiterung in `browser-extension/` bleibt **unverändert StreamForge v1.8.1** und hat eine komplett separate Versionierung.
 
-**[Roadmap v0.0.1 → v1.0.0](./ROADMAP.md)** mit Abnahmekriterien für ZimaOS, Datenbank, Quellenverwaltung, Downloads und Jellyfin.
+> ForgeCore v0.0.9 ist **kein** autonomer HLS-/DASH-Downloader. Quellenadapter, automatische Serien-/Episodensuche, Muxing und tatsächliches Laden von Websites folgen erst in Phase 2. Die echte Installation auf deinem ZimaOS-Host muss gesondert getestet werden.
 
-**ForgeCore** ist die zukünftige, eigenständige ZimaOS-/Docker-Serverkomponente von StreamForge.
+## Umfang Phase 1 (v0.0.1–v0.0.9)
 
-> **Status: technisches Grundgerüst, noch keine automatische Webseitenanalyse und kein HLS-/DASH-Download im Server.**
+- Docker-Dienst mit **dauerhaftem SQLite-Speicher**, versionierten Migrationen und Neustartwiederherstellung wartender Jobs.
+- Einrichtung mit **Adminpasswort**, scrypt-basiertem Passwort-Hash, HttpOnly-Sessioncookie, SameSite=Strict, CSRF-Schutz, origin-geprüften Mutationen und Login-Rate-Limits.
+- Responsive, deutschsprachige Weboberfläche für Filme, Serien, Staffeln und Episoden, mit Statuspflege, Metadatenfeldern und Metadatenprüfung (lokal, keine Provider-Abfrage).
+- **Jellyfin-konforme Vorschau und Read-only-Bibliotheksscan** für `Movies/Titel (Jahr)` und `Shows/Serie/Season NN/Serie SNNENN`. Auch vorhandene `Staffel 2`-Ordner werden erkannt.
+- Persistente Hintergrundaufgaben, Retry, Abbruch wartender Jobs und übersichtliche Jobhistorie.
+- Sicherung und Wiederherstellung der Film-/Serienprojekte, Episoden und Einstellungen als JSON. **Passwörter und Sessions werden ausdrücklich nicht exportiert.** Wiederherstellung überschreibt bestehende Projekte erst nach expliziter Bestätigung.
+- Docker Compose mit **read-only Medienvolume**, begrenzten Ressourcen, lokalem Port und persistentem Datenvolume.
 
-## Warum ein eigener Ordner?
+## Docker / ZimaOS starten
 
-- `/StreamForge/` bleibt die vorhandene Browser-Erweiterung und wird durch diese Änderung nicht verändert.
-- `/ForgeCore/browser-extension/` ist eine **unveränderte Kopie der aktiven Dateien aus dem offiziellen Git-Tag `v1.8.1`**. Die historischen, für den Extension-Build irrelevanten Uploads aus `StreamForge/archive/unclassified/` sind bewusst ausgeschlossen.
-- `/ForgeCore/server/` wird die separate App für ZimaOS. Sie kann langfristig Medienprojekte, Quellenadapter, Warteschlange und Jellyfin-Integration verwalten.
-- `/ForgeCore/compose.yaml` ist die lokale Docker-Startkonfiguration. **Keine Abhängigkeit vom laufenden Chrome.**
-
-## Projektstruktur
-
-```text
-ForgeCore/
-├── README.md
-├── ROADMAP.md
-├── compose.yaml
-├── .env.example
-├── browser-extension/     # StreamForge v1.8.1 Snapshot (separat versioniert)
-│   ├── manifest.json
-│   ├── background.js
-│   ├── popup.html
-│   ├── ...
-│   └── tests/
-└── server/
-    ├── Dockerfile
-    ├── package.json
-    ├── src/
-    │   └── server.mjs
-    └── tests/
-        └── server.test.mjs
-```
-
-## Lokaler Start auf ZimaOS / Docker
-
-Aus dem Verzeichnis `ForgeCore/`:
+Benötigt Docker Compose v2. Öffne auf dem ZimaOS-Host das Verzeichnis `ForgeCore/` und führe aus:
 
 ```bash
+cp .env.example .env
+# .env bearbeiten und FORGECORE_MEDIA_HOST_PATH auf dein echtes Medienverzeichnis setzen.
 docker compose up -d --build
 curl http://127.0.0.1:8787/api/health
 ```
 
-Die Compose-Konfiguration bindet aus Sicherheitsgründen nur an `127.0.0.1:8787`. Zugriff von anderen Geräten wird **noch nicht** aktiviert; dafür sind eine Authentifizierung, sichere Freigabe und eine bewusste Portkonfiguration nötig.
+Standardmäßig ist das Web-Dashboard **nur auf dem ZimaOS-Host unter `127.0.0.1:8787`** erreichbar. Für einen sicheren Remote-Zugriff in deinem Heimnetz verwende vorzugsweise einen authentifizierten HTTPS-Reverse-Proxy oder ein VPN; Portfreigabe ins Internet ist nicht vorgesehen. Erstpasswort bei der Einrichtung setzen, **bevor** du die Oberfläche im Netzwerk verfügbar machst. Das Container-Medienvolume ist absichtlich **schreibgeschützt**; ForgeCore Phase 1 verändert keine Jellyfin-Medien.
 
-Logs: `docker compose logs -f forgecore` · Beenden: `docker compose down`.
+In `compose.yaml` lässt sich die Bind-Adresse nur bewusst über `FORGECORE_BIND_ADDRESS` verändern. Bei einem HTTPS-Reverse-Proxy kann `FORGECORE_SECURE_COOKIE=1` für Secure-Cookies gesetzt werden, **nur** wenn dein Proxy auch wirklich HTTPS bereitstellt.
 
-## Entwicklungs- und Testbefehle
+Zum Stoppen: `docker compose down`. Die SQLite-Daten bleiben im benannten Volume `forgecore-data` erhalten. **Nicht** `docker compose down -v` verwenden, wenn du Daten behalten möchtest.
+
+### Lokale Entwicklung
 
 ```bash
-cd server
+cd ForgeCore/server
 npm test
-node src/server.mjs
+npm run check
+npm start
 ```
 
-Der Server hat derzeit **nur lesende, harmlose Diagnose-Endpunkte**:
+Node.js 22.13+ wird benötigt (`node:sqlite` ist in Node 22 noch experimentell). Die Tests nutzen eine temporäre SQLite-Datenbank und lokale HTTP-Requests.
 
-- `GET /api/health` → Status der App
-- `GET /api/status` → Name, Version, Entwicklungsphase und bereitgestellte Fähigkeiten
+### API (Auswahl)
 
-Es findet **keine** automatische Mediensuche, Webseitenabfrage, Netzwerküberwachung oder Dateibearbeitung statt.
+| Endpoint | Zweck |
+| --- | --- |
+| `GET /api/health` | Gesundheitsprüfung |
+| `GET /api/status` | Version / tatsächliche Fähigkeiten |
+| `POST /api/setup` | Einmalige Administrator-Einrichtung |
+| `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/me` | Anmeldung / Sitzung |
+| `GET/POST /api/media`, `GET/PATCH/DELETE /api/media/:id` | Medienprojekte |
+| `GET/POST /api/media/:id/episodes`, `PATCH/DELETE /api/episodes/:id` | Episoden |
+| `GET /api/media/:id/preview` | Jellyfin-Dateien nur lesend erkennen |
+| `GET/PUT /api/config` | App-Einstellungen, Jellyfin-Adresse als Konfiguration |
+| `GET/POST /api/jobs`, `POST /api/jobs/:id/cancel`, `POST /api/jobs/:id/retry` | Persistente Aufgaben |
+| `GET /api/backup/export`, `POST /api/backup/import` | JSON-Backup und bestätigtes Restore |
 
-## Geplante Meilensteine
+Geschützte APIs benötigen einen Sessioncookie. Schreibaufrufe zusätzlich `X-ForgeCore-CSRF`, wie bei der Anmeldung bzw. `GET /api/me` erhalten; Einrichtung und Anmeldung verwenden `X-ForgeCore-Request: 1`.
 
-Die vollständige, in Versionen aufgeteilte Planung steht in der **[ForgeCore-Roadmap](./ROADMAP.md)**. Nächster Schritt ist v0.0.2 (persistente SQLite-Datenbank mit Migrationen).
+## Versions- und Releasepolitik
 
-## Lizenz und Grenzen
+- **ForgeCore:** eigene Versionsnummer ab `v0.0.1`. Der aktuelle Phase-1-Stand ist `v0.0.9`.
+- **Browser-Snapshot:** `ForgeCore/browser-extension/` bleibt auf **StreamForge v1.8.1**; Änderungen erfolgen ausschließlich bewusst und separat.
+- Release-Tags für ForgeCore tragen den Präfix `forgecore-vX.Y.Z`, um mit der bestehenden Browser-Erweiterung keine Tags zu kollidieren.
+- Die detaillierten Meilensteine stehen in [ROADMAP.md](./ROADMAP.md), die konkreten Änderungen in [CHANGELOG.md](./CHANGELOG.md).
 
-Das Browser-Snapshot stammt aus dem eigenen Projekt `StreamForge`; seine Dateien wurden anhand des Git-Tags `v1.8.1` übernommen. Die Lizenzlage weiterer, später integrierter Komponenten muss jeweils gesondert geprüft werden. DRM-Umgehung und das Umgehen von Zugangs- oder Nutzungsbeschränkungen sind **nicht** Teil der geplanten Funktionen.
+## Grenzen und Sicherheitskonzept
 
-**Wichtig:** Das hier ist das Fundament der neuen ZimaOS-App, noch keine vollständige Sonarr-/Radarr-Alternative.
+- Kein Download, Streaming-Scraping, DRM-Handling oder Zugriff auf externe Metadatenanbieter.
+- Eine konfigurierte Jellyfin-URL erzeugt **noch keine** Jellyfin-API-Verbindung. Der Bibliotheksscan liest Dateinamen nur aus dem gemounteten Volume.
+- Das Jellyfin-Volume wird bewusst nur lesend verwendet; ein späterer Dateiexport benötigt ein eigenes Sicherheits-/Integritätskonzept.
+- Die SQLite-Datenbank liegt persistent unter `/data/forgecore.sqlite`. Verwende für reguläre Backups die integrierte JSON-Sicherungsfunktion sowie geeignete ZimaOS-Volume-Backups.
+- Reverse-Proxy-Betrieb und echte SMB-/ZimaOS-Rechte sowie Langzeitverhalten müssen in einer realen Installation abgenommen werden.
