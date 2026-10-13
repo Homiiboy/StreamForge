@@ -8,7 +8,11 @@
 - Wartende (noch nicht gestartete) Aufträge können jetzt über das Popup aus der Warteschlange entfernt werden, ohne aktive Muxing-Prozesse anzutasten.
 - Zusätzliche Queue-Tests prüfen Abbruch, bereits laufende Aufträge und Fehlerbehandlung.
 - Neuer automatisierter Queue-Regressionstest und Versionsprüfung für GitHub Actions.
-- **Noch offen:** Warteschlangen-Persistenz über Browser-Neustarts, Abbruch/Pause, native Direktdownloads, reale End-to-End-Tests und weitere 1.7.0-Funktionen.
+- Wartende HLS-/DASH-Aufträge werden in `chrome.storage.local` gespeichert und beim nächsten Start des Offscreen-Dokuments wieder in die Queue geladen.
+- Zuvor laufende Aufträge werden bei einer Wiederherstellung aus Sicherheitsgründen als unterbrochen gemeldet und **nicht** automatisch nochmals ausgeführt.
+- Regressionstest für Neustart, Wiederherstellung, Duplikate und Stornierung ergänzt.
+- **Einschränkung:** Wiederherstellung wird beim nächsten Start des Offscreen-Dokuments aktiv; eine eigenständige sofortige Wiederaufnahme direkt nach dem Browserstart existiert noch nicht. Laufende Medienübertragungen werden nicht bytegenau fortgesetzt.
+- **Noch offen:** Pause/Fortsetzen laufender Transfers, native Direktdownloads, reale Browser-End-to-End-Tests und weitere 1.7.0-Funktionen.
 
 ## 1.6.5
 
