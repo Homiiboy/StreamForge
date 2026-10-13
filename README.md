@@ -1,68 +1,61 @@
-# StreamForge — Browser Extension
+# StreamForge
 
-StreamForge ist eine **Chrome-/Edge-Erweiterung (Manifest V3)** für das Erkennen und lokale Herunterladen unterstützter, nicht DRM-geschützter Medienstreams, sofern eine entsprechende Downloadberechtigung besteht.
+**StreamForge Browser Extension — Version 1.6.5**
 
-## Aktueller Entwicklungsstand
+StreamForge ist eine Chrome-/Edge-Erweiterung (Manifest V3) für das Erkennen und Herunterladen unterstützter, nicht DRM-geschützter Medienstreams bei entsprechender Berechtigung.
 
-- **Letzte bereitgestellte Version:** 1.6.5
-- **Browser:** Chromium-basiert, Chrome ab Version 119
-- **Unterstützte Quellen:** direkte Mediendateien sowie unverschlüsseltes HLS/DASH
-- **Versionsquelle:** `StreamForge-Browser-Extension-v1.6.5.zip` aus dem Projekt
-- **Repository-Status:** Dokumentation eingerichtet; **der vollständige Erweiterungsquellcode ist noch nicht in GitHub importiert**.
+## Projektstruktur
 
-> ⚠️ Bis der Import abgeschlossen ist, ist dieser Repository-Stand **nicht installierbar**. Für die Installation wird die vollständige Extension einschließlich `manifest.json`, `background.js`, `offscreen.js`, `popup.html`, `popup.js`, weiterer Module und Icons benötigt.
-
-## Änderungen in v1.6.5
-
-Die wichtigste Änderung behebt ein MPEG-TS-Muxingproblem mit H.264/H.265-B-Frames:
-
-- PTS und DTS werden getrennt verarbeitet und 33-Bit-Zeitstempel korrekt dekodiert.
-- Video-PES wird in DTS-Dekodierreihenfolge ausgegeben.
-- PCR orientiert sich an DTS.
-- HLS-Discontinuities und Zeitstempel-Epochen werden berücksichtigt.
-- Transportfehler und MPEG-TS-Synchronisationsverluste werden erkannt.
-
-Aus 1.6.4 bleiben Exportvalidierung, korrektes MIME-/Dateiendungs-Handling, Timeout-/Recovery-Behandlung und weitere Stabilitätsverbesserungen erhalten.
-
-## Teststand
-
-Der bereitgestellte v1.6.5-Quellcode wurde lokal unter Node.js 22 mit `npm test` geprüft: **19 von 19 Testdateien erfolgreich** (13.10.2026). Der Testlauf bestätigt die enthaltenen automatisierten Tests, ersetzt aber keine reale Browser- und Downloadprüfung.
-
-## Aufbau nach vollständigem Import
+Die installierbare Erweiterung liegt im Unterordner [StreamForge](./StreamForge/).
 
 ```text
-manifest.json
-background.js
-content.js
-offscreen.js / offscreen.html
-popup.js / popup.html / popup.css
-hls.js / dash.js
-tsmux.js / fmp4mux.js
-export.js / network.js
-icons/
-tests/
-package.json
-CHANGELOG.md
-TEST_REPORT.md
+StreamForge/
+├── manifest.json          # Manifest V3, Version 1.6.5
+├── background.js          # Service Worker
+├── content.js             # Content Script
+├── offscreen.html
+├── offscreen.js
+├── popup.html
+├── popup.js
+├── popup.css
+├── *.js                   # Streaming-, Export- und Muxing-Module
+├── icons/                 # icon16, icon32, icon48, icon128
+├── tests/
+│   ├── *.test.mjs         # 19 automatisierte Testdateien
+│   ├── dash-browser-test.html
+│   └── fixtures/          # MPEG-TS-Testdaten
+├── archive/
+│   └── unclassified/      # Zusätzliche Upload-Dateien, nicht zugeordnet
+├── README.md              # Technische Details
+├── CHANGELOG.md
+├── TEST_REPORT.md
+└── package.json
 ```
 
-## Installation nach vollständigem Import
+Die Dateien in `archive/unclassified/` gehören **nicht** zum aktiven Extension-Build und wurden zur verlustfreien Aufbewahrung getrennt. Die darin befindlichen CSS-Dateien mit Hashnamen sowie `api.js.Herunterladen` sind bislang nicht als Teil der Extension identifiziert.
 
-1. Repository herunterladen bzw. klonen.
-2. In Chrome `chrome://extensions` öffnen.
-3. Entwicklermodus einschalten.
-4. **Entpackte Erweiterung laden** und den Ordner mit `manifest.json` auswählen.
+## Installation
+
+1. Dieses Repository herunterladen oder klonen.
+2. `chrome://extensions` in Chrome bzw. `edge://extensions` in Edge öffnen.
+3. Entwicklermodus aktivieren.
+4. **Entpackte Erweiterung laden** auswählen.
+5. Den lokalen **`StreamForge/`**-Ordner mit `manifest.json` auswählen.
 
 ## Tests
+
+Mit Node.js im Ordner `StreamForge/`:
 
 ```bash
 npm test
 ```
 
-## Sicherheit und Nutzung
+Das Projekt enthält 19 Testdateien. Ein erfolgreicher historischer Testlauf ist in [TEST_REPORT.md](./StreamForge/TEST_REPORT.md) dokumentiert; **nach der GitHub-Neuordnung wurden die Tests hier noch nicht erneut ausgeführt**.
 
-StreamForge ist für eigene oder ausdrücklich zum Download freigegebene Medien vorgesehen. DRM-geschützte Inhalte werden nicht unterstützt. Die Erweiterung fordert für ihre Analyse- und Downloadfunktionen weitreichende Browserberechtigungen (`<all_urls>`, Cookies, Downloads und Netzwerk-APIs); diese sollten vor einer Veröffentlichung gesondert geprüft werden.
+## Version und Änderungen
 
-## Nächster Schritt
+Siehe [Changelog](./StreamForge/CHANGELOG.md) und [technische Beschreibung](./StreamForge/README.md). 1.6.5 verbessert insbesondere MPEG-TS-Muxing mit B-Frames, PTS/DTS-Reihenfolge und HLS-Discontinuities.
 
-Den vollständigen und unveränderten Stand 1.6.5 als Quellcodedateien importieren und anschließend README, Changelog, Testreport und den Release-Tag mit der tatsächlichen Repository-Version synchronisieren.
+## Sicherheit
+
+Nur Medien herunterladen, für die eine entsprechende Berechtigung besteht. DRM-geschützte Inhalte werden nicht unterstützt. Berechtigungen der Erweiterung vor produktiver Nutzung prüfen.
