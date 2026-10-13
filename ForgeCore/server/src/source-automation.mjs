@@ -51,6 +51,9 @@ export class SourceAutomation{
   if(state&&p.enabled)this.db.prepare('UPDATE source_automation SET next_check_epoch=?,updated_at=? WHERE source_id=?').run(now+p.intervalMinutes*60000,utc(),id);
   try{
    const result=await analyzeSource(source.url,this.fetcher?{fetcher:this.fetcher}:{});
+   // Disabling automation while a fetch is in progress must prevent auto-queuing.
+   const refreshed=one(this.db,'SELECT * FROM sources WHERE id=?',id);
+   if(!refreshed||!refreshed.enabled)throw Error('Source disabled during check');
    if(result.adapter!=='html-links')throw Error('Automatic episode discovery requires HTML links');
    if(!Array.isArray(result.items)||result.items.length>500||!result.items.length)throw Error('No usable links; previous discoveries preserved');
    let created=0,queued=0,skipped=0,discovered=0;
@@ -72,7 +75,9 @@ export class SourceAutomation{
     this.db.prepare('INSERT INTO source_check_events(source_id,checked_at,status,discovered,new_episodes,queued,message) VALUES(?,?,?,?,?,?,?)').run(id,utc(),'success',discovered,created,0,'Read '+result.items.length+' links');
     if(state)this.db.prepare('UPDATE source_automation SET last_check_epoch=?,last_error=NULL,failures=0,last_discovered=?,updated_at=? WHERE source_id=?').run(now,discovered,utc(),id);
    });
-   if(p.autoQueue)for(const x of eligible.slice(0,p.maxPerCheck)){
+   const latest=one(this.db,'SELECT enabled,auto_queue,max_per_check FROM source_automation WHERE source_id=?',id);
+   const mayQueue=manual?!!latest?.auto_queue:!!latest?.enabled&&!!latest?.auto_queue;
+   if(mayQueue)for(const x of eligible.slice(0,latest?.max_per_check||p.maxPerCheck)){
     try{this.transfers.enqueue({mediaId:source.media_id,episodeId:x.episodeId,sourceId:id,itemId:x.itemId});queued++}catch{skipped++}
    }
    this.db.prepare('UPDATE source_check_events SET queued=? WHERE id=(SELECT MAX(id) FROM source_check_events WHERE source_id=?)').run(queued,id);
