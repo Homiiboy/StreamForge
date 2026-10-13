@@ -32,6 +32,13 @@ test('DASH explicit SegmentList parsing and DRM rejection',()=>{
  const parsed=parseDash(xml,'https://example.org/media/manifest.mpd');assert.equal(parsed.video.segments.length,2);assert.equal(parsed.audio.segments.length,1);assert.equal(parsed.video.init,'https://example.org/media/init.mp4');
  assert.throws(()=>parseDash(xml.replace('<Period>','<ContentProtection/><Period>'),'https://example.org/a.mpd'),/Protected/);
 });
+test('DASH SegmentTemplate VOD supports numbered and timed fragments',()=>{
+ const numbered='<MPD type="static" mediaPresentationDuration="PT6S"><Period><AdaptationSet mimeType="video/mp4"><SegmentTemplate timescale="1" duration="2" startNumber="1" initialization="$RepresentationID$/init.mp4" media="$RepresentationID$/$Number%03d$.m4s"/><Representation id="v1" bandwidth="1000"/></AdaptationSet></Period></MPD>';
+ const v=parseDash(numbered,'https://example.org/manifest.mpd').video;
+ assert.deepEqual(v.segments,['https://example.org/v1/001.m4s','https://example.org/v1/002.m4s','https://example.org/v1/003.m4s']);
+ const timed='<MPD type="static"><Period><AdaptationSet mimeType="video/mp4"><Representation id="v1"><SegmentTemplate initialization="init.mp4" media="chunk-$Time$.m4s" timescale="1000"><SegmentTimeline><S t="100" d="500" r="2" /></SegmentTimeline></SegmentTemplate></Representation></AdaptationSet></Period></MPD>';
+ assert.deepEqual(parseDash(timed,'https://example.org/a.mpd').video.segments,['https://example.org/chunk-100.m4s','https://example.org/chunk-600.m4s','https://example.org/chunk-1100.m4s']);
+});
 test('HTML discovery uses no scripts and identifies episodes',()=>{
  const items=parseHtmlLinks('<script>var a="secret.m3u8"</script><a href="/Slugterra-S02E08.m3u8" title="Slugterra S02E08">watch</a><a href="https://example.org/slugterra-episode-2.mp4">mp4</a>','https://example.org/series');
  assert.equal(items.length,2);assert.equal(items[0].season,2);assert.equal(items[0].episode,8);
