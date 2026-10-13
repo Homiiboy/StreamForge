@@ -1,10 +1,10 @@
 # StreamForge
 
-**StreamForge Browser Extension – Version 1.8.0**
+**StreamForge Browser Extension – Version 1.8.1**
 
 StreamForge ist eine Chrome-/Edge-Erweiterung (Manifest V3) zum Erkennen und lokalen Herunterladen unterstützter, nicht DRM-geschützter Medienstreams, sofern du über die entsprechenden Rechte verfügst.
 
-[**Aktuelle Version 1.8.0 herunterladen**](https://github.com/Homiiboy/StreamForge/releases/tag/v1.8.0) · [Changelog](./StreamForge/CHANGELOG.md) · [Technische Dokumentation](./StreamForge/README.md)
+[**Aktuelle Version 1.8.1 herunterladen**](https://github.com/Homiiboy/StreamForge/releases/tag/v1.8.1) · [Changelog](./StreamForge/CHANGELOG.md) · [Technische Dokumentation](./StreamForge/README.md)
 
 ## Funktionsumfang
 
@@ -16,6 +16,10 @@ StreamForge ist eine Chrome-/Edge-Erweiterung (Manifest V3) zum Erkennen und lok
 - Direkter WebVTT-Export und unterstützte HLS-WebVTT-Untertitel als separate SRT-Dateien.
 - Jellyfin-kompatible Film-/Serienbenennung und kopierbare relative Ordnerpfade.
 - Wiederholbarer finaler Export bereits gemuxter Dateien bei unterstützten Speicherfehlern.
+
+## Neu in 1.8.1 – Staffelordner-Erkennung
+
+Bei Serien in einem freigegebenen Medienordner kann StreamForge bestehende `Season NN`- oder `Staffel N`-Ordner erkennen und zur Übernahme anbieten. Du kannst weiterhin neue Staffelnummern manuell eingeben. Bestehende Ordner werden bei der Ablage wiederverwendet.
 
 ## Neu in 1.8.0 – Automatische Jellyfin-Ordner
 
@@ -43,7 +47,7 @@ StreamForge ist eine Chrome-/Edge-Erweiterung (Manifest V3) zum Erkennen und lok
 
 ## Installation
 
-1. Das [ZIP von StreamForge 1.8.0](https://github.com/Homiiboy/StreamForge/releases/download/v1.8.0/StreamForge-v1.8.0.zip) herunterladen und entpacken.
+1. Das [ZIP von StreamForge 1.8.1](https://github.com/Homiiboy/StreamForge/releases/download/v1.8.1/StreamForge-v1.8.1.zip) herunterladen und entpacken.
 2. `chrome://extensions` (Chrome) oder `edge://extensions` (Edge) öffnen.
 3. Den Entwicklermodus aktivieren und **Entpackte Erweiterung laden** auswählen.
 4. Den entpackten Ordner `StreamForge/` auswählen, in dem sich die `manifest.json` befindet.
@@ -54,7 +58,7 @@ Die eigentliche Erweiterung liegt in [`StreamForge/`](./StreamForge/): Manifest,
 
 ## Automatisierte Tests
 
-Das Projekt enthält **33 Testdateien**. Die Test-Suite kann mit Node.js aus dem Unterordner ausgeführt werden:
+Das Projekt enthält **34 Testdateien**. Die Test-Suite kann mit Node.js aus dem Unterordner ausgeführt werden:
 
 ```bash
 cd StreamForge
