@@ -20,6 +20,8 @@ jobs:
         run: |
           npm test
           npm run check
+      - name: Confirm documented ZimaOS acceptance gate
+        run: test -s ForgeCore/ACCEPTANCE-v1.0.0.md
       - name: Build ForgeCore Docker image
         run: docker build -t forgecore:release ForgeCore/server
       - name: Publish isolated ForgeCore version
@@ -28,15 +30,15 @@ jobs:
         run: |
           VERSION=$(node -p "require('./ForgeCore/server/package.json').version")
           TAG="forgecore-v${VERSION}"
-          test "$VERSION" = "0.9.9"
+          test "$VERSION" = "1.0.0"
           mkdir -p dist
           zip -qr "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
             ForgeCore/server ForgeCore/compose.yaml ForgeCore/.env.example ForgeCore/install.sh ForgeCore/manage.sh \
-            ForgeCore/README.md ForgeCore/ROADMAP.md ForgeCore/CHANGELOG.md
+            ForgeCore/README.md ForgeCore/ROADMAP.md ForgeCore/CHANGELOG.md ForgeCore/ACCEPTANCE-v1.0.0.md
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
-              --title "ForgeCore ${VERSION} – ZimaOS Phase 7 Beta Preview" \
+              --title "ForgeCore ${VERSION} – ZimaOS Phase 8 v1.0.0 – Hardware-Abnahme ausstehend" \
               --prerelease \
               --target "$GITHUB_SHA" \
-              --notes "ForgeCore v0.9.9 Beta-Vorschau für ZimaOS: Betriebsdiagnose, Docker-Installer, komplette Datenvolume-Sicherung, Healthcheck-Update und Rollback sowie Quellen- und Jellyfin-Verwaltung. Noch nicht auf realer ZimaOS-/SMB-Hardware abgenommen. Nicht als produktionsreifes v1.0.0 verwenden."
+              --notes "ForgeCore v1.0.0 – Entwicklungsstand mit ausstehender Hardware-Abnahme: Betriebsdiagnose, Docker-Installer, komplette Datenvolume-Sicherung, Healthcheck-Update und Rollback sowie Quellen- und Jellyfin-Verwaltung. Noch nicht auf realer ZimaOS-/SMB-Hardware abgenommen. Nicht als produktionsreifes v1.0.0 verwenden."
           fi

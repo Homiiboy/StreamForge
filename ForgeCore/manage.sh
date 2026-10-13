@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 cd "$(dirname "$0")"
 umask 077
-VERSION=0.9.9
+VERSION=1.0.0
 BACKUP_ROOT="$(pwd)/backups"
 die(){ echo "[ForgeCore] $*" >&2; exit 1; }
 log(){ echo "[ForgeCore] $*"; }
@@ -47,16 +47,21 @@ snapshot(){
  printf '%s\n' "$volume" > "$target/data-volume"
  docker run --rm --user 0 -v "$volume:/data:ro" -v "$target:/backup" "$old_image" sh -c 'cd /data && tar -czf /backup/data.tar.gz .'
  [ -s "$target/data.tar.gz" ] || die "Empty backup."
+ (cd "$target" && sha256sum data.tar.gz > data.tar.gz.sha256)
  docker run --rm --user 0 -v "$target:/backup:ro" "$old_image" sh -c 'tar -tzf /backup/data.tar.gz >/dev/null'
  log "Consistent stopped-service backup: $target"
 }
 restore(){
  local target="$1" old_image volume
- [ -f "$target/image-id" ] && [ -f "$target/data-volume" ] && [ -s "$target/data.tar.gz" ] || die "Incomplete backup."
+ [ -f "$target/image-id" ] && [ -f "$target/data-volume" ] && [ -s "$target/data.tar.gz" ] && [ -f "$target/data.tar.gz.sha256" ] || die "Incomplete backup."
+ (cd "$target" && sha256sum -c data.tar.gz.sha256) || die "Backup archive checksum mismatch. No data changed."
  old_image="$(cat "$target/image-id")"; volume="$(cat "$target/data-volume")"
  [[ "$old_image" =~ ^sha256:[a-f0-9]{64}$ ]] || die "Invalid image digest."
  [[ "$volume" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]+$ ]] || die "Invalid volume."
  docker image inspect "$old_image" >/dev/null || die "Previous image no longer available."
+ local running_volume
+ running_volume="$(data_volume "$(cid)")"
+ [ "$running_volume" = "$volume" ] || die "Backup volume does not match active ForgeCore volume."
  docker compose stop forgecore || true
  docker run --rm --user 0 -v "$volume:/data" -v "$target:/backup:ro" "$old_image" sh -c 'cd /data && rm -rf -- ./* ./.[!.]* ./..?* && tar -xzf /backup/data.tar.gz'
  docker tag "$old_image" "forgecore:$VERSION"

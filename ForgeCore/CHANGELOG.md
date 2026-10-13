@@ -1,5 +1,15 @@
 # ForgeCore – Changelog
 
+## v1.0.0 – Phase 8: Releasekandidat (Hardware-Abnahme ausstehend)
+
+- Die Funktionen der bisherigen Phasen 1–7 wurden in einem gemeinsam versionierten Releasekandidaten zusammengeführt.
+- **Rollback-Härtung:** Vollständige Datenvolume-Archive enthalten SHA-256-Prüfsummen. Vor einem Restore wird geprüft, dass die Sicherung unverändert ist und ihr Volume zum laufenden ForgeCore-Datenvolume gehört.
+- **Release-Regressionsprüfungen:** Authentifizierungsgrenzen, Systemdiagnose, Backup/Restore, SQLite-Persistenz, unveränderter StreamForge-v1.8.1-Snapshot, Docker-Build und Container-HTTP-Start.
+- **Abnahmedokument:** `ACCEPTANCE-v1.0.0.md` dokumentiert die erforderlichen Praxistests und deren aktuellen Status.
+- **Veröffentlichung:** GitHub-Tag und ZIP heißen v1.0.0. Der Release wird als **Prerelease** markiert, bis die echte ZimaOS-/SMB-/Jellyfin-Abnahme bestanden wurde.
+
+**Nicht als produktionsreif bestätigt:** Große Downloads auf echten SMB-Datenträgern, unterschiedliche Streaming-Websites/Codecs, mehrtägiger Betrieb, Stromausfall- und Wiederherstellungstests. Kein universeller Web-Downloader, keine DRM-Umgehung.
+
 ## v0.9.9 – Phase 7: ZimaOS Lifecycle & Operations (Beta-Vorschau)
 
 Alle Meilensteine aus v0.6.x–v0.9.x wurden in einem gemeinsamen Entwicklungsstand gebündelt; keine separaten Releases.

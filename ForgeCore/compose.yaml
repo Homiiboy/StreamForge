@@ -3,7 +3,7 @@ services:
   forgecore:
     build:
       context: ./server
-    image: forgecore:0.9.9
+    image: forgecore:1.0.0
     restart: unless-stopped
     environment:
       NODE_ENV: production

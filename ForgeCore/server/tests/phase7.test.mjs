@@ -14,7 +14,7 @@ test('operations: disk and SQLite status omit private Jellyfin credentials',asyn
   db.prepare('INSERT INTO config(key,value) VALUES(?,?)').run('jellyfin_api_key','do-not-expose-this-secret');
   const id=newId(),now=utc();
   db.prepare('INSERT INTO media(id,kind,title,created_at,updated_at) VALUES(?,?,?,?,?)').run(id,'series','Slugterra',now,now);
-  const info=await operationalStatus(db,{mediaRoot:dir,stagingRoot:dir,version:'0.9.9'});
+  const info=await operationalStatus(db,{mediaRoot:dir,stagingRoot:dir,version:'1.0.0'});
   assert.equal(info.database.integrity,'ok');assert.equal(info.totals.series,1);
   assert.equal(info.media.readable,true);assert.equal(info.data.writable,true);
   assert.ok(!JSON.stringify(info).includes('do-not-expose-this-secret'));
@@ -90,6 +90,12 @@ test('mock Docker lifecycle exercises update backup and manual rollback with no 
   const snapshots=await readdir(dir);
   assert.equal(snapshots.length,1);
   assert.ok((await readFile(join(dir,snapshots[0],'data.tar.gz'))).length>0);
+  const originalArchive=await readFile(join(dir,snapshots[0],'data.tar.gz'));
+  await writeFile(join(dir,snapshots[0],'data.tar.gz'),'CORRUPTED');
+  const rejected=run('rollback',join(dir,snapshots[0]));
+  assert.notEqual(rejected.status,0,'Corrupted archives must not restore');
+  assert.match(rejected.stderr,/checksum mismatch/i);
+  await writeFile(join(dir,snapshots[0],'data.tar.gz'),originalArchive);
   const rollback=run('rollback',join(dir,snapshots[0]));
   assert.equal(rollback.status,0,rollback.stderr);
   const failed=spawnSync('bash',[join(root,'manage.sh'),'update'],{env:{...env,MOCK_SWITCH:join(root,'switch')},encoding:'utf8',timeout:15000});
