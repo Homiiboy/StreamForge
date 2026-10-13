@@ -5,7 +5,7 @@ const html=read('popup.html'),popup=read('popup.js'),background=read('background
 const manifest=JSON.parse(read('manifest.json'));
 assert.equal(manifest.version,'1.8.0');
 assert.match(html,/Browser Connector 1\.8\.0/);
-for(const id of ['libraryMode','libraryPlacement','libraryPick','libraryTarget']){
+for(const id of ['libraryMode','libraryPlacement','libraryPick','libraryTarget','libraryForget']){
  assert.ok(html.includes('id="'+id+'"'),id+' markup missing');
  assert.ok(popup.includes("'#"+id+"'"),id+' event binding missing');
 }
