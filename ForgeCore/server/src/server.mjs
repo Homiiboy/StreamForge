@@ -44,7 +44,7 @@ function response(res,status,data,headers={}){
  res.end(JSON.stringify(data));
 }
 function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'alpha-foundation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
-export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,download}={}){
+export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,download,subtitleFetch}={}){
  const db=openDatabase(dbPath);
  const queue=new JobQueue(db,{mediaRoot});
  const transfers=new TransferQueue(db,{mediaRoot,...(download?{download}:{})});
@@ -179,7 +179,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
      const language=normalizeLanguage(b.language||'de'),id=newId(),created=utc();
      db.prepare("INSERT INTO subtitle_jobs(id,media_id,episode_id,url,language,state,created_at,updated_at) VALUES(?,?,?,?,?,'running',?,?)").run(id,mediaId,episodeId,targetUrl,language,created,created);
      try{
-      const result=await downloadSubtitle({url:targetUrl,root:mediaRoot,media,episode,language});
+      const result=await downloadSubtitle({url:targetUrl,root:mediaRoot,media,episode,language,...(subtitleFetch?{fetcher:subtitleFetch}:{})});
       db.prepare("UPDATE subtitle_jobs SET state='complete',result=?,updated_at=? WHERE id=?").run(JSON.stringify(result),utc(),id);
       addNotification(db,{category:'subtitle',message:'Untertitel gespeichert: '+result.path,refId:id});
       return response(res,201,{id,result});
@@ -345,7 +345,8 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
       db.prepare('INSERT INTO source_items(id,source_id,url,title,season,episode,created_at) VALUES(?,?,?,?,?,?,?)').run(item.id,item.source_id,urlValue,limitText(item.title,140),season,ep,utc());
      }
      for(const item of backup.config){
-      if(!['jellyfin_url','library_label','preferred_language'].includes(item.key))continue;
+      if(!['jellyfin_url','library_label','preferred_language','transfer_schedule'].includes(item.key))continue;
+      if(item.key==='transfer_schedule'){try{setSchedule(db,JSON.parse(String(item.value)));}catch{fail('Invalid transfer schedule in backup');}continue;}
       db.prepare('INSERT INTO config(key,value) VALUES(?,?)').run(item.key,limitText(item.value,300));
      }
     });
