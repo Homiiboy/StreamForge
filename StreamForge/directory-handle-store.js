@@ -23,8 +23,8 @@ export function directoryHandleStore(){
     });
   };
   return {
-    get:()=>use(store=>store.get('destination')),
-    put:handle=>use(store=>store.put(handle,'destination'),'readwrite'),
-    clear:()=>use(store=>store.delete('destination'),'readwrite')
+    get:(key='destination')=>use(store=>store.get(key)),
+    put:(handle,key='destination')=>use(store=>store.put(handle,key),'readwrite'),
+    clear:(key='destination')=>use(store=>store.delete(key),'readwrite')
   };
 }
