@@ -1,4 +1,4 @@
-import { DownloadQueue } from './download-queue.js';
+import { PersistentDownloadQueue } from './persistent-queue.js';
 import { parseMasterPlaylist, parseMediaPlaylist, chooseBestVariant, chooseVariant, isHlsPlaylist, isMasterPlaylist, looksLikeHlsPlaylistBytes } from './hls.js';
 import { parseDashManifest } from './dash.js';
 import { muxFmp4Files } from './fmp4mux.js';
@@ -11,7 +11,15 @@ import { createDynamicLimiter, recommendedBufferLimits, effectiveBufferPairs, pi
 import { canonicalMediaMime, normalizeMediaFilename, inspectMediaHead, createTypedMediaBlob, describeDownloadError } from './export.js';
 
 const activeUrls=new Map();
-const downloadQueue = new DownloadQueue();
+const downloadQueue = new PersistentDownloadQueue({
+  storage: chrome.storage.local,
+  execute: async record => (record.type === 'sf_hls_start' ? downloadHls : downloadDash)(record.job),
+  onQueued: async (record, position) => sendProgress(record.job, 'queued', 0, `Warteschlange · Position ${position}`),
+  onInterrupted: async record => sendProgress(record.job, 'error', 0,
+    'Browser-Neustart während der Verarbeitung. Der laufende Auftrag wurde aus Sicherheitsgründen nicht automatisch neu gestartet.',
+    { diagnostic: { code: 'QUEUE_INTERRUPTED', title: 'Download unterbrochen', text: 'Bitte den Download manuell erneut starten.' } }),
+  onError: async (record, error) => sendProgress(record.job, 'error', 0, String(error?.message || error))
+});
 function formatBytes(bytes){const n=Number(bytes||0);if(n>=1073741824)return `${(n/1073741824).toFixed(2)} GB`;if(n>=1048576)return `${(n/1048576).toFixed(1)} MB`;if(n>=1024)return `${(n/1024).toFixed(1)} KB`;return `${n} B`;}
 function safeName(raw,fallback='StreamForge-Download'){ const text=String(raw||fallback).replace(/[<>:"/\\|?*\x00-\x1f]/g,' ').replace(/\s+/g,' ').trim(); return (text||fallback).slice(0,140); }
 function networkState(job){
@@ -564,21 +572,17 @@ async function cleanup(jobId,fallbackTempNames=[]){
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   if(message?.target!=='offscreen')return;
   if(message.type==='sf_hls_start'||message.type==='sf_dash_start'){
-    const fn=message.type==='sf_hls_start'?downloadHls:downloadDash;
-    const position=downloadQueue.waiting+(downloadQueue.busy?1:0);
-    if(position>0) sendProgress(message.job,'queued',0,`Warteschlange · Position ${position}`).catch(()=>{});
-    const key=`${message.job.tabId}:${message.job.candidateId}`;
-    const queued=downloadQueue.enqueue(()=>fn(message.job),key);
-    queued.promise.catch(async e=>{
-      if(e?.code!=='QUEUE_CANCELLED') await sendProgress(message.job,'error',0,String(e?.message||e));
-    });
-    sendResponse({ok:true,queued:position>0,position});
-    return false;
+    const job=message.job;
+    downloadQueue.enqueue({id:`${job.tabId}:${job.candidateId}`,type:message.type,job})
+      .then(result=>sendResponse(result.ok?{ok:true,queued:result.position>0,position:result.position}:{ok:false,error:'Download bereits aktiv oder eingereiht'}))
+      .catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
+    return true;
   }
   if(message.type==='sf_queue_cancel'){
-    const key=`${message.tabId}:${message.candidateId}`;
-    sendResponse({ok:downloadQueue.cancel(key)});
-    return false;
+    downloadQueue.cancel(`${message.tabId}:${message.candidateId}`)
+      .then(ok=>sendResponse({ok}))
+      .catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
+    return true;
   }
   if(message.type==='sf_export_prepare'){prepareExportBlob(message.export||{}).then(x=>sendResponse({ok:true,...x})).catch(e=>sendResponse({ok:false,error:String(e?.message||e),code:e?.code||'EXPORT_PREPARE_FAILED'}));return true;}
   if(message.type==='sf_export_release'){releaseExport(message.jobId).then(()=>sendResponse({ok:true}));return true;}
