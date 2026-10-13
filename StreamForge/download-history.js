@@ -17,6 +17,11 @@ export function mergeHistory(entries=[],incoming){
 }
 export class HistoryStore {
   constructor(storage){this.storage=storage;this.lock=Promise.resolve();}
+  clear(){
+    const next=this.lock.catch(()=>{}).then(()=>this.storage.remove(HISTORY_KEY));
+    this.lock=next;
+    return next;
+  }
   add(entry){
     const run=async()=>{const data=await this.storage.get(HISTORY_KEY);
       const merged=mergeHistory(data[HISTORY_KEY],entry);
