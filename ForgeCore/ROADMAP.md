@@ -22,7 +22,7 @@
 
 ## Phase 2 – Quellen- und Stream-Engine (v0.1.x)
 
-**Implementierter gemeinsamer Alpha-Stand: v0.1.9.** Die folgenden Meilensteine haben funktionsfähige Grundimplementierungen, aber nicht alle ursprünglich angedachten Erweiterungen. Grenzen: nur eingebauter Adapter-Satz (kein Drittanbieter-SDK), HTML-Links statt vollständigem Website-Crawler, HLS VOD ohne separate Audio-Playlist, DASH nur SegmentList, keine bytegenaue Wiederaufnahme und keine externe Jellyfin-Refresh-API. Echte ZimaOS/SMB-Abnahme ausstehend.
+**Implementierter gemeinsamer Alpha-Stand: v0.1.9.** Die folgenden Meilensteine haben funktionsfähige Grundimplementierungen, aber nicht alle ursprünglich angedachten Erweiterungen. Grenzen: nur eingebauter Adapter-Satz (kein Drittanbieter-SDK), HTML-Links statt vollständigem Website-Crawler, HLS VOD ohne separate Audio-Playlist, DASH auf SegmentList und einfache SegmentTemplate-Profile begrenzt, keine bytegenaue Wiederaufnahme und keine externe Jellyfin-Refresh-API. Echte ZimaOS/SMB-Abnahme ausstehend.
 
 | Version | Schwerpunkt | Fertig, wenn … |
 | --- | --- | --- |
