@@ -599,6 +599,12 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
       .catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
     return true;
   }
+  if(message.type==='sf_queue_move'){
+    downloadQueue.movePending(`${message.tabId}:${message.candidateId}`,message.direction)
+      .then(ok=>sendResponse({ok}))
+      .catch(err=>sendResponse({ok:false,error:String(err?.message||err)}));
+    return true;
+  }
   if(message.type==='sf_queue_cancel'){
     downloadQueue.cancel(`${message.tabId}:${message.candidateId}`)
       .then(ok=>sendResponse({ok}))

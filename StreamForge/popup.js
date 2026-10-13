@@ -5,6 +5,7 @@ import { shouldProbeNow } from "./probe-utils.js";
 let tabId = null, items = [];
 let currentView='media';
 let historyEntries=[];
+let queueSnapshot=null;
 const mediaTab=document.querySelector('#viewMedia'),downloadsTab=document.querySelector('#viewDownloads');
 const center=document.querySelector('#downloadCenter'),centerStats=document.querySelector('#centerStats');
 const activeDownloads=document.querySelector('#activeDownloads'),downloadHistory=document.querySelector('#downloadHistory');
@@ -64,6 +65,7 @@ function flushDeferredRender(){
 async function load({forceProbe=false}={}){ const tab=await getCurrentTab(); tabId=tab?.id??null; if(!Number.isInteger(tabId))return; const result=await chrome.runtime.sendMessage({type:'sf_get',tabId}); items=result?.items||[]; requestRender(); renderDownloadCenter(); refreshQueueSummary().catch(()=>{}); if(currentView==='media')enrichVisible({force:forceProbe}); }
 async function refreshQueueSummary(){
   const record=(await chrome.storage.local.get('sf_queue_v170'))?.sf_queue_v170;
+  queueSnapshot=record||null;
   const waiting=Array.isArray(record?.pending)?record.pending.length:0;
   const active=record?.active?1:0;
   queueSummary.hidden=!(waiting||active);
@@ -71,6 +73,7 @@ async function refreshQueueSummary(){
   queuePause.textContent=record?.paused?'Warteschlange fortsetzen':'Warteschlange pausieren';
   queuePause.dataset.paused=record?.paused?'true':'false';
   queueSummary.textContent=active||waiting?`Warteschlange: ${active} aktiv · ${waiting} wartend · Profil: ${profileSelect.selectedOptions[0]?.textContent||'Ausgewogen'}`:'';
+  renderDownloadCenter();
 }
 const runningStates=new Set(['queued','preparing','downloading','muxing','ready','saving']);
 function setView(view){
@@ -113,7 +116,12 @@ function centerRow(title,sub,status,progress=null){
   return div;
 }
 function renderDownloadCenter(){
-  const running=items.filter(x=>runningStates.has(x.download?.state));
+  const order=(queueSnapshot?.pending||[]).map(record=>record.id);
+  const running=items.filter(x=>runningStates.has(x.download?.state)).sort((a,b)=>{
+    const ia=order.indexOf(`${tabId}:${a.id}`),ib=order.indexOf(`${tabId}:${b.id}`);
+    const rank=x=>x<0?-1:x;
+    return rank(ia)-rank(ib);
+  });
   activeCount.textContent=String(running.length);
   centerStats.textContent=`${running.length} aktiv oder wartend · ${historyEntries.length} im Verlauf`;
   if(currentView!=='downloads')return;
@@ -121,7 +129,26 @@ function renderDownloadCenter(){
   for(const item of running){
     const d=item.download||{};
     const details=[d.message||d.state,d.speedBps?fmtRate(d.speedBps):'',d.etaSeconds?'ETA '+fmtEta(d.etaSeconds):''].filter(Boolean).join(' · ');
-    activeDownloads.appendChild(centerRow(item.title||'Medienstream',details,d.state, d.downloadProgress??d.progress??0));
+    const entry=centerRow(item.title||'Medienstream',details,d.state, d.downloadProgress??d.progress??0);
+    if(d.state==='queued'){
+      const controls=document.createElement('div');controls.className='queueItemControls';
+      for(const [direction,label] of [['up','↑ Höher'],['down','↓ Tiefer']]){
+        const button=document.createElement('button');button.className='ghost';button.textContent=label;
+        button.addEventListener('click',async()=>{
+          button.disabled=true;
+          try{
+            const result=await chrome.runtime.sendMessage({type:'sf_queue_move',tabId,candidateId:item.id,direction});
+            if(!result?.ok)throw Error(result?.error||'Verschieben nicht möglich');
+            await refreshQueueSummary();
+            await load();
+          }catch(error){alert(String(error?.message||error));}
+          finally{button.disabled=false;}
+        });
+        controls.appendChild(button);
+      }
+      entry.appendChild(controls);
+    }
+    activeDownloads.appendChild(entry);
   }
   if(!running.length)activeDownloads.appendChild(centerRow('Keine aktiven Downloads','Neue Downloads in der Medienansicht starten','Bereit'));
   downloadHistory.textContent='';

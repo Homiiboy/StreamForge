@@ -646,6 +646,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })().catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
     return true;
   }
+  if(message?.type==='sf_queue_move' && Number.isInteger(message.tabId) && message.candidateId &&
+    ['up','down'].includes(message.direction)){
+    (async()=>{
+      await ensureOffscreen();
+      const result=await chrome.runtime.sendMessage({
+        type:'sf_queue_move',target:'offscreen',tabId:message.tabId,candidateId:message.candidateId,direction:message.direction
+      });
+      sendResponse(result?.ok?{ok:true}:{ok:false,error:result?.error||'Verschieben nicht möglich'});
+    })().catch(err=>sendResponse({ok:false,error:String(err?.message||err)}));
+    return true;
+  }
   if (message?.type === 'sf_queue_cancel' && Number.isInteger(message.tabId) && message.candidateId) {
     (async()=>{
       await ensureOffscreen();
