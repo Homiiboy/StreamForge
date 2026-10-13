@@ -2,6 +2,12 @@ import { buildMediaBasename, suggestNaming, validateNaming } from "./naming.js";
 import { RenderGate, isNamingEditor } from "./ui-refresh.js";
 import { shouldProbeNow } from "./probe-utils.js";
 let tabId = null, items = [];
+let currentView='media';
+let historyEntries=[];
+const mediaTab=document.querySelector('#viewMedia'),downloadsTab=document.querySelector('#viewDownloads');
+const center=document.querySelector('#downloadCenter'),centerStats=document.querySelector('#centerStats');
+const activeDownloads=document.querySelector('#activeDownloads'),downloadHistory=document.querySelector('#downloadHistory');
+const activeCount=document.querySelector('#activeCount');
 const profileSelect=document.querySelector('#performanceProfile');
 const queueSummary=document.querySelector('#queueSummary');
 const queueControls=document.querySelector('#queueControls');
@@ -54,7 +60,7 @@ function flushDeferredRender(){
     if(renderGate.endEdit()) render();
   },0);
 }
-async function load({forceProbe=false}={}){ const tab=await getCurrentTab(); tabId=tab?.id??null; if(!Number.isInteger(tabId))return; const result=await chrome.runtime.sendMessage({type:'sf_get',tabId}); items=result?.items||[]; requestRender(); refreshQueueSummary().catch(()=>{}); enrichVisible({force:forceProbe}); }
+async function load({forceProbe=false}={}){ const tab=await getCurrentTab(); tabId=tab?.id??null; if(!Number.isInteger(tabId))return; const result=await chrome.runtime.sendMessage({type:'sf_get',tabId}); items=result?.items||[]; requestRender(); renderDownloadCenter(); refreshQueueSummary().catch(()=>{}); if(currentView==='media')enrichVisible({force:forceProbe}); }
 async function refreshQueueSummary(){
   const record=(await chrome.storage.local.get('sf_queue_v170'))?.sf_queue_v170;
   const waiting=Array.isArray(record?.pending)?record.pending.length:0;
@@ -64,6 +70,65 @@ async function refreshQueueSummary(){
   queuePause.textContent=record?.paused?'Warteschlange fortsetzen':'Warteschlange pausieren';
   queuePause.dataset.paused=record?.paused?'true':'false';
   queueSummary.textContent=active||waiting?`Warteschlange: ${active} aktiv · ${waiting} wartend · Profil: ${profileSelect.selectedOptions[0]?.textContent||'Ausgewogen'}`:'';
+}
+const runningStates=new Set(['queued','preparing','downloading','muxing','ready','saving']);
+function setView(view){
+  currentView=view==='downloads'?'downloads':'media';
+  mediaTab.classList.toggle('active',currentView==='media');
+  downloadsTab.classList.toggle('active',currentView==='downloads');
+  mediaTab.setAttribute('aria-pressed',String(currentView==='media'));
+  downloadsTab.setAttribute('aria-pressed',String(currentView==='downloads'));
+  center.hidden=currentView!=='downloads';
+  list.hidden=currentView==='downloads';
+  empty.hidden=currentView==='downloads';
+  document.querySelector('.toolbar').hidden=currentView==='downloads';
+  if(currentView==='downloads')refreshHistory().catch(()=>{});
+  else requestRender();
+}
+mediaTab.addEventListener('click',()=>setView('media'));
+downloadsTab.addEventListener('click',()=>setView('downloads'));
+async function refreshHistory(){
+  const r=await chrome.runtime.sendMessage({type:'sf_history_get'});
+  if(r?.ok) historyEntries=Array.isArray(r.entries)?r.entries:[];
+  renderDownloadCenter();
+}
+document.querySelector('#historyClear').addEventListener('click',async()=>{
+  const r=await chrome.runtime.sendMessage({type:'sf_history_clear'});
+  if(r?.ok){historyEntries=[];renderDownloadCenter();}
+  else alert(r?.error||'Verlauf konnte nicht gelöscht werden.');
+});
+function centerRow(title,sub,status,progress=null){
+  const div=document.createElement('article');div.className='centerEntry';
+  const header=document.createElement('div');header.className='entryTitle';
+  const name=document.createElement('strong');name.textContent=title;
+  const label=document.createElement('span');label.className='entryState';label.textContent=status;
+  header.append(name,label);div.appendChild(header);
+  const description=document.createElement('p');description.textContent=sub;div.appendChild(description);
+  if(progress!==null){
+    const track=document.createElement('div');track.className='centerProgress';
+    const bar=document.createElement('div');bar.style.width=Math.max(0,Math.min(100,Number(progress)||0))+'%';
+    track.appendChild(bar);div.appendChild(track);
+  }
+  return div;
+}
+function renderDownloadCenter(){
+  const running=items.filter(x=>runningStates.has(x.download?.state));
+  activeCount.textContent=String(running.length);
+  centerStats.textContent=`${running.length} aktiv oder wartend · ${historyEntries.length} im Verlauf`;
+  if(currentView!=='downloads')return;
+  activeDownloads.textContent='';
+  for(const item of running){
+    const d=item.download||{};
+    const details=[d.message||d.state,d.speedBps?fmtRate(d.speedBps):'',d.etaSeconds?'ETA '+fmtEta(d.etaSeconds):''].filter(Boolean).join(' · ');
+    activeDownloads.appendChild(centerRow(item.title||'Medienstream',details,d.state, d.downloadProgress??d.progress??0));
+  }
+  if(!running.length)activeDownloads.appendChild(centerRow('Keine aktiven Downloads','Neue Downloads in der Medienansicht starten','Bereit'));
+  downloadHistory.textContent='';
+  for(const h of historyEntries.slice(0,60)){
+    const when=new Date(h.time).toLocaleString('de-DE');
+    downloadHistory.appendChild(centerRow(h.title||'Medienstream',when+(h.message?' · '+h.message:''),h.state));
+  }
+  if(!historyEntries.length)downloadHistory.appendChild(centerRow('Noch kein Verlauf','Abgeschlossene und fehlgeschlagene Downloads erscheinen hier','Leer'));
 }
 function qualityText(item){ const p=item.probe||null; if(p?.summary)return p.summary; if(p?.height)return `${p.height}p`; if(p?.contentLength)return fmtSize(p.contentLength); if(p&&item.kind==='hls')return p.playlistType==='media'?'HLS · bereit':'HLS · analysiert'; if(p&&item.kind==='dash')return 'DASH · analysiert'; if(p&&item.kind==='media')return 'Medium · bereit'; if(['queued','preparing','downloading','muxing','saving'].includes(item.download?.state))return `${shortKind(item.kind)} · aktiv`; if(item.probeError)return 'Analysefehler'; return 'Analysiere …'; }
 function diagnosticEntries(item){
@@ -87,6 +152,7 @@ function fillDiagnostics(box, entries){
   }
 }
 function render(){
+  if(currentView==='downloads'){renderDownloadCenter();return;}
   const wanted=filter.value; const shown=wanted==='all'?items:items.filter(x=>x.kind===wanted); list.textContent=''; empty.style.display=shown.length?'none':'block'; count.textContent=String(items.length);
   for(const item of shown){
     const node=template.content.cloneNode(true); const article=node.querySelector('.item'); article.dataset.itemId=item.id; const img=node.querySelector('.preview'), fallback=node.querySelector('.previewFallback');
@@ -251,4 +317,5 @@ list.addEventListener('focusout',e=>{
   if(isNamingEditor(e.target)) flushDeferredRender();
 });
 setInterval(()=>load().catch(()=>{}),1200);
+setInterval(()=>{if(currentView==='downloads')refreshHistory().catch(()=>{});},4000);
 document.querySelector('#clear').addEventListener('click',async()=>{if(!Number.isInteger(tabId))return;await chrome.runtime.sendMessage({type:'sf_clear',tabId});await load()});document.querySelector('#refresh').addEventListener('click',()=>load({forceProbe:true}));filter.addEventListener('change',render);load();

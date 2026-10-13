@@ -1,3 +1,4 @@
+import {HistoryStore,TERMINAL_STATES,HISTORY_KEY} from './download-history.js';
 import { classifyCandidate, cleanUrl, displayName, makeCandidateKey, safeHostname, extensionFromUrl, safeFilename, hlsProbeContainsVariant } from "./media.js";
 import { shouldRetryStatus, describeFetchFailure, failureInfo, formatDiagnostic, backoffMs } from "./network.js";
 import { profileFromObservedHeaders, cookieHeaderFromCookies, buildRequestHeaderRule, summarizeRequestProfile } from "./request-profile.js";
@@ -13,6 +14,7 @@ const requestContext = new Map();
 const OFFSCREEN_PATH = "offscreen.html";
 let creatingOffscreen = null;
 const downloadJobs = new Map();
+const downloadHistory = new HistoryStore(chrome.storage.local);
 const requestBridgeRules = new Map();
 const probeInflight = new Map();
 const pendingDownloadStatus = new Map();
@@ -226,6 +228,10 @@ async function setDownloadStatus(tabId, candidateId, patch) {
   delete cleanPatch.reset;
   hit.download = { ...previous, ...cleanPatch, diagnostics, updated: Date.now() };
   await writeTab(tabId, items, { updateBadge: false });
+  if (TERMINAL_STATES.has(hit.download.state) && (previous.state!==hit.download.state || patch.reset)) {
+    downloadHistory.add({id:`${tabId}:${candidateId}`,title:hit.title||'Medienstream',
+      kind:hit.kind,state:hit.download.state,message:hit.download.message,time:Date.now()}).catch(()=>{});
+  }
 }
 
 function downloadStatusKey(tabId, candidateId) { return `${tabId}:${candidateId}`; }
@@ -661,6 +667,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if(!Number.isInteger(id) || id<0)throw new Error('Browser hat keinen Download gestartet.');
       sendResponse({ok:true,downloadId:id});
     })().catch(err=>sendResponse({ok:false,error:String(err?.message||err)}));
+    return true;
+  }
+  if (message?.type === 'sf_history_get') {
+    chrome.storage.local.get(HISTORY_KEY).then(data=>sendResponse({ok:true,entries:Array.isArray(data[HISTORY_KEY])?data[HISTORY_KEY]:[]}))
+      .catch(e=>sendResponse({ok:false,error:String(e?.message||e)}));
+    return true;
+  }
+  if (message?.type === 'sf_history_clear') {
+    downloadHistory.clear().then(()=>sendResponse({ok:true}))
+      .catch(e=>sendResponse({ok:false,error:String(e?.message||e)}));
     return true;
   }
   if (message?.type === "sf_download" && message.candidate?.url) {

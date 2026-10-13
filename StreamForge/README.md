@@ -1,4 +1,14 @@
-# StreamForge Browser Connector 1.7.2
+# StreamForge Browser Connector 1.7.3
+
+## Neu in 1.7.3: Download-Center
+
+- Medien und Download-Center als separate Popup-Ansichten.
+- Aktive Downloads mit Phase, Fortschritt, Netzwerkgeschwindigkeit und Restzeit.
+- Lokaler Verlauf der letzten 60 abgeschlossenen, fehlgeschlagenen oder abgebrochenen Vorgänge.
+- Keine URLs oder Zugriffstokens im Verlauf; der Verlauf kann jederzeit gelöscht werden.
+- Tastaturnavigation und Fokusdarstellung verbessert.
+
+
 
 ## Neu in 1.7.2: Medienauswahl
 
