@@ -631,6 +631,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message?.type === "sf_download" && message.candidate?.url) {
     const c = message.candidate;
+    const profile = ['gentle','balanced','fast'].includes(message.performanceProfile) ? message.performanceProfile : 'balanced';
     if (c.kind === "media") {
       (async()=>{
         const namingCheck=validateNaming(c.naming||{}); if(!namingCheck.ok) throw new Error(namingCheck.error); const outputBaseName=buildMediaBasename(namingCheck.value,c.title||"StreamForge-Download");
@@ -655,7 +656,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         await setDownloadStatus(message.tabId, c.id, { reset: true, state: "preparing", phase: "preparing", progress: 0, downloadProgress: 0, muxProgress: 0, speedBps: 0, etaSeconds: 0, etaPending: true, segmentDone: 0, segmentTotal: 0, muxSegmentDone: 0, muxSegmentTotal: 0, retries: 0, concurrency: 0, activeRequests: 0, queuedRequests: 0, bufferPairs: 0, bufferCapacity: 0, bottleneck: "", downloadedBytes: 0, outputBytes: 0, message: probeWarning ? `Analysewarnung: ${probeWarning} – Download versucht es erneut …` : "HLS wird vorbereitet …" });
         const accepted = await chrome.runtime.sendMessage({
           type: "sf_hls_start", target: "offscreen",
-          job: (()=>{ const selected=(probe?.variantOptions||[]).find(v=>v.uri===String(c.selectedVariant||''))||null; return { jobId, tabId: message.tabId, candidateId: c.id, url: c.url, referer: c.referer || "", origin: c.origin || "", requestProfile: c.requestProfile || {}, frameId: Number.isInteger(c.frameId) ? c.frameId : -1, pageUrl: c.pageUrl || "", title: c.title || "StreamForge-Download", outputBaseName, naming:namingCheck.value, height: Number(selected?.height || probe?.height || 0), selectedHeight: Number(selected?.height || 0), selectedBandwidth: Number(selected?.bandwidth || 0), selectedVariant: String(c.selectedVariant || ""), selectedAudio: String(c.selectedAudio || "") }; })()
+          job: (()=>{ const selected=(probe?.variantOptions||[]).find(v=>v.uri===String(c.selectedVariant||''))||null; return { jobId, tabId: message.tabId, candidateId: c.id, url: c.url, referer: c.referer || "", origin: c.origin || "", requestProfile: c.requestProfile || {}, frameId: Number.isInteger(c.frameId) ? c.frameId : -1, pageUrl: c.pageUrl || "", title: c.title || "StreamForge-Download", outputBaseName, naming:namingCheck.value, performanceProfile:profile, height: Number(selected?.height || probe?.height || 0), selectedHeight: Number(selected?.height || 0), selectedBandwidth: Number(selected?.bandwidth || 0), selectedVariant: String(c.selectedVariant || ""), selectedAudio: String(c.selectedAudio || "") }; })()
         });
         if (!accepted?.ok) throw new Error(accepted?.error || 'Download wurde nicht in die Warteschlange aufgenommen.');
         sendResponse({ ok: true, mode: "browser-hls", jobId, queued: Boolean(accepted.queued), position: accepted.position });
@@ -671,7 +672,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         await setDownloadStatus(message.tabId, c.id, { reset: true, state: "preparing", phase: "preparing", progress: 0, downloadProgress: 0, muxProgress: 0, speedBps: 0, etaSeconds: 0, etaPending: true, segmentDone: 0, segmentTotal: 0, muxSegmentDone: 0, muxSegmentTotal: 0, retries: 0, concurrency: 0, activeRequests: 0, queuedRequests: 0, bufferPairs: 0, bufferCapacity: 0, bottleneck: "", downloadedBytes: 0, outputBytes: 0, message: probeWarning ? `Analysewarnung: ${probeWarning} – Download versucht es erneut …` : "DASH wird vorbereitet …" });
         const accepted = await chrome.runtime.sendMessage({
           type: "sf_dash_start", target: "offscreen",
-          job: { jobId, tabId: message.tabId, candidateId: c.id, url: c.url, referer: c.referer || "", origin: c.origin || "", requestProfile: c.requestProfile || {}, frameId: Number.isInteger(c.frameId) ? c.frameId : -1, pageUrl: c.pageUrl || "", title: c.title || "StreamForge-Download", outputBaseName, naming:namingCheck.value, height: Number(probe?.height || 0), selectedAudio: String(c.selectedAudio || "") }
+          job: { jobId, tabId: message.tabId, candidateId: c.id, url: c.url, referer: c.referer || "", origin: c.origin || "", requestProfile: c.requestProfile || {}, frameId: Number.isInteger(c.frameId) ? c.frameId : -1, pageUrl: c.pageUrl || "", title: c.title || "StreamForge-Download", outputBaseName, naming:namingCheck.value, performanceProfile:profile, height: Number(probe?.height || 0), selectedAudio: String(c.selectedAudio || "") }
         });
         if (!accepted?.ok) throw new Error(accepted?.error || 'Download wurde nicht in die Warteschlange aufgenommen.');
         sendResponse({ ok: true, mode: "browser-dash", jobId, queued: Boolean(accepted.queued), position: accepted.position });
