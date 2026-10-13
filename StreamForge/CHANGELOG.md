@@ -5,6 +5,8 @@
 - Erste Download-Warteschlange für HLS-/DASH-Aufträge im Offscreen-Dokument: Aufträge werden nacheinander ausgeführt, um paralleles speicherintensives Muxing zu vermeiden.
 - Popup zeigt wartende Aufträge mit ihrer Queue-Position und verhindert doppeltes Starten während des Wartens.
 - Ein fehlgeschlagener Auftrag blockiert nachfolgende Aufträge nicht.
+- Wartende (noch nicht gestartete) Aufträge können jetzt über das Popup aus der Warteschlange entfernt werden, ohne aktive Muxing-Prozesse anzutasten.
+- Zusätzliche Queue-Tests prüfen Abbruch, bereits laufende Aufträge und Fehlerbehandlung.
 - Neuer automatisierter Queue-Regressionstest und Versionsprüfung für GitHub Actions.
 - **Noch offen:** Warteschlangen-Persistenz über Browser-Neustarts, Abbruch/Pause, native Direktdownloads, reale End-to-End-Tests und weitere 1.7.0-Funktionen.
 
