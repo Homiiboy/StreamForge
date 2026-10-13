@@ -57,3 +57,5 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .librarySettings select{width:100%;font-size:11px;padding:7px 9px}
 .librarySettings button{font-size:11px;padding:8px}
 .libraryTarget{font-size:11px;color:#8fb1d6;overflow-wrap:anywhere}
+
+.seasonDiscoveryActions{display:flex;flex-direction:column;flex:1;min-width:0;gap:5px}.seasonDiscoveryActions button{font-size:11px;padding:7px 8px}.seasonDiscoveryActions select{font-size:11px;min-width:0}.seasonHint{font-size:10px;color:#aab8c9;line-height:1.4}.seasonFound[hidden],.seasonDiscovery[hidden]{display:none!important}

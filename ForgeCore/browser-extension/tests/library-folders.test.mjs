@@ -14,4 +14,6 @@ const keyed=normalizeLibraryOptions({mode:'picked',placement:'series',handleKey:
 assert.equal(keyed.handleKey,'job-123e4567-e89b-12d3-a456-426614174000');
 assert.equal(normalizeLibraryOptions({mode:'picked',handleKey:'../../secret'}).handleKey,undefined);
 assert.deepEqual(libraryParts(series,'.mp4','category').folders,['Slugterra','Season 02']);
+assert.equal(normalizeLibraryOptions({mode:'picked',placement:'series',seasonFolder:'Staffel 2'}).seasonFolder,'Staffel 2');
+assert.equal(normalizeLibraryOptions({mode:'picked',seasonFolder:'../Season 02'}).seasonFolder,undefined);
 console.log('library folder path tests passed');

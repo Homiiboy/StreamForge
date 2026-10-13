@@ -1,4 +1,12 @@
-# StreamForge Browser Connector 1.8.0
+# StreamForge Browser Connector 1.8.1
+
+## Neu in 1.8.1: Vorhandene Staffeln finden
+
+Mit dem gewählten Zielmodus „Ausgewählten Medienordner verwenden“ und dem Medientyp „Serie“ ist im Benennungsbereich die Schaltfläche **„Vorhandene Staffeln suchen“** verfügbar. StreamForge liest vorhandene `Season NN`-, `Staffel N`- oder `Specials`-Ordner aus der freigegebenen Serienstruktur und zeigt sie in einer Liste. Ein Klick übernimmt die richtige Staffelnummer und den ursprünglichen Namen. Alternativ kann die Staffelnummer weiterhin manuell eingetragen werden.
+
+Beim Export werden vorhandene Staffelordner auch bei alternativen Schreibweisen wiederverwendet. Ordnerrechte, SMB-Zugriff und reale ZimaOS-Kompatibilität müssen im Browser geprüft werden.
+
+
 
 ## Neu in 1.8.0 – Automatische Jellyfin-Ordnerverwaltung
 
