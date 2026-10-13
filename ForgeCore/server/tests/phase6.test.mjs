@@ -66,8 +66,9 @@ test('authenticated Jellyfin HTTP API can test, preview and confirm non-destruct
   await request('/api/auth/login','POST',{password:'test phase six secure password'});
   const series=(await request('/api/media','POST',{kind:'series',title:'Slugterra'})).data.item;
   const episode=(await request('/api/media/'+series.id+'/episodes','POST',{season:2,episode:8,title:'Episode 8'})).data.item;
-  assert.equal((await request('/api/jellyfin','PUT',{url:'http://127.0.0.1:8096/',apiKey:'test-jellyfin-key-123'})).status,200);
+  assert.equal((await request('/api/jellyfin','PUT',{url:'http://127.0.0.1:8096/',apiKey:'test-jellyfin-key-123',autoRefresh:true})).status,200);
   assert.ok(!JSON.stringify((await request('/api/jellyfin')).data).includes('test-jellyfin-key-123'));
+  assert.equal((await request('/api/jellyfin')).data.autoRefresh,true);
   assert.ok(!JSON.stringify((await request('/api/config')).data).includes('test-jellyfin-key-123'));
   assert.ok(!JSON.stringify((await request('/api/backup/export')).data).includes('test-jellyfin-key-123'));
   assert.equal((await request('/api/jellyfin/test','POST')).data.serverName,'Home Jellyfin');
