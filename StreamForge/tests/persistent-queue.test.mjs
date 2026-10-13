@@ -51,4 +51,20 @@ assert.deepEqual(interrupted,['previous']);
 assert.deepEqual(replayed,['recover']);
 await waitUntil(()=>recovery.active===null);
 assert.equal(recoveredDb.get('sf_queue_v170').active,null);
+// Paused pending jobs remain persisted and only start after resume.
+const pausedDb=new Map([['sf_queue_v170',{version:1,paused:true,active:null,pending:[job('paused-job')]}]]);
+const pausedStorage={
+  async get(k){return {[k]:structuredClone(pausedDb.get(k))};},
+  async set(obj){for(const [k,v] of Object.entries(obj))pausedDb.set(k,structuredClone(v));}
+};
+const pausedStarted=[];
+const pausedQueue=new PersistentDownloadQueue({storage:pausedStorage,execute:async record=>pausedStarted.push(record.id)});
+await pausedQueue.ready;
+await new Promise(r=>setTimeout(r,10));
+assert.equal(pausedQueue.paused,true);
+assert.deepEqual(pausedStarted,[]);
+await pausedQueue.setPaused(false);
+await waitUntil(()=>pausedStarted.length===1);
+assert.deepEqual(pausedStarted,['paused-job']);
+assert.equal(pausedDb.get('sf_queue_v170').paused,false);
 console.log('Persistent queue restore and cancellation tests passed');
