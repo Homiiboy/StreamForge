@@ -42,10 +42,10 @@ function response(res,status,data,headers={}){
  res.end(JSON.stringify(data));
 }
 function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'alpha-foundation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
-export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true}={}){
+export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,download}={}){
  const db=openDatabase(dbPath);
  const queue=new JobQueue(db,{mediaRoot});
- const transfers=new TransferQueue(db,{mediaRoot});
+ const transfers=new TransferQueue(db,{mediaRoot,...(download?{download}:{})});
  if(startWorker){queue.start();transfers.start();}
  const authAttempts=new Map();
  const gate=(req)=>{
@@ -166,7 +166,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     if(op==='items'&&method==='GET')
      return response(res,200,{items:rows(db,'SELECT * FROM source_items WHERE source_id=? ORDER BY season,episode,title LIMIT 500',id)});
     if(op==='analyze'&&method==='POST'){
-     const analysis=await analyzeSource(source.url);
+     const analysis=await analyzeSource(source.url,sourceFetch?{fetcher:sourceFetch}:{});
      if(analysis.items?.length){
       transaction(db,()=>{
        db.prepare('DELETE FROM source_items WHERE source_id=?').run(id);
