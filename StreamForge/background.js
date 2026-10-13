@@ -102,11 +102,11 @@ async function startFinalExport(meta, { blobUrl = '', retry = false } = {}) {
       bytes: meta.bytes, outputBytes: meta.bytes, exportBytes: meta.bytes, exportRetryAvailable: false, exportJobId: meta.jobId,
       exportFilename: meta.filename, message: `${retry ? 'Speichern wird erneut versucht' : 'Speicherort auswählen'} · ${humanBytes(meta.bytes)}`
     });
-    const folderName=meta.library?.mode==='downloads' && meta.naming
+    const folderName=!retry && meta.library?.mode==='downloads' && meta.naming
       ? downloadsRelativePath(meta.naming,extensionForMediaMime(preparedMime))
       : meta.filename;
     const id = await chrome.downloads.download({
-      url: prepared.blobUrl, filename:folderName, saveAs:meta.library?.mode!=='downloads',
+      url: prepared.blobUrl, filename:folderName, saveAs:retry || meta.library?.mode!=='downloads',
       conflictAction:'uniquify'
     });
     if (!Number.isInteger(id) || id < 0) throw Object.assign(new Error('Chrome hat keine gültige Download-ID zurückgegeben.'), { code: 'EXPORT_DOWNLOAD_ID_MISSING' });
@@ -744,11 +744,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const job = { jobId, tabId: message.tabId, frameId: Number.isInteger(c.frameId) ? c.frameId : -1, pageUrl: c.pageUrl || "", referer: c.referer || "", origin: c.origin || "", requestProfile: c.requestProfile || {} };
         const bridge = await prepareRequestBridge(job, c.url);
         const library=normalizeLibraryOptions(c.library);
-        const targetFilename=library.mode==='downloads'
-          ?downloadsRelativePath(namingCheck.value,ext||'.mp4')
-          :filename;
+        let targetFilename=filename,autoFolders=false;
+        if(library.mode==='downloads' && ext){
+          try{targetFilename=downloadsRelativePath(namingCheck.value,ext);autoFolders=true;}catch{}
+        }
         const id = await chrome.downloads.download({
-          url:c.url,filename:targetFilename,saveAs:library.mode!=='downloads',conflictAction:'uniquify'
+          url:c.url,filename:targetFilename,saveAs:!autoFolders,conflictAction:'uniquify'
         });
         downloadJobs.set(id, { jobId, tabId: message.tabId, candidateId: c.id, offscreen: false });
         await chrome.storage.session.set({ [`sf_dl_${id}`]: { jobId, tabId: message.tabId, candidateId: c.id, offscreen: false } });
