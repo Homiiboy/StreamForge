@@ -67,4 +67,16 @@ await pausedQueue.setPaused(false);
 await waitUntil(()=>pausedStarted.length===1);
 assert.deepEqual(pausedStarted,['paused-job']);
 assert.equal(pausedDb.get('sf_queue_v170').paused,false);
+// A stale storage snapshot may contain duplicate rows or malformed jobs.
+const malformedDb=new Map([['sf_queue_v170',{version:1,paused:true,active:null,pending:[
+  job('once'), job('once'), {bad:true}, job('twice')
+]}]]);
+const malformedStorage={
+  async get(k){return {[k]:structuredClone(malformedDb.get(k))};},
+  async set(obj){for(const [k,v] of Object.entries(obj))malformedDb.set(k,structuredClone(v));}
+};
+const sanitized=new PersistentDownloadQueue({storage:malformedStorage,execute:async()=>{}});
+await sanitized.ready;
+assert.deepEqual(sanitized.pending.map(x=>x.id),['once','twice']);
+assert.deepEqual(malformedDb.get('sf_queue_v170').pending.map(x=>x.id),['once','twice']);
 console.log('Persistent queue restore and cancellation tests passed');
