@@ -3,10 +3,11 @@ services:
   forgecore:
     build:
       context: ./server
-    image: forgecore:0.1.9
+    image: forgecore:0.2.9
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      TZ: ${FORGECORE_TIMEZONE:-Europe/Vienna}
       FORGECORE_DB_PATH: /data/forgecore.sqlite
       FORGECORE_STAGING_ROOT: /data
       FORGECORE_MEDIA_ROOT: /media
