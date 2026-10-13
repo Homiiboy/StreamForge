@@ -1,4 +1,5 @@
 FROM node:22-alpine
+RUN apk add --no-cache ffmpeg
 WORKDIR /app
 RUN mkdir -p /data && chown node:node /data
 COPY --chown=node:node package.json ./package.json
