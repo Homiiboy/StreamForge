@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import { DownloadQueue } from '../download-queue.js';
+
+const q = new DownloadQueue();
+const events = [];
+let release;
+const gate = new Promise(resolve => { release = resolve; });
+const first = q.enqueue(async () => { events.push('first-start'); await gate; events.push('first-end'); return 1; });
+const second = q.enqueue(async () => { events.push('second-start'); throw new Error('expected failure'); });
+const third = q.enqueue(async () => { events.push('third-start'); return 3; });
+assert.equal(first.position, 0);
+assert.equal(second.position, 1);
+assert.equal(third.position, 2);
+assert.equal(q.waiting, 2);
+assert.deepEqual(events, ['first-start']);
+release();
+assert.equal(await first.promise, 1);
+await assert.rejects(second.promise, /expected failure/);
+assert.equal(await third.promise, 3);
+assert.deepEqual(events, ['first-start', 'first-end', 'second-start', 'third-start']);
+assert.equal(q.busy, false);
+assert.equal(q.waiting, 0);
+assert.throws(() => q.enqueue(null), TypeError);
+console.log('DownloadQueue tests passed');
