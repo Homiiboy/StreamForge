@@ -1,3 +1,4 @@
+import {bufferAwareConcurrency,performanceSignal} from './performance-engine.js';
 import {validateSegmentPayload,validateDownloadProgress} from './download-reliability.js';
 import { PersistentDownloadQueue } from './persistent-queue.js';
 import { performanceProfile } from './performance-profile.js';
@@ -187,7 +188,7 @@ async function writePartsToTemp(parts,tempName,job,{start=3,end=80,label='Spur',
   const {handle,writable}=await openTemp(tempName);
   const metrics=metricsState(job);
   const phaseStartedAt=performance.now();
-  const limiter=createDynamicLimiter(()=>networkState(job).concurrency);
+  const limiter=createDynamicLimiter(()=>bufferAwareConcurrency(networkState(job).concurrency,bufferedBytes,128*1024*1024));
   const slots=new Map();
   const readyIndexes=new Set();
   let nextSchedule=0,nextWrite=0,downloaded=0,ready=0,written=0,bufferedBytes=0,totalDownloadedBytes=0;
@@ -235,7 +236,7 @@ async function writePartsToTemp(parts,tempName,job,{start=3,end=80,label='Spur',
         segmentDone:downloaded,segmentTotal:parts.length,concurrency:networkState(job).concurrency,retries:networkState(job).retries,
         activeRequests:limiter.active(),queuedRequests:limiter.queued(),bufferPairs:ready,bufferCapacity:cap,bufferedBytes,bufferMaxBytes:lim.maxBytes,
         etaSeconds:eta,etaPending:downloaded<10||eta<=0,
-        bottleneck:(!readyIndexes.has(nextWrite)&&(limiter.active()>0||limiter.queued()>0))?'Netzwerk':''
+        bottleneck:performanceSignal({activeRequests:limiter.active(),queuedRequests:limiter.queued(),bufferedBytes,bufferMaxBytes:lim.maxBytes,downloadDone:downloaded,muxDone:nextWrite})
       });
       await sendProgress(job,'downloading',Math.min(progress,end),`${label}: ${downloaded}/${parts.length} Teile · ${(totalDownloadedBytes/1048576).toFixed(1)} MB · Puffer ${ready}/${cap} · Parallelität ${networkState(job).concurrency}`,{bytes:written,prefetch:true,prefetchRequests:limiter.active()+limiter.queued(),...mx});
     })().finally(()=>{progressPromise=null;});
