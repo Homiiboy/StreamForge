@@ -79,6 +79,12 @@ const sanitized=new PersistentDownloadQueue({storage:malformedStorage,execute:as
 await sanitized.ready;
 assert.deepEqual(sanitized.pending.map(x=>x.id),['once','twice']);
 assert.deepEqual(malformedDb.get('sf_queue_v170').pending.map(x=>x.id),['once','twice']);
+assert.equal(await sanitized.movePending('twice','up'),true);
+assert.deepEqual(sanitized.pending.map(x=>x.id),['twice','once']);
+assert.equal(malformedDb.get('sf_queue_v170').pending[0].id,'twice');
+assert.equal(await sanitized.movePending('twice','up'),false);
+assert.equal(await sanitized.movePending('twice','down'),true);
+await assert.rejects(sanitized.movePending('twice','sideways'),/Richtung/);
 // Concurrent enqueue operations must not create stale snapshots that replay finished work.
 const raceSnapshots=[];
 let unlockWrite;
