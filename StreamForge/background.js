@@ -675,7 +675,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   if (message?.type === 'sf_history_clear') {
-    chrome.storage.local.remove(HISTORY_KEY).then(()=>sendResponse({ok:true}))
+    downloadHistory.clear().then(()=>sendResponse({ok:true}))
       .catch(e=>sendResponse({ok:false,error:String(e?.message||e)}));
     return true;
   }
