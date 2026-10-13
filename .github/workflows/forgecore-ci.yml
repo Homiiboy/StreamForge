@@ -1,0 +1,36 @@
+name: ForgeCore Foundation Checks
+on:
+  pull_request:
+    paths:
+      - "ForgeCore/**"
+      - ".github/workflows/forgecore-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "ForgeCore/**"
+      - ".github/workflows/forgecore-ci.yml"
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify frozen StreamForge 1.8.0 snapshot
+        run: |
+          node --input-type=module -e "import fs from 'node:fs';let a=JSON.parse(fs.readFileSync('ForgeCore/browser-extension/manifest.json'));let b=JSON.parse(fs.readFileSync('ForgeCore/browser-extension/package.json'));if(a.version!=='1.8.0'||b.version!=='1.8.0')throw Error('ForgeCore snapshot must stay at StreamForge 1.8.0');"
+      - name: Test frozen browser extension
+        working-directory: ForgeCore/browser-extension
+        run: npm test
+      - name: Test ForgeCore ZimaOS server
+        working-directory: ForgeCore/server
+        run: |
+          npm test
+          node --check src/server.mjs
+      - name: Validate Docker Compose
+        run: docker compose -f ForgeCore/compose.yaml config --quiet
+      - name: Build ForgeCore image
+        run: docker build -t forgecore:test ForgeCore/server

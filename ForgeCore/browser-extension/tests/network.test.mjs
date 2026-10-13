@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import { shouldRetryStatus, redactUrl, tokenHint, describeFetchFailure, failureInfo, backoffMs, reduceConcurrency, reduceConcurrencyForFailure, shouldApplyConcurrencyDecrease, growConcurrency, readWithInactivityTimeout } from '../network.js';
+assert.equal(shouldRetryStatus(429), true);
+assert.equal(shouldRetryStatus(503), true);
+assert.equal(shouldRetryStatus(403), false);
+assert.equal(tokenHint('https://cdn.example/v.ts?token=abc&exp=123'), true);
+assert.equal(redactUrl('https://cdn.example/v.ts?token=secret'), 'cdn.example/v.ts');
+assert.match(describeFetchFailure({url:'https://cdn.example/x.ts?token=a',status:403}), /Token könnte abgelaufen/);
+assert.match(describeFetchFailure({url:'https://cdn.example/x.ts',message:'Failed to fetch'}), /Failed to fetch/);
+assert.equal(failureInfo({url:'https://cdn.example/x.ts',status:429}).retryable, true);
+assert.equal(failureInfo({url:'https://cdn.example/x.ts',status:403}).retryable, false);
+assert.equal(failureInfo({url:'https://cdn.example/x.ts',message:'Failed to fetch'}).code, 'FETCH_FAILED');
+assert.equal(backoffMs(1),500);
+assert.equal(backoffMs(4),4000);
+assert.equal(reduceConcurrency(8),4);
+assert.equal(reduceConcurrency(3),1);
+assert.equal(growConcurrency(7,8),8);
+assert.equal(reduceConcurrencyForFailure(8,{status:429}),4);
+assert.equal(reduceConcurrencyForFailure(8,{timedOut:true}),6);
+assert.equal(reduceConcurrencyForFailure(8,{status:503}),6);
+assert.equal(reduceConcurrencyForFailure(8,{bodyInterrupted:true}),7);
+assert.equal(shouldApplyConcurrencyDecrease(1000,{now:2000,status:0,cooldownMs:2500}),false);
+assert.equal(shouldApplyConcurrencyDecrease(1000,{now:4000,status:0,cooldownMs:2500}),true);
+assert.equal(shouldApplyConcurrencyDecrease(3999,{now:4000,status:429,cooldownMs:2500}),false);
+assert.equal(shouldApplyConcurrencyDecrease(3000,{now:4000,status:429,cooldownMs:2500}),true);
+
+let canceled = 0;
+const stalledReader = { read: () => new Promise(() => {}), cancel: async () => { canceled++; } };
+await assert.rejects(() => readWithInactivityTimeout(stalledReader, 250), e => e?.code === 'BODY_STALL_TIMEOUT');
+assert.equal(canceled, 1, 'stalled body reader must be canceled');
+const fastReader = { read: async () => ({ done:false, value:new Uint8Array([1,2,3]) }), cancel: async () => {} };
+const chunk = await readWithInactivityTimeout(fastReader, 500);
+assert.equal(chunk.value.byteLength, 3);
+
+console.log('network tests ok');

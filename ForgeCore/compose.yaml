@@ -1,0 +1,24 @@
+name: forgecore
+services:
+  forgecore:
+    build:
+      context: ./server
+    image: forgecore:dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      FORGECORE_HOST: 0.0.0.0
+      FORGECORE_PORT: 8787
+    ports:
+      - "127.0.0.1:8787:8787"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
