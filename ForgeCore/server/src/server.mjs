@@ -6,9 +6,12 @@ import {openDatabase,newId,utc,rows,one,transaction} from './db.mjs';
 import {isSetup,setupAdmin,verifyAdmin,createSession,readSession,deleteSession,checkCsrf,sessionCookie,clearCookie} from './auth.mjs';
 import {checkMediaRoot,previewLibrary} from './library.mjs';
 import {JobQueue} from './queue.mjs';
+import {TransferQueue} from './transfer-queue.mjs';
+import {parseWebUrl} from './source-security.mjs';
+import {analyzeSource,SOURCE_ADAPTERS} from './source-adapters.mjs';
 
 export const APP_NAME='ForgeCore';
-export const APP_VERSION='0.0.9';
+export const APP_VERSION='0.1.9';
 const staticDir=resolve(dirname(fileURLToPath(import.meta.url)),'../public');
 const MAX_BODY=64*1024;
 const limitText=(v,max=150)=>typeof v==='string'?v.trim().slice(0,max):'';
@@ -38,11 +41,12 @@ function response(res,status,data,headers={}){
  res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','x-frame-options':'DENY',...headers});
  res.end(JSON.stringify(data));
 }
-function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'alpha-foundation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:false,downloads:false,jellyfinExport:false,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
+function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'alpha-foundation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
 export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true}={}){
  const db=openDatabase(dbPath);
  const queue=new JobQueue(db,{mediaRoot});
- if(startWorker)queue.start();
+ const transfers=new TransferQueue(db,{mediaRoot});
+ if(startWorker){queue.start();transfers.start();}
  const authAttempts=new Map();
  const gate=(req)=>{
   const origin=req.headers.origin;
@@ -132,6 +136,87 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     }
     if(method==='DELETE'){db.prepare('DELETE FROM episodes WHERE id=?').run(id);return response(res,200,{ok:true});}
    }
+
+   // ForgeCore Phase 2: authenticated source catalog, read-only discovery,
+   // persistent transfer scheduling and controlled Jellyfin media delivery.
+   if(path==='/api/source-adapters'&&method==='GET')
+    return response(res,200,{items:SOURCE_ADAPTERS});
+
+   const mediaSourcesMatch=path.match(/^\/api\/media\/([0-9a-f-]{36})\/sources$/);
+   if(mediaSourcesMatch){
+    const mediaId=idCheck(mediaSourcesMatch[1]);
+    if(!one(db,'SELECT id FROM media WHERE id=?',mediaId))fail('Media project not found',404);
+    if(method==='GET')return response(res,200,{items:rows(db,'SELECT * FROM sources WHERE media_id=? ORDER BY created_at',mediaId)});
+    if(method==='POST'){
+     const b=await readJson(req);
+     const urlValue=String(b.url||'').trim();
+     try{parseWebUrl(urlValue);}catch(error){fail(error.message);}
+     const label=limitText(b.label,140)||'Quelle';
+     const id=newId(),now=utc();
+     try{db.prepare('INSERT INTO sources(id,media_id,url,label,created_at,updated_at) VALUES(?,?,?,?,?,?)').run(id,mediaId,urlValue,label,now,now);}
+     catch(e){if(e.code==='ERR_SQLITE_ERROR')fail('Source URL already exists for this media project',409);throw e;}
+     return response(res,201,{item:one(db,'SELECT * FROM sources WHERE id=?',id)});
+    }
+   }
+   const sourceMatch=path.match(/^\/api\/sources\/([0-9a-f-]{36})(?:\/(analyze|items|import-episodes))?$/);
+   if(sourceMatch){
+    const id=idCheck(sourceMatch[1]),op=sourceMatch[2];
+    const source=one(db,'SELECT * FROM sources WHERE id=?',id);
+    if(!source)fail('Source not found',404);
+    if(op==='items'&&method==='GET')
+     return response(res,200,{items:rows(db,'SELECT * FROM source_items WHERE source_id=? ORDER BY season,episode,title LIMIT 500',id)});
+    if(op==='analyze'&&method==='POST'){
+     const analysis=await analyzeSource(source.url);
+     if(analysis.items?.length){
+      transaction(db,()=>{
+       db.prepare('DELETE FROM source_items WHERE source_id=?').run(id);
+       const insert=db.prepare('INSERT INTO source_items(id,source_id,url,title,season,episode,created_at) VALUES(?,?,?,?,?,?,?)');
+       for(const item of analysis.items)insert.run(newId(),id,item.url,item.title,item.season,item.episode,utc());
+      });
+     }
+     return response(res,200,{...analysis,items:rows(db,'SELECT * FROM source_items WHERE source_id=? ORDER BY season,episode,title',id)});
+    }
+    if(op==='import-episodes'&&method==='POST'){
+     const media=one(db,'SELECT * FROM media WHERE id=?',source.media_id);
+     if(media?.kind!=='series')fail('Only series can import episodes');
+     const known=rows(db,'SELECT * FROM source_items WHERE source_id=? AND season IS NOT NULL AND episode IS NOT NULL LIMIT 500',id);
+     let count=0;
+     transaction(db,()=>{
+      const insert=db.prepare('INSERT OR IGNORE INTO episodes(id,media_id,season,episode,title,created_at,updated_at) VALUES(?,?,?,?,?,?,?)');
+      for(const ep of known){
+       if(ep.season<0||ep.season>999||ep.episode<0||ep.episode>9999)continue;
+       count+=insert.run(newId(),source.media_id,ep.season,ep.episode,ep.title||'',utc(),utc()).changes;
+      }
+     });
+     return response(res,200,{ok:true,added:count});
+    }
+    if(!op&&method==='DELETE'){
+     db.prepare('DELETE FROM sources WHERE id=?').run(id);return response(res,200,{ok:true});
+    }
+    if(!op&&method==='PATCH'){
+     const b=await readJson(req);
+     const label=limitText(b.label===undefined?source.label:b.label,140);
+     const enabled=b.enabled===undefined?source.enabled:(b.enabled?1:0);
+     db.prepare('UPDATE sources SET label=?,enabled=?,updated_at=? WHERE id=?').run(label,enabled,utc(),id);
+     return response(res,200,{item:one(db,'SELECT * FROM sources WHERE id=?',id)});
+    }
+   }
+   if(path==='/api/transfers'){
+    if(method==='GET')return response(res,200,{items:transfers.list()});
+    if(method==='POST'){
+     const b=await readJson(req);
+     const item=transfers.enqueue({mediaId:idCheck(b.mediaId),episodeId:b.episodeId?idCheck(b.episodeId):null,sourceId:idCheck(b.sourceId),itemId:b.itemId?idCheck(b.itemId):null});
+     return response(res,201,{item});
+    }
+   }
+   const transferMatch=path.match(/^\/api\/transfers\/([0-9a-f-]{36})\/(cancel|retry)$/);
+   if(transferMatch&&method==='POST'){
+    const id=idCheck(transferMatch[1]);
+    const ok=transferMatch[2]==='cancel'?transfers.cancel(id):transfers.retry(id);
+    if(!ok)fail('Transfer state cannot be changed',409);
+    return response(res,200,{ok:true});
+   }
+
    if(path==='/api/config'&&method==='GET'){
     return response(res,200,{items:rows(db,'SELECT key,value FROM config ORDER BY key'),mediaRoot:await checkMediaRoot(mediaRoot)});
    }
@@ -196,7 +281,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
   }catch(err){response(res,Number(err?.status)||500,{error:Number(err?.status)?err.message:'Internal server error'});}
  };
  const server=http.createServer((req,res)=>{handler(req,res).catch(()=>{if(!res.headersSent)response(res,500,{error:'Internal server error'});else res.destroy();});});
- return {db,queue,server,close:async()=>{queue.stop();await new Promise(resolve=>server.listening?server.close(resolve):resolve());db.close();}};
+ return {db,queue,transfers,server,close:async()=>{queue.stop();transfers.stop();await new Promise(resolve=>server.listening?server.close(resolve):resolve());db.close();}};
 }
 export function createServer(){return createApp().server;}
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
