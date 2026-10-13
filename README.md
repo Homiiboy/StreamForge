@@ -54,7 +54,7 @@ Die eigentliche Erweiterung liegt in [`StreamForge/`](./StreamForge/): Manifest,
 
 ## Automatisierte Tests
 
-Das Projekt enthält **32 Testdateien**. Die Test-Suite kann mit Node.js aus dem Unterordner ausgeführt werden:
+Das Projekt enthält **33 Testdateien**. Die Test-Suite kann mit Node.js aus dem Unterordner ausgeführt werden:
 
 ```bash
 cd StreamForge
