@@ -76,6 +76,7 @@ const audioSelections = new Map();
 const qualitySelections = new Map();
 const namingSelections = new Map();
 const seasonFolderSelections = new Map();
+const seasonSearchResults = new Map();
 const subtitleSelections = new Map();
 const namingSaveTimers = new Map();
 const renderGate = new RenderGate();
@@ -299,6 +300,24 @@ function render(){
     const foundSeasons=node.querySelector('.seasonFound');
     const seasonHint=node.querySelector('.seasonHint');
     let selectedSeasonFolder=seasonFolderSelections.get(item.id)||'';
+    const previousSeasons=seasonSearchResults.get(item.id);
+    if(previousSeasons){
+      const placeholder=document.createElement('option');
+      placeholder.value='';placeholder.textContent='Staffel auswählen …';
+      foundSeasons.appendChild(placeholder);
+      for(const season of previousSeasons){
+        const opt=document.createElement('option');
+        opt.value=season.name;opt.dataset.season=String(season.number);
+        opt.textContent=season.name+' (Staffel '+season.number+')';
+        foundSeasons.appendChild(opt);
+      }
+      foundSeasons.hidden=previousSeasons.length===0;
+      if(selectedSeasonFolder && previousSeasons.some(x=>x.name===selectedSeasonFolder))
+        foundSeasons.value=selectedSeasonFolder;
+      seasonHint.textContent=previousSeasons.length
+        ?previousSeasons.length+' vorhandene Staffelordner gefunden.'
+        :'Keine Staffelordner gefunden. Staffelnummer selbst eingeben.';
+    }
     if(selectedSeasonFolder)seasonHint.textContent='Ausgewählter Ordner: '+selectedSeasonFolder;
     const readNaming=()=>({type:mediaType.value==='series'?'series':'movie',title:nameTitle.value.trim(),year:nameYear.value.trim(),season:nameSeason.value,episode:nameEpisode.value});
     const updateSeasonVisibility=()=>{
@@ -314,24 +333,15 @@ function render(){
         const root=await libraryStore.get();
         if(!root)throw Error('Bitte zuerst einen Medienordner auswählen.');
         const seasons=await discoverSeasons(root,{placement:librarySelection.placement,title:nameTitle.value.trim()});
-        foundSeasons.textContent='';
-        const placeholder=document.createElement('option');
-        placeholder.value='';placeholder.textContent='Staffel auswählen …';foundSeasons.appendChild(placeholder);
-        for(const season of seasons){
-          const opt=document.createElement('option');
-          opt.value=season.name;
-          opt.dataset.season=String(season.number);
-          opt.textContent=season.name+' (Staffel '+season.number+')';
-          foundSeasons.appendChild(opt);
-        }
-        foundSeasons.hidden=!seasons.length;
+        seasonSearchResults.set(item.id,seasons);
         seasonHint.textContent=seasons.length
-          ?seasons.length+' vorhandene Staffelordner gefunden. Staffel auswählen oder Nummer selbst eingeben.'
-          :'Keine Staffelordner gefunden. Eine neue Staffelnummer kann oben eingegeben werden.';
+          ?seasons.length+' vorhandene Staffelordner gefunden.'
+          :'Keine Staffelordner gefunden. Staffelnummer selbst eingeben.';
       }catch(error){
+        seasonSearchResults.delete(item.id);
         foundSeasons.hidden=true;
         seasonHint.textContent=String(error?.message||error);
-      }finally{updateSeasonVisibility();}
+      }finally{updateSeasonVisibility();requestRender();}
     });
     foundSeasons.addEventListener('change',()=>{
       const option=foundSeasons.selectedOptions[0];
@@ -351,6 +361,7 @@ function render(){
       seasonFolderSelections.delete(item.id);
       foundSeasons.hidden=true;
       foundSeasons.textContent='';
+      seasonSearchResults.delete(item.id);
     });
     mediaType.addEventListener('change',()=>{selectedSeasonFolder='';seasonFolderSelections.delete(item.id);});
     const refreshNaming=({save=true}={})=>{
