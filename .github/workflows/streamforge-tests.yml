@@ -31,6 +31,6 @@ jobs:
           node-version: '22'
       - name: Check manifest version
         run: |
-          node --input-type=module -e "import fs from 'node:fs';const m=JSON.parse(fs.readFileSync('manifest.json','utf8'));if(m.version!=='1.6.5')throw Error('Unexpected version: '+m.version);"
+          node --input-type=module -e "import fs from 'node:fs';const m=JSON.parse(fs.readFileSync('manifest.json','utf8'));const p=JSON.parse(fs.readFileSync('package.json','utf8'));if(m.version!==p.version)throw Error('Version mismatch: '+m.version+' vs '+p.version);"
       - name: Run StreamForge tests
         run: npm test
