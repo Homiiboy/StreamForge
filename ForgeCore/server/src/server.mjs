@@ -11,13 +11,14 @@ import {isSetup,setupAdmin,verifyAdmin,createSession,readSession,deleteSession,c
 import {checkMediaRoot,previewLibrary} from './library.mjs';
 import {JobQueue} from './queue.mjs';
 import {TransferQueue} from './transfer-queue.mjs';
+import {SourceAutomation} from './source-automation.mjs';
 import {parseWebUrl} from './source-security.mjs';
 import {analyzeSource,SOURCE_ADAPTERS} from './source-adapters.mjs';
 import {loadSchedule,setSchedule,sourceRanking,missingEpisodePlan,addNotification,listNotifications,markNotificationRead,diagnostics} from './phase3.mjs';
 import {downloadSubtitle,normalizeLanguage} from './subtitles.mjs';
 
 export const APP_NAME='ForgeCore';
-export const APP_VERSION='0.3.9';
+export const APP_VERSION='0.4.9';
 const staticDir=resolve(dirname(fileURLToPath(import.meta.url)),'../public');
 const MAX_BODY=64*1024;
 const limitText=(v,max=150)=>typeof v==='string'?v.trim().slice(0,max):'';
@@ -47,14 +48,15 @@ function response(res,status,data,headers={}){
  res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','x-frame-options':'DENY',...headers});
  res.end(JSON.stringify(data));
 }
-function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'alpha-foundation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
-export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,download,subtitleFetch}={}){
+function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'alpha-foundation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,sourceAutomation:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
+export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,download,subtitleFetch,automationInterval=60000}={}){
  const db=openDatabase(dbPath);
  const queue=new JobQueue(db,{mediaRoot});
  const transfers=new TransferQueue(db,{mediaRoot,...(download?{download}:{})});
+ const automation=new SourceAutomation(db,{transfers,fetcher:sourceFetch,interval:automationInterval});
  if(startWorker){
   void cleanOldStaging(process.env.FORGECORE_STAGING_ROOT||'/data',db).catch(error=>process.stderr.write('Recovery cleanup warning: '+error.message+'\n'));
-  queue.start();transfers.start();
+  queue.start();transfers.start();automation.start();
  }
  const authAttempts=new Map();
  const gate=(req)=>{
@@ -195,6 +197,18 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
       fail('Subtitle export failed: '+String(error?.message||error).slice(0,160),400);
      }
     }
+   }
+
+   // Phase 5: source monitors require admin sessions and CSRF on all mutations.
+   if(path==='/api/automation/sources'&&method==='GET')
+    return response(res,200,{items:automation.list()});
+   const monitorMatch=path.match(/^\/api\/sources\/([0-9a-f-]{36})\/automation(?:\/(check|history))?$/);
+   if(monitorMatch){
+    const id=idCheck(monitorMatch[1]),op=monitorMatch[2];
+    if(!op&&method==='GET')return response(res,200,{policy:automation.get(id)});
+    if(!op&&method==='PUT')return response(res,200,{policy:automation.configure(id,await readJson(req))});
+    if(op==='history'&&method==='GET')return response(res,200,{items:automation.history(id)});
+    if(op==='check'&&method==='POST')return response(res,200,await automation.check(id,{manual:true}));
    }
 
    if(path==='/api/source-adapters'&&method==='GET')
@@ -386,7 +400,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
   }catch(err){response(res,Number(err?.status)||500,{error:Number(err?.status)?err.message:'Internal server error'});}
  };
  const server=http.createServer((req,res)=>{handler(req,res).catch(()=>{if(!res.headersSent)response(res,500,{error:'Internal server error'});else res.destroy();});});
- return {db,queue,transfers,server,close:async()=>{queue.stop();await transfers.stop();await new Promise(resolve=>server.listening?server.close(resolve):resolve());db.close();}};
+ return {db,queue,transfers,automation,server,close:async()=>{queue.stop();await automation.stop();await transfers.stop();await new Promise(resolve=>server.listening?server.close(resolve):resolve());db.close();}};
 }
 export function createServer(){return createApp().server;}
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
