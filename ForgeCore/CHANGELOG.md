@@ -21,7 +21,7 @@ Die Phase-2-Meilensteine v0.1.0–v0.1.9 sind im gemeinsamen **v0.1.9 Alpha-Stan
 - **Keine** manuelle Priorisierungssteuerung, Zeitplanung oder bytegenaue Segment-Resume-Funktion.
 
 ## v0.1.5 – FFmpeg-Muxing und Validierung
-- Lokaler Remux von unterstützten HLS-TS und DASH-SegmentList-Tracks in MP4.
+- Lokaler Remux von unterstützten HLS-TS und DASH-SegmentList-/SegmentTemplate-Tracks in MP4.
 - MP4-Signatur- und Dateigrößenprüfung, verworfene fehlerhafte Dateien.
 
 ## v0.1.4 – Download-Engine
@@ -30,7 +30,7 @@ Die Phase-2-Meilensteine v0.1.0–v0.1.9 sind im gemeinsamen **v0.1.9 Alpha-Stan
 
 ## v0.1.3 – HLS-/DASH-Analyse
 - HLS-VOD mit Master-/Mediaplaylists, unverschlüsselt, ohne separate Audio-Playlists.
-- DASH nur explizite SegmentList-VOD-Manifestvarianten; DRM/Live/unsupported-Profile abweisen.
+- DASH explizite SegmentList und einfache SegmentTemplate-VOD-Manifestvarianten; DRM/Live/unsupported-Profile abweisen.
 
 ## v0.1.2 – Episoden-Discovery
 - HTML-Links zu HLS/DASH/MP4 erkennen und SxxExx-Namen staffel- und episodenweise importieren.
