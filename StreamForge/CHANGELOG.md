@@ -1,6 +1,13 @@
 # StreamForge Browser Connector – Changelog
 
-## 1.7.0 (Beta / Release-Kandidat – Browserabnahme ausstehend)
+## 1.7.1 (in Entwicklung)
+
+- Gespeicherte HLS-/DASH-Aufträge werden beim Wiederherstellen dedupliziert.
+- Ungültige/stale Einträge werden aus dem persistenten Warteschlangen-Snapshot entfernt.
+- Regressionstest für doppelte und beschädigte Warteschlangeneinträge.
+- Weitere Stabilitäts- und Browserabnahmetests folgen.
+
+## 1.7.0 (veröffentlicht auf main; Browserabnahme empfohlen)
 
 - Erste Download-Warteschlange für HLS-/DASH-Aufträge im Offscreen-Dokument: Aufträge werden nacheinander ausgeführt, um paralleles speicherintensives Muxing zu vermeiden.
 - Popup zeigt wartende Aufträge mit ihrer Queue-Position und verhindert doppeltes Starten während des Wartens.
