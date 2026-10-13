@@ -1,5 +1,5 @@
 import {join,relative,sep,resolve} from 'node:path';
-import {open,stat} from 'node:fs/promises';
+import {open,stat,lstat} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import {safeFetch} from './source-security.mjs';
 import {mediaBaseName,previewLibrary,ensureWithin} from './library.mjs';
@@ -35,6 +35,15 @@ export async function downloadSubtitle({url,root,media,episode=null,language='de
  const preview=await previewLibrary(root,media,episode);
  const base=mediaBaseName(media,episode);
  const dir=ensureWithin(root,join(root,preview.directory));
+ // Reject symlink directories, including intermediate folders on SMB mounts.
+ let current=resolve(root);
+ for(const component of relative(current,dir).split(sep).filter(Boolean)){
+  const entry=await lstat(current);
+  if(!entry.isDirectory()||entry.isSymbolicLink())throw Error('Unsafe media directory');
+  current=join(current,component);
+ }
+ const last=await lstat(dir);
+ if(!last.isDirectory()||last.isSymbolicLink())throw Error('Unsafe media directory');
  // Export only alongside an existing movie/episode: no writing to arbitrary source folders.
  if(!preview.exists)throw Object.assign(Error('Media file must already exist before subtitle export'),{status:409});
  const output=ensureWithin(root,join(dir,base+'.'+lang+'.srt'));
