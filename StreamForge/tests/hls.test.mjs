@@ -59,3 +59,14 @@ assert.equal(isMasterPlaylist(master), true);
 assert.equal(isMasterPlaylist(mediaTs), false);
 assert.equal(looksLikeHlsPlaylistBytes(new TextEncoder().encode('#EXTM3U\n#EXTINF:4,\na.ts')), true);
 assert.throws(() => parseMediaPlaylist(master, 'https://cdn.example/master.m3u8'), /Master-Playlist/);
+
+const withSubtitle=parseMasterPlaylist(`#EXTM3U
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="Deutsch",LANGUAGE="de",DEFAULT=YES,URI="sub/de.m3u8"
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",LANGUAGE="en",URI="sub/en.m3u8"
+#EXT-X-STREAM-INF:BANDWIDTH=2000000,RESOLUTION=1280x720,SUBTITLES="subs"
+video.m3u8`, 'https://cdn.example/master.m3u8');
+assert.equal(withSubtitle.variants[0].subtitleGroup,'subs');
+assert.equal(withSubtitle.subtitleGroups.get('subs').length,2);
+assert.equal(withSubtitle.subtitleGroups.get('subs')[0].language,'de');
+assert.equal(withSubtitle.subtitleGroups.get('subs')[0].isDefault,true);
+assert.equal(withSubtitle.subtitleGroups.get('subs')[1].uri,'https://cdn.example/sub/en.m3u8');
