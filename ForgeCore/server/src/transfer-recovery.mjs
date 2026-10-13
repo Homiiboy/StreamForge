@@ -53,7 +53,8 @@ async function safelyWrite(file,url,{fetcher,signal,maxBytes,onBytes,rateLimitBy
   else{const result=await fetcher(url,{maxBytes,signal});if(result.body?.length)await write(result.body);}
   if(bytes===0)throw Error('Empty media segment');
   await fd.sync();
- }finally{await fd.close()}
+ }catch(error){await fd.close();await rm(part,{force:true}).catch(()=>{});throw error}
+ finally{await fd.close().catch(()=>{})}
  try{
   await rename(part,file);
   const shaFile=file+'.sha256';
@@ -82,7 +83,8 @@ export async function cacheSegments({staging,track,urls,fetcher=safeFetch,signal
    const file=join(staging,track+'-'+String(i).padStart(5,'0')+'.bin');
    const maxBytes=urls.length===1?12*1024*1024*1024:MAX_SEGMENT;
    let cached=await verifiedCached(file,maxBytes);
-   if(cached){onRecover(cached);}
+   const recovered=cached!==null;
+   if(recovered){onRecover(cached);}
    else{
     await rm(file,{force:true}).catch(()=>{});
     await rm(file+'.sha256',{force:true}).catch(()=>{});
@@ -101,7 +103,7 @@ export async function cacheSegments({staging,track,urls,fetcher=safeFetch,signal
    }finally{await fd.close()}
    bytes+=cached;done++;
    if(bytes>12*1024*1024*1024)throw Error('Media exceeds size limit');
-   await onProgress({segments:done,total:urls.length,bytes,reused:!!cached&&matches});
+   await onProgress({segments:done,total:urls.length,bytes,reused:recovered&&matches});
   }
   await output.sync();
  }finally{await output.close()}
