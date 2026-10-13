@@ -36,6 +36,7 @@ jobs:
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
               --title "ForgeCore ${VERSION} – ZimaOS Phase 7 Beta Preview" \
+              --prerelease \
               --target "$GITHUB_SHA" \
               --notes "ForgeCore v0.9.9 Beta-Vorschau für ZimaOS: Betriebsdiagnose, Docker-Installer, komplette Datenvolume-Sicherung, Healthcheck-Update und Rollback sowie Quellen- und Jellyfin-Verwaltung. Noch nicht auf realer ZimaOS-/SMB-Hardware abgenommen. Nicht als produktionsreifes v1.0.0 verwenden."
           fi
