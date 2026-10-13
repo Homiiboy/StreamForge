@@ -65,7 +65,11 @@
 
 **ForgeCore v0.5.9 als Alpha implementiert:** Auswahl integrierter HTML/HLS/DASH-Adapter je Quelle, ergänzender HTML-Attribut-Adapter, Jellyfin-API-Anmeldung, Verbindungstest, manuelle und optional automatische Bibliotheksaktualisierung sowie nicht-destruktive Vorschau und bestätigter Episodenabgleich. Kein ausführbarer Plugin-Marktplatz; noch keine Abnahme auf realem ZimaOS/Jellyfin.
 
-- **Phase 7 / v0.6.x–v0.9.x:** Verbesserte ZimaOS-Installation, Updates/Rollback, Bedienung, Langzeit- und Sicherheitsabnahme auf echter Hardware.
+## Phase 7 – ZimaOS Lifecycle und Beta-Tests (v0.6.x–v0.9.x)
+
+**Gemeinsamer Beta-Code-Stand v0.9.9:** Sichere ZimaOS-Host-Installation, konsistente Volumesicherungen, Healthcheck-gestütztes Update mit automatischem Rollback, manuelle Wiederherstellung, authentifizierte Systemdiagnose, neue System-Webansicht und erste Last-/Lifecycle-Regressionstests.
+
+**Offen:** Native ZimaOS-App-Store-Bereitstellung, echte SMB-/Volume-/Upgrade-Abnahme auf deiner Hardware, dauerhafter HTTPS-Zugang, mehrtägige Soak-Tests, Streaming-/Codec-Prüfung und Wiederherstellung nach Stromverlust. Diese Abnahmekriterien bleiben vor v1.0.0 verpflichtend.
 
 ## Stable Release – v1.0.0
 
@@ -89,4 +93,4 @@
 - Docker-Build geprüft; tatsächliche ZimaOS-Kompatibilität nur behaupten, wenn praktisch getestet
 - Version und Git-Tag nur nach bestandenem Release-Gate veröffentlicht
 
-**Nächster Entwicklungsschritt:** ZimaOS-/SMB-/Jellyfin-Abnahme für v0.5.9 (Freigabe, Zeitplan, Download, FFmpeg, SRT, Datenmigration). Danach die offen genannten Phase-3-Komfortfunktionen vervollständigen und auf Grundlage realer Tests zur v1.0.0 stabilisieren.
+**Nächster Entwicklungsschritt:** ZimaOS-/SMB-/Jellyfin-Abnahme für v0.9.9 (Freigabe, Zeitplan, Download, FFmpeg, SRT, Datenmigration). Danach die offen genannten Phase-3-Komfortfunktionen vervollständigen und auf Grundlage realer Tests zur v1.0.0 stabilisieren.

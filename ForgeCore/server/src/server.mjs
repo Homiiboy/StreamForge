@@ -18,9 +18,10 @@ import {saveJellyfin,getJellyfinStatus,jellyfinTest,jellyfinRefresh} from './jel
 import {jellyfinInventory,reconcilePreview,applyReconciliation,recentJellyfinSync} from './jellyfin-sync.mjs';
 import {loadSchedule,setSchedule,sourceRanking,missingEpisodePlan,addNotification,listNotifications,markNotificationRead,diagnostics} from './phase3.mjs';
 import {downloadSubtitle,normalizeLanguage} from './subtitles.mjs';
+import {operationalStatus,diagnosticEvents} from './operations.mjs';
 
 export const APP_NAME='ForgeCore';
-export const APP_VERSION='0.5.9';
+export const APP_VERSION='0.9.9';
 const staticDir=resolve(dirname(fileURLToPath(import.meta.url)),'../public');
 const MAX_BODY=64*1024;
 const limitText=(v,max=150)=>typeof v==='string'?v.trim().slice(0,max):'';
@@ -50,7 +51,7 @@ function response(res,status,data,headers={}){
  res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','x-frame-options':'DENY',...headers});
  res.end(JSON.stringify(data));
 }
-function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'alpha-foundation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,sourceAutomation:true,jellyfinApi:true,sourceAdapterSelection:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
+function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'pre-release-beta',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,sourceAutomation:true,jellyfinApi:true,sourceAdapterSelection:true,operations:true,lifecycleBackup:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
 export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,download,subtitleFetch,jellyfinFetch,automationInterval=60000}={}){
  const db=openDatabase(dbPath);
  const queue=new JobQueue(db,{mediaRoot});
@@ -173,6 +174,10 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
    const noticeRead=path.match(/^\/api\/notifications\/([0-9a-f-]{36})\/read$/);
    if(noticeRead&&method==='POST')
     return response(res,200,{ok:markNotificationRead(db,idCheck(noticeRead[1]))});
+   if(path==='/api/operations'&&method==='GET')
+    return response(res,200,await operationalStatus(db,{mediaRoot,stagingRoot:process.env.FORGECORE_STAGING_ROOT||'/data',version:APP_VERSION}));
+   if(path==='/api/operations/errors'&&method==='GET')
+    return response(res,200,diagnosticEvents(db));
    if(path==='/api/diagnostics'&&method==='GET')
     return response(res,200,{...diagnostics(db),schedule:loadSchedule(db),serviceVersion:APP_VERSION});
    if(path==='/api/subtitles'){

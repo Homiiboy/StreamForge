@@ -1,5 +1,16 @@
 # ForgeCore – Changelog
 
+## v0.9.9 – Phase 7: ZimaOS Lifecycle & Operations (Beta-Vorschau)
+
+Alle Meilensteine aus v0.6.x–v0.9.x wurden in einem gemeinsamen Entwicklungsstand gebündelt; keine separaten Releases.
+
+- **v0.6.x:** Sichere ZimaOS-Host-Vorabprüfung, Docker-Compose-Verwaltung und Installer.
+- **v0.7.x:** Vollständige Datensicherung bei gestopptem ForgeCore-Container, Docker-Healthcheck-gesteuertes Update und automatischer/manueller Rollback auf Image und Datenvolume.
+- **v0.8.x:** Authentifizierte Systemdiagnose mit SQLite-`quick_check`, Speicherplatz, Medienvolumes, RAM, Queue-Status, Fehlerübersicht und responsivem Systemreiter.
+- **v0.9.x:** Tests zur SQLite-Bibliothek mit 1.200 Einträgen, simulierter Docker-Backup/Update/Rollback-Prozedur, CI-/Docker-Smoke-Tests und Git-Ausschluss privater Daten.
+
+**Ausstehend:** Native ZimaOS-App-Store-Bereitstellung, reale Upgrade-/Rollback-/SMB-Abnahme, mehrtägiger Langzeittest, Stromausfalltests, Wiedergabe-/Codec-Prüfungen und belastbare Sicherheitsevaluation. Diese Beta ist nicht v1.0.0.
+
 ## v0.5.9 – Phase 6: Quellenadapter & Jellyfin API (Alpha)
 
 Alle Meilensteine v0.5.0–v0.5.9 sind im gemeinsamen 0.5.9-Entwicklungsstand gebündelt; keine separaten Zwischenreleases.
