@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {mergeHistory,sanitizeHistoryEntry,HistoryStore,HISTORY_KEY,HISTORY_LIMIT} from '../download-history.js';
+assert.equal(sanitizeHistoryEntry({state:'downloading'}),null);
+assert.deepEqual(mergeHistory([], {id:'a',state:'complete',title:'Film',time:1})[0].title,'Film');
+const list=Array.from({length:90},(_,i)=>({id:String(i),state:'complete',time:i}));
+assert.equal(mergeHistory(list,{id:'last',state:'error',time:200}).length,HISTORY_LIMIT);
+const store={data:{},async get(){return this.data},async set(obj){Object.assign(this.data,obj)},async remove(key){delete this.data[key]}};
+const history=new HistoryStore(store);
+await Promise.all(Array.from({length:12},(_,i)=>history.add({id:String(i),state:'complete',title:'T'+i})));
+assert.equal(store.data[HISTORY_KEY].length,12);
+assert.equal(store.data[HISTORY_KEY].some(x=>'url' in x),false);
+await history.clear();
+assert.equal(store.data[HISTORY_KEY],undefined);
+console.log('download history tests passed');

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>StreamForge</title><link rel="stylesheet" href="popup.css"></head>
+<body>
+<header><img src="icons/icon48.png" alt=""><div><h1>StreamForge</h1><p>Browser Connector 1.8.0</p></div><span id="count" class="badge">0</span></header>
+<nav class="viewTabs" aria-label="StreamForge Ansichten">
+  <button id="viewMedia" class="tab active" aria-pressed="true">Medien</button>
+  <button id="viewDownloads" class="tab" aria-pressed="false">Download-Center <span id="activeCount">0</span></button>
+</nav>
+<section class="toolbar"><select id="filter" aria-label="Stream-Typ filtern"><option value="all">Alle Medien</option><option value="hls">HLS / m3u8</option><option value="dash">DASH / mpd</option><option value="media">Direkte Medien</option></select><select id="performanceProfile" aria-label="Download-Leistungsprofil" title="Download-Leistungsprofil"><option value="gentle">Schonend</option><option value="balanced" selected>Ausgewogen</option><option value="fast">Schnell</option></select><button id="clear" class="ghost">Leeren</button></section>
+<section class="librarySettings" aria-label="Jellyfin-Ordnerverwaltung">
+  <label for="libraryMode">Speicherziel</label>
+  <select id="libraryMode" aria-label="Speicherziel">
+    <option value="ask">Speicherort jedes Mal auswählen</option>
+    <option value="downloads">Automatisch in Downloads/Movies oder Shows</option>
+    <option value="picked">Ausgewählten Medienordner verwenden (HLS/DASH)</option>
+  </select>
+  <label for="libraryPlacement">Ausgewählter Ordner entspricht</label>
+  <select id="libraryPlacement" aria-label="Art des ausgewählten Ordners">
+    <option value="library">Bibliothekswurzel (Movies und Shows anlegen)</option>
+    <option value="category">Movies- oder Shows-Verzeichnis</option>
+    <option value="series">Vorhandener Serienordner (Season anlegen)</option>
+    <option value="season">Vorhandener Staffelordner (Episode hier speichern)</option>
+  </select>
+  <button id="libraryPick" type="button" class="ghost">Medienordner auswählen …</button>
+  <button id="libraryForget" type="button" class="ghost">Gespeicherte Ordnerauswahl entfernen</button>
+  <span id="libraryTarget" class="libraryTarget" aria-live="polite">Kein Ordner ausgewählt</span>
+</section>
+<div id="queueSummary" class="queueSummary" aria-live="polite" hidden></div><div id="queueControls" class="queueControls" hidden><button id="queuePause" class="ghost" type="button">Warteschlange pausieren</button></div><main id="list"></main>
+<section id="downloadCenter" hidden>
+  <div class="centerHeader"><strong>Download-Center</strong><button id="historyClear" class="ghost">Verlauf löschen</button></div>
+  <div id="centerStats" class="centerStats" aria-live="polite"></div>
+  <div id="activeDownloads" class="centerList"></div>
+  <h2 class="historyHeading">Letzte Downloads</h2><div id="downloadHistory" class="centerList"></div>
+</section>
+<section id="empty" class="empty"><strong>Noch kein Stream erkannt</strong><span>Starte das Video auf der Webseite. Eingebettete Player und iframes werden mit überwacht.</span></section>
+<footer><span>Nur lokal · keine Telemetrie</span><button id="refresh" class="ghost">Aktualisieren</button></footer>
+<template id="itemTemplate"><article class="item"><div class="previewWrap"><img class="preview" alt="Stream-Vorschau"><div class="previewFallback">SF</div><span class="qualityBadge"></span></div><div class="itemBody"><div class="itemTop"><span class="kind"></span><span class="contextBadge"></span><span class="hits"></span><span class="security"></span></div><strong class="title"></strong><span class="host"></span><code class="url"></code><div class="qualityRow" hidden><span>Qualität</span><select class="qualitySelect" aria-label="Videoqualität auswählen"></select></div><div class="audioRow" hidden><span>Audio</span><select class="audioSelect" aria-label="Audiospur auswählen"></select></div><div class="subtitleRow" hidden><span>Untertitel</span><select class="subtitleSelect" aria-label="Untertitel auswählen"></select><button type="button" class="subtitleSrt ghost">SRT exportieren</button><button type="button" class="subtitleDownload ghost">VTT speichern</button><button type="button" class="subtitleCopy ghost">Link kopieren</button></div><div class="namingBox"><div class="namingRow"><span>Typ</span><select class="mediaType" aria-label="Film oder Serie auswählen"><option value="movie">Film</option><option value="series">Serie</option></select></div><div class="namingRow"><span>Titel</span><input class="nameTitle" type="text" maxlength="140" aria-label="Titel für Dateinamen"></div><div class="movieNaming namingRow"><span>Jahr</span><input class="nameYear" type="text" inputmode="numeric" maxlength="4" placeholder="2024" aria-label="Erscheinungsjahr"></div><div class="seriesNaming namingRow" hidden><span>S/E</span><div class="episodeInputs"><label>S <input class="nameSeason" type="number" min="0" max="999" step="1" aria-label="Staffel"></label><label>E <input class="nameEpisode" type="number" min="0" max="999" step="1" aria-label="Episode"></label></div></div><div class="filenamePreview"></div><button type="button" class="jellyfinCopy ghost" title="Jellyfin-Pfad in die Zwischenablage">Jellyfin-Pfad kopieren</button></div><div class="downloadStatus" hidden><div class="progressTrack"><div class="progressFill"></div></div><span class="progressText"></span><div class="transferStats" hidden><span class="networkStat"></span><span class="muxStat"></span></div><button class="detailsToggle ghost" hidden>Details anzeigen</button><div class="diagnostics" hidden></div></div><div class="actions"><button class="download primary">Download</button><button class="open">In StreamForge</button><button class="copy">URL</button><button class="remove ghost" title="Treffer entfernen">×</button></div></div></article></template>
+<script type="module" src="popup.js"></script></body></html>

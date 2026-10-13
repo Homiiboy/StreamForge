@@ -1,0 +1,59 @@
+:root{color-scheme:dark;font-family:Inter,"Segoe UI",system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;width:520px;max-height:680px;background:#101216;color:#f5f7fb}header{display:flex;align-items:center;gap:12px;padding:16px;border-bottom:1px solid #262b33;background:linear-gradient(180deg,#171b21,#111419)}header img{width:42px;height:42px}h1{margin:0;font-size:19px}header p{margin:3px 0 0;color:#8e99a8;font-size:11px}.badge{margin-left:auto;min-width:28px;height:24px;padding:0 8px;display:grid;place-items:center;border-radius:999px;background:#ff8a00;color:#1b1000;font-weight:800;font-size:12px}.toolbar{display:flex;gap:8px;padding:10px 12px;border-bottom:1px solid #20242b}select,button{font:inherit}select{flex:1;color:#eaf0f7;background:#191e25;border:1px solid #343b46;border-radius:9px;padding:9px 11px}button{border:1px solid #3b4350;background:#20262e;color:#f3f6fa;border-radius:9px;padding:9px 11px;cursor:pointer}button:hover{background:#2a313b}button:disabled{opacity:.6;cursor:wait}button.primary{background:#ff8a00;color:#211200;border-color:#ff9c29;font-weight:750}button.primary:hover{background:#ffa12f}button.ghost{background:transparent;color:#aeb8c6}main{max-height:525px;overflow:auto;padding:10px}.item{display:grid;grid-template-columns:150px minmax(0,1fr);overflow:hidden;margin-bottom:10px;border:1px solid #2b323c;border-radius:12px;background:#171b21;box-shadow:0 5px 20px rgba(0,0,0,.16)}.previewWrap{position:relative;min-height:130px;background:radial-gradient(circle at 45% 35%,#2e4e72,#131921 70%);overflow:hidden}.preview{width:100%;height:100%;min-height:130px;object-fit:cover}.previewFallback{position:absolute;inset:0;display:grid;place-items:center;font-size:34px;font-weight:900;color:#ff9d27}.qualityBadge{position:absolute;left:8px;bottom:8px;max-width:134px;padding:4px 7px;border-radius:7px;background:rgba(0,0,0,.78);font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.itemBody{min-width:0;padding:11px}.itemTop{display:flex;align-items:center;gap:7px;margin-bottom:6px}.kind{font-size:10px;font-weight:800;letter-spacing:.06em;border-radius:999px;padding:3px 7px;background:#173d59;color:#8fd6ff}.hits,.security{color:#7e8998;font-size:10px}.security{color:#ffb36c}.title{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.host{display:block;color:#aab4c1;font-size:11px;margin:3px 0 6px}.url{display:block;color:#758193;font-family:"Cascadia Mono",Consolas,monospace;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.actions{display:grid;grid-template-columns:1.05fr 1fr auto auto;gap:6px;margin-top:10px}.actions button{padding:8px 9px;font-size:11px}.actions .remove{width:34px;font-size:17px;padding-left:0;padding-right:0}.empty{display:none;padding:48px 28px 58px;text-align:center;color:#8e99a8}.empty strong{display:block;color:#e9edf3;margin-bottom:8px;font-size:14px}.empty span{font-size:12px;line-height:1.5}footer{display:flex;align-items:center;justify-content:space-between;padding:8px 12px 10px;border-top:1px solid #20242b;color:#657181;font-size:10px}
+.downloadStatus{margin-top:8px}.progressTrack{height:5px;border-radius:999px;background:#2b323c;overflow:hidden}.progressFill{height:100%;width:0;background:#ff8a00;transition:width .2s ease}.progressText{display:block;margin-top:4px;color:#99a5b5;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.qualityRow,.audioRow{display:flex;align-items:center;gap:7px;margin-top:8px}.qualityRow[hidden],.audioRow[hidden]{display:none}.qualityRow span,.audioRow span{width:48px;font-size:10px;color:#8f9baa}.qualityRow select,.audioRow select{min-width:0;flex:1;padding:6px 8px;border-radius:7px;font-size:10px;background:#131820}
+
+.downloadStatus[data-state="error"] .progressFill{background:#ff5a68}.downloadStatus[data-state="error"] .progressText{color:#ff9aa4;white-space:normal;line-height:1.35}.downloadStatus[data-state="downloading"] .progressText{white-space:normal;line-height:1.3}
+
+.downloadStatus[data-state="warning"] .progressFill{background:#ffb347}.downloadStatus[data-state="warning"] .progressText{color:#ffd08a;white-space:normal;line-height:1.35}
+.detailsToggle{margin-top:6px;padding:5px 8px;font-size:10px;color:#b9c4d2;border-color:#343c48}.diagnostics{margin-top:7px;padding:8px;border:1px solid #303946;border-radius:8px;background:#11161d;color:#c9d2df;font-size:10px;line-height:1.4;white-space:normal;overflow-wrap:anywhere}.diagEntry+.diagEntry{margin-top:8px;padding-top:8px;border-top:1px solid #29313b}.diagTitle{display:block;color:#ffbd73;font-weight:800;margin-bottom:2px}.diagCode{color:#7f8c9d;font-family:"Cascadia Mono",Consolas,monospace}.diagText{display:block;margin-top:2px}.diagSuggestion{display:block;margin-top:3px;color:#93a7bf}.diagTime{display:block;color:#657181;margin-top:2px}
+
+.contextBadge{font-size:9px;font-weight:750;border-radius:999px;padding:3px 6px;background:#183c2c;color:#8be6ae;white-space:nowrap}.contextBadge[hidden]{display:none}
+
+.transferStats{display:grid;gap:2px;margin-top:5px;font-size:10px;line-height:1.35;color:#b5c0cf}.transferStats[hidden]{display:none}.networkStat,.muxStat{display:block;white-space:normal}.muxStat{color:#d0a96d}.downloadStatus[data-state="muxing"] .muxStat{color:#ffd08a}
+
+.namingBox{margin-top:9px;padding:8px;border:1px solid #2d3540;border-radius:9px;background:#12171d}.namingRow{display:flex;align-items:center;gap:7px;margin-top:6px}.namingRow:first-child{margin-top:0}.namingRow>span{width:48px;flex:0 0 48px;font-size:10px;color:#8f9baa}.namingRow select,.namingRow input{min-width:0;flex:1;color:#eaf0f7;background:#131820;border:1px solid #343b46;border-radius:7px;padding:6px 8px;font-size:10px}.seriesNaming[hidden],.movieNaming[hidden]{display:none}.episodeInputs{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:1}.episodeInputs label{display:flex;align-items:center;gap:5px;color:#8f9baa;font-size:10px}.episodeInputs input{width:100%;min-width:0}.filenamePreview{margin-top:7px;padding-top:7px;border-top:1px solid #252c35;color:#d5dde8;font-family:"Cascadia Mono",Consolas,monospace;font-size:10px;white-space:normal;overflow-wrap:anywhere}.filenamePreview[data-valid="false"]{color:#ff9aa4}
+
+.downloadStatus[data-state="export_error"] .progressFill{background:#ff5a68}.downloadStatus[data-state="export_error"] .progressText{color:#ff9aa4;white-space:normal;line-height:1.35}
+
+/* v1.7.0: Compact transfer settings and persistent queue status */
+.toolbar{flex-wrap:wrap}.toolbar #performanceProfile{flex:0 1 125px;font-size:11px}.queueSummary{padding:8px 13px;background:#1d2834;border-bottom:1px solid #344354;color:#cbdaf0;font-size:11px}.queueSummary[hidden]{display:none}.downloadStatus[data-state="queued"] .progressText{color:#ffc681}.downloadStatus[data-state="cancelled"] .progressText{color:#afbac9}.actions .ghost{white-space:normal}
+
+.queueControls{display:flex;padding:6px 12px;background:#1d2834}.queueControls[hidden]{display:none}.queueControls button{width:100%;font-size:11px}.downloadStatus[data-state="queued"] .progressTrack{opacity:.45}
+
+.subtitleRow{display:flex;align-items:center;gap:7px;margin-top:8px}.subtitleRow[hidden]{display:none}.subtitleRow span{width:48px;flex:0 0 48px;color:#8f9baa;font-size:10px}.subtitleRow select{min-width:0;flex:1;padding:6px 8px;font-size:10px}.subtitleCopy{font-size:10px;padding:6px 7px}
+
+.subtitleDownload[hidden]{display:none}.subtitleRow .subtitleDownload{font-size:10px;padding:6px 7px;white-space:nowrap}
+
+/* v1.7.3 Download-Center */
+.viewTabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px 12px;background:#141921;border-bottom:1px solid #303944}
+.viewTabs .tab{padding:9px;border:1px solid #303944;background:#19212b;border-radius:9px;font-size:12px;font-weight:650}
+.viewTabs .tab.active{background:#3c2b18;color:#ffbe73;border-color:#b46b1c}
+#activeCount{display:inline-block;min-width:18px;padding:2px 5px;border-radius:999px;background:#303945;font-size:10px}
+#downloadCenter{max-height:500px;overflow-y:auto;padding:12px}
+#downloadCenter[hidden],main[hidden],.empty[hidden],.toolbar[hidden]{display:none!important}
+.centerHeader{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:14px}
+.centerStats{color:#b7c4d3;margin:0 0 10px;font-size:11px}
+.centerList{display:grid;gap:8px}.centerEntry{background:#181e27;border:1px solid #303b48;border-radius:10px;padding:10px}
+.entryTitle{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.entryTitle strong{min-width:0;overflow-wrap:anywhere;font-size:12px}
+.entryState{flex-shrink:0;color:#ffbd76;font-size:10px;text-transform:capitalize}
+.centerEntry p{color:#a8b6c6;font-size:11px;line-height:1.5;overflow-wrap:anywhere;margin:6px 0 0}
+.centerProgress{margin-top:9px;height:5px;border-radius:8px;background:#303a47;overflow:hidden}
+.centerProgress div{height:100%;background:#ff941f;transition:width .25s}
+.historyHeading{margin:17px 0 8px;font-size:13px;color:#dfe8f5}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #ffae54;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.centerProgress div,.progressFill{transition:none}}
+
+.subtitleSrt[hidden]{display:none}.subtitleRow .subtitleSrt{font-size:10px;padding:6px 7px;white-space:nowrap}
+
+.jellyfinCopy{margin-top:8px;font-size:10px;padding:7px 9px;width:100%;text-align:center}
+
+.queueItemControls{display:flex;gap:7px;margin-top:9px}.queueItemControls button{font-size:11px;flex:1;padding:6px 8px}.queueItemControls button:focus-visible{outline:2px solid #ffae54;outline-offset:2px}
+
+/* 1.8.0 Jellyfin library destination */
+.librarySettings{display:grid;grid-template-columns:1fr;gap:6px;padding:10px 12px;border-bottom:1px solid #303944;background:#151b24}
+.librarySettings label{font-size:11px;font-weight:700;color:#bdcadb}
+.librarySettings select{width:100%;font-size:11px;padding:7px 9px}
+.librarySettings button{font-size:11px;padding:8px}
+.libraryTarget{font-size:11px;color:#8fb1d6;overflow-wrap:anywhere}
