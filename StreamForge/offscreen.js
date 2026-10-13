@@ -1,3 +1,5 @@
+import { PersistentDownloadQueue } from './persistent-queue.js';
+import { performanceProfile } from './performance-profile.js';
 import { parseMasterPlaylist, parseMediaPlaylist, chooseBestVariant, chooseVariant, isHlsPlaylist, isMasterPlaylist, looksLikeHlsPlaylistBytes } from './hls.js';
 import { parseDashManifest } from './dash.js';
 import { muxFmp4Files } from './fmp4mux.js';
@@ -10,10 +12,19 @@ import { createDynamicLimiter, recommendedBufferLimits, effectiveBufferPairs, pi
 import { canonicalMediaMime, normalizeMediaFilename, inspectMediaHead, createTypedMediaBlob, describeDownloadError } from './export.js';
 
 const activeUrls=new Map();
+const downloadQueue = new PersistentDownloadQueue({
+  storage: chrome.storage.local,
+  execute: async record => (record.type === 'sf_hls_start' ? downloadHls : downloadDash)(record.job),
+  onQueued: async (record, position) => sendProgress(record.job, 'queued', 0, `Warteschlange · Position ${position}`),
+  onInterrupted: async record => sendProgress(record.job, 'error', 0,
+    'Browser-Neustart während der Verarbeitung. Der laufende Auftrag wurde aus Sicherheitsgründen nicht automatisch neu gestartet.',
+    { diagnostic: { code: 'QUEUE_INTERRUPTED', title: 'Download unterbrochen', text: 'Bitte den Download manuell erneut starten.' } }),
+  onError: async (record, error) => sendProgress(record.job, 'error', 0, String(error?.message || error))
+});
 function formatBytes(bytes){const n=Number(bytes||0);if(n>=1073741824)return `${(n/1073741824).toFixed(2)} GB`;if(n>=1048576)return `${(n/1048576).toFixed(1)} MB`;if(n>=1024)return `${(n/1024).toFixed(1)} KB`;return `${n} B`;}
 function safeName(raw,fallback='StreamForge-Download'){ const text=String(raw||fallback).replace(/[<>:"/\\|?*\x00-\x1f]/g,' ').replace(/\s+/g,' ').trim(); return (text||fallback).slice(0,140); }
 function networkState(job){
-  if(!job._net) job._net={concurrency:4,min:1,max:8,successStreak:0,retries:0,lastRetryAt:0,lastDecreaseAt:0,growthCooldownUntil:0};
+  if(!job._net) { const profile=performanceProfile(job.performanceProfile); job._net={concurrency:profile.start,min:1,max:profile.max,successStreak:0,retries:0,lastRetryAt:0,lastDecreaseAt:0,growthCooldownUntil:0}; }
   return job._net;
 }
 function metricsState(job){ if(!job._metrics) job._metrics=new TransferMetrics(); return job._metrics; }
@@ -561,7 +572,25 @@ async function cleanup(jobId,fallbackTempNames=[]){
 }
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   if(message?.target!=='offscreen')return;
-  if(message.type==='sf_hls_start'||message.type==='sf_dash_start'){ const fn=message.type==='sf_hls_start'?downloadHls:downloadDash; fn(message.job).then(()=>sendResponse({ok:true})).catch(async e=>{await sendProgress(message.job,'error',0,String(e?.message||e));sendResponse({ok:false,error:String(e?.message||e)});});return true; }
+  if(message.type==='sf_hls_start'||message.type==='sf_dash_start'){
+    const job=message.job;
+    downloadQueue.enqueue({id:`${job.tabId}:${job.candidateId}`,type:message.type,job})
+      .then(result=>sendResponse(result.ok?{ok:true,queued:result.position>0,position:result.position}:{ok:false,error:'Download bereits aktiv oder eingereiht'}))
+      .catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
+    return true;
+  }
+  if(message.type==='sf_queue_pause'){
+    downloadQueue.setPaused(Boolean(message.paused))
+      .then(state=>sendResponse({ok:true,paused:state.paused,waiting:state.pending.length}))
+      .catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
+    return true;
+  }
+  if(message.type==='sf_queue_cancel'){
+    downloadQueue.cancel(`${message.tabId}:${message.candidateId}`)
+      .then(ok=>sendResponse({ok}))
+      .catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
+    return true;
+  }
   if(message.type==='sf_export_prepare'){prepareExportBlob(message.export||{}).then(x=>sendResponse({ok:true,...x})).catch(e=>sendResponse({ok:false,error:String(e?.message||e),code:e?.code||'EXPORT_PREPARE_FAILED'}));return true;}
   if(message.type==='sf_export_release'){releaseExport(message.jobId).then(()=>sendResponse({ok:true}));return true;}
   if(message.type==='sf_export_discard'||message.type==='sf_download_cleanup'){cleanup(message.jobId,message.tempNames||[]).then(()=>sendResponse({ok:true}));return true;}

@@ -1,5 +1,25 @@
 # StreamForge Browser Connector – Changelog
 
+## 1.7.0 (Beta / Release-Kandidat – Browserabnahme ausstehend)
+
+- Erste Download-Warteschlange für HLS-/DASH-Aufträge im Offscreen-Dokument: Aufträge werden nacheinander ausgeführt, um paralleles speicherintensives Muxing zu vermeiden.
+- Popup zeigt wartende Aufträge mit ihrer Queue-Position und verhindert doppeltes Starten während des Wartens.
+- Ein fehlgeschlagener Auftrag blockiert nachfolgende Aufträge nicht.
+- Wartende (noch nicht gestartete) Aufträge können jetzt über das Popup aus der Warteschlange entfernt werden, ohne aktive Muxing-Prozesse anzutasten.
+- Zusätzliche Queue-Tests prüfen Abbruch, bereits laufende Aufträge und Fehlerbehandlung.
+- Neuer automatisierter Queue-Regressionstest und Versionsprüfung für GitHub Actions.
+- Wartende HLS-/DASH-Aufträge werden in `chrome.storage.local` gespeichert und beim nächsten Start des Offscreen-Dokuments wieder in die Queue geladen.
+- Zuvor laufende Aufträge werden bei einer Wiederherstellung aus Sicherheitsgründen als unterbrochen gemeldet und **nicht** automatisch nochmals ausgeführt.
+- Regressionstest für Neustart, Wiederherstellung, Duplikate und Stornierung ergänzt.
+- Die Warteschlange wird beim Browserstart automatisch über das Offscreen-Dokument wiederhergestellt, sofern gespeicherte Aufträge vorhanden sind. Laufende Medienübertragungen werden weiterhin nicht bytegenau fortgesetzt.
+- Drei adaptive Leistungsprofile für Segmentdownloads: Schonend (max. 4), Ausgewogen (max. 8) und Schnell (max. 12 parallele Requests), mit bestehendem RAM-Budget und automatischer Drosselung bei Netzwerkfehlern.
+- Persistente Wahl des Leistungsprofils und eine Warteschlangen-Zusammenfassung im Popup.
+- GitHub Actions validiert Manifest-Assets und JavaScript-Syntax und erstellt ein installierbares Extension-ZIP-Artefakt.
+- Wartende Aufträge lassen sich pausieren und fortsetzen, einschließlich Speicherung des Pause-Zustands über Neustarts. Ein laufender Transfer wird nicht mitten im Muxing gestoppt.
+- Queue-Wiederherstellung zeigt wartende Aufträge erneut an; Benachrichtigungsfehler blockieren die Wiederherstellung nicht.
+- **Nicht Teil dieses Release-Kandidaten:** Bytegenaues Fortsetzen bereits laufender HLS-/DASH-Transfers, Pause innerhalb eines Segments, automatische Untertitel-Muxing-Unterstützung. Diese Funktionen benötigen separate Pipeline- und Formatentwicklung.
+- **Freigabe-Blocker:** echte Browser-End-to-End-Tests mit HLS/DASH, Abbruch/Neustart, längeren Streams sowie Speicherung auf dem ZimaOS-Netzlaufwerk.
+
 ## 1.6.5
 
 - Kritischer MPEG-TS-Muxingfix für H.264/H.265 mit B-Frames: Video wird nach DTS statt PTS in Dekodierreihenfolge ausgegeben.

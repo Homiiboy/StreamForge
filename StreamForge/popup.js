@@ -2,6 +2,23 @@ import { buildMediaBasename, suggestNaming, validateNaming } from "./naming.js";
 import { RenderGate, isNamingEditor } from "./ui-refresh.js";
 import { shouldProbeNow } from "./probe-utils.js";
 let tabId = null, items = [];
+const profileSelect=document.querySelector('#performanceProfile');
+const queueSummary=document.querySelector('#queueSummary');
+const queueControls=document.querySelector('#queueControls');
+const queuePause=document.querySelector('#queuePause');
+let selectedProfile='balanced';
+chrome.storage.local.get('sf_performance_profile').then(data=>{ selectedProfile=['gentle','balanced','fast'].includes(data.sf_performance_profile)?data.sf_performance_profile:'balanced'; profileSelect.value=selectedProfile; }).catch(()=>{});
+queuePause.addEventListener('click',async()=>{
+  queuePause.disabled=true;
+  try {
+    const paused=queuePause.dataset.paused!=='true';
+    const response=await chrome.runtime.sendMessage({type:'sf_queue_pause',paused});
+    if(!response?.ok) throw Error(response?.error||'Warteschlange konnte nicht geändert werden');
+    await refreshQueueSummary();
+  } catch(error) { alert(String(error?.message||error)); }
+  finally { queuePause.disabled=false; }
+});
+profileSelect.addEventListener('change',()=>{selectedProfile=profileSelect.value;chrome.storage.local.set({sf_performance_profile:selectedProfile}).catch(()=>{});});
 const audioSelections = new Map();
 const qualitySelections = new Map();
 const namingSelections = new Map();
@@ -36,8 +53,18 @@ function flushDeferredRender(){
     if(renderGate.endEdit()) render();
   },0);
 }
-async function load({forceProbe=false}={}){ const tab=await getCurrentTab(); tabId=tab?.id??null; if(!Number.isInteger(tabId))return; const result=await chrome.runtime.sendMessage({type:'sf_get',tabId}); items=result?.items||[]; requestRender(); enrichVisible({force:forceProbe}); }
-function qualityText(item){ const p=item.probe||null; if(p?.summary)return p.summary; if(p?.height)return `${p.height}p`; if(p?.contentLength)return fmtSize(p.contentLength); if(p&&item.kind==='hls')return p.playlistType==='media'?'HLS · bereit':'HLS · analysiert'; if(p&&item.kind==='dash')return 'DASH · analysiert'; if(p&&item.kind==='media')return 'Medium · bereit'; if(['preparing','downloading','muxing','saving'].includes(item.download?.state))return `${shortKind(item.kind)} · aktiv`; if(item.probeError)return 'Analysefehler'; return 'Analysiere …'; }
+async function load({forceProbe=false}={}){ const tab=await getCurrentTab(); tabId=tab?.id??null; if(!Number.isInteger(tabId))return; const result=await chrome.runtime.sendMessage({type:'sf_get',tabId}); items=result?.items||[]; requestRender(); refreshQueueSummary().catch(()=>{}); enrichVisible({force:forceProbe}); }
+async function refreshQueueSummary(){
+  const record=(await chrome.storage.local.get('sf_queue_v170'))?.sf_queue_v170;
+  const waiting=Array.isArray(record?.pending)?record.pending.length:0;
+  const active=record?.active?1:0;
+  queueSummary.hidden=!(waiting||active);
+  queueControls.hidden=!(waiting||active);
+  queuePause.textContent=record?.paused?'Warteschlange fortsetzen':'Warteschlange pausieren';
+  queuePause.dataset.paused=record?.paused?'true':'false';
+  queueSummary.textContent=active||waiting?`Warteschlange: ${active} aktiv · ${waiting} wartend · Profil: ${profileSelect.selectedOptions[0]?.textContent||'Ausgewogen'}`:'';
+}
+function qualityText(item){ const p=item.probe||null; if(p?.summary)return p.summary; if(p?.height)return `${p.height}p`; if(p?.contentLength)return fmtSize(p.contentLength); if(p&&item.kind==='hls')return p.playlistType==='media'?'HLS · bereit':'HLS · analysiert'; if(p&&item.kind==='dash')return 'DASH · analysiert'; if(p&&item.kind==='media')return 'Medium · bereit'; if(['queued','preparing','downloading','muxing','saving'].includes(item.download?.state))return `${shortKind(item.kind)} · aktiv`; if(item.probeError)return 'Analysefehler'; return 'Analysiere …'; }
 function diagnosticEntries(item){
   const out=[];
   if(item.probeDiagnostic) out.push(item.probeDiagnostic);
@@ -106,9 +133,10 @@ function render(){
     }
     if(entries.length){ details.hidden=false; fillDiagnostics(diagBox,entries); details.addEventListener('click',()=>{diagBox.hidden=!diagBox.hidden;details.textContent=diagBox.hidden?'Details anzeigen':'Details ausblenden';}); }
     const downloadButton=node.querySelector('.download');
-    if(['preparing','downloading','muxing','ready','saving'].includes(item.download?.state)){
+    if(['queued','preparing','downloading','muxing','ready','saving'].includes(item.download?.state)){
       downloadButton.disabled=true;
-      if(item.download?.state==='saving') downloadButton.textContent='Speichern …';
+      if(item.download?.state==='queued') downloadButton.textContent='In Warteschlange';
+       else if(item.download?.state==='saving') downloadButton.textContent='Speichern …';
       else if(item.download?.state==='ready') downloadButton.textContent='Fertig …';
       else if(item.download?.state==='preparing') downloadButton.textContent='Bereitet vor …';
       else if(item.download?.state==='muxing') downloadButton.textContent=`Muxxt ${Math.round(item.download?.muxProgress??item.download?.progress??0)}%`;
@@ -116,6 +144,19 @@ function render(){
     }
     else if(item.download?.state==='export_error'&&item.download?.exportRetryAvailable) downloadButton.textContent='Speichern erneut versuchen';
     else if(item.download?.state==='complete') downloadButton.textContent='Erneut laden';
+    if(item.download?.state==='queued') {
+      const cancel=document.createElement('button');
+      cancel.className='ghost'; cancel.textContent='Aus Warteschlange entfernen';
+      downloadButton.insertAdjacentElement('afterend',cancel);
+      cancel.addEventListener('click',async()=>{
+        cancel.disabled=true;
+        try {
+          const result=await chrome.runtime.sendMessage({type:'sf_queue_cancel',tabId,candidateId:item.id});
+          if(!result?.ok) alert(result?.error||'Abbrechen nicht möglich');
+        } catch(error) { alert(String(error?.message||error)); }
+        await load();
+      });
+    }
     downloadButton.addEventListener('click',async e=>{
       const b=e.currentTarget,old=b.textContent;
       if(item.download?.state==='export_error'&&item.download?.exportRetryAvailable&&item.download?.exportJobId){
@@ -128,7 +169,7 @@ function render(){
       const naming=readNaming(); const namingCheck=validateNaming(naming); if(!namingCheck.ok){alert(`Dateiname unvollständig:\n${namingCheck.error}`);return;} persistNaming(item.id,namingCheck.value);
       b.disabled=true;b.textContent=item.kind==='media'?'Speichern …':item.kind==='hls'?'HLS startet …':item.kind==='dash'?'DASH startet …':'Prüfe …';
       const candidateForDownload={...item,naming:namingCheck.value,selectedVariant:qualitySelections.get(item.id)||'',selectedAudio:audioSelections.get(item.id)||''};
-      const r=await chrome.runtime.sendMessage({type:'sf_download',tabId,candidate:candidateForDownload});
+      const r=await chrome.runtime.sendMessage({type:'sf_download',tabId,candidate:candidateForDownload,performanceProfile:selectedProfile});
       if(!r?.ok){ alert(`Download konnte nicht gestartet werden:\n${r?.error||'Unbekannter Fehler'}`); b.disabled=false;b.textContent=old; }
       else if(r.mode==='browser-hls'||r.mode==='browser-dash'){ b.textContent='Lädt 0%'; setTimeout(load,250); }
       else { b.textContent='Gestartet'; setTimeout(()=>{b.disabled=false;b.textContent=old},1600); }

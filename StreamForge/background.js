@@ -618,8 +618,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })().catch(err => sendResponse({ ok: false, error: String(err?.message || err), code: err?.code || '' }));
     return true;
   }
+  if (message?.type === 'sf_queue_pause' && typeof message.paused === 'boolean') {
+    (async()=>{
+      await ensureOffscreen();
+      const result=await chrome.runtime.sendMessage({target:'offscreen',type:'sf_queue_pause',paused:message.paused});
+      sendResponse(result?.ok ? result : {ok:false,error:result?.error||'Warteschlangenstatus konnte nicht gespeichert werden.'});
+    })().catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
+    return true;
+  }
+  if (message?.type === 'sf_queue_cancel' && Number.isInteger(message.tabId) && message.candidateId) {
+    (async()=>{
+      await ensureOffscreen();
+      const response=await chrome.runtime.sendMessage({type:'sf_queue_cancel',target:'offscreen',tabId:message.tabId,candidateId:message.candidateId});
+      if(!response?.ok){sendResponse({ok:false,error:'Auftrag wird bereits ausgeführt oder ist nicht mehr in der Warteschlange.'});return;}
+      await flushQueuedDownloadStatus(message.tabId,message.candidateId);
+      await setDownloadStatus(message.tabId,message.candidateId,{state:'cancelled',phase:'queued',progress:0,message:'Wartender Download abgebrochen'});
+      sendResponse({ok:true});
+    })().catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
+    return true;
+  }
   if (message?.type === "sf_download" && message.candidate?.url) {
     const c = message.candidate;
+    const profile = ['gentle','balanced','fast'].includes(message.performanceProfile) ? message.performanceProfile : 'balanced';
     if (c.kind === "media") {
       (async()=>{
         const namingCheck=validateNaming(c.naming||{}); if(!namingCheck.ok) throw new Error(namingCheck.error); const outputBaseName=buildMediaBasename(namingCheck.value,c.title||"StreamForge-Download");
@@ -642,11 +662,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         await ensureOffscreen();
         const jobId = crypto.randomUUID();
         await setDownloadStatus(message.tabId, c.id, { reset: true, state: "preparing", phase: "preparing", progress: 0, downloadProgress: 0, muxProgress: 0, speedBps: 0, etaSeconds: 0, etaPending: true, segmentDone: 0, segmentTotal: 0, muxSegmentDone: 0, muxSegmentTotal: 0, retries: 0, concurrency: 0, activeRequests: 0, queuedRequests: 0, bufferPairs: 0, bufferCapacity: 0, bottleneck: "", downloadedBytes: 0, outputBytes: 0, message: probeWarning ? `Analysewarnung: ${probeWarning} – Download versucht es erneut …` : "HLS wird vorbereitet …" });
-        chrome.runtime.sendMessage({
+        const accepted = await chrome.runtime.sendMessage({
           type: "sf_hls_start", target: "offscreen",
-          job: (()=>{ const selected=(probe?.variantOptions||[]).find(v=>v.uri===String(c.selectedVariant||''))||null; return { jobId, tabId: message.tabId, candidateId: c.id, url: c.url, referer: c.referer || "", origin: c.origin || "", requestProfile: c.requestProfile || {}, frameId: Number.isInteger(c.frameId) ? c.frameId : -1, pageUrl: c.pageUrl || "", title: c.title || "StreamForge-Download", outputBaseName, naming:namingCheck.value, height: Number(selected?.height || probe?.height || 0), selectedHeight: Number(selected?.height || 0), selectedBandwidth: Number(selected?.bandwidth || 0), selectedVariant: String(c.selectedVariant || ""), selectedAudio: String(c.selectedAudio || "") }; })()
-        }).catch(async err => setDownloadStatus(message.tabId, c.id, { state: "error", progress: 0, message: String(err?.message||err) }));
-        sendResponse({ ok: true, mode: "browser-hls", jobId });
+          job: (()=>{ const selected=(probe?.variantOptions||[]).find(v=>v.uri===String(c.selectedVariant||''))||null; return { jobId, tabId: message.tabId, candidateId: c.id, url: c.url, referer: c.referer || "", origin: c.origin || "", requestProfile: c.requestProfile || {}, frameId: Number.isInteger(c.frameId) ? c.frameId : -1, pageUrl: c.pageUrl || "", title: c.title || "StreamForge-Download", outputBaseName, naming:namingCheck.value, performanceProfile:profile, height: Number(selected?.height || probe?.height || 0), selectedHeight: Number(selected?.height || 0), selectedBandwidth: Number(selected?.bandwidth || 0), selectedVariant: String(c.selectedVariant || ""), selectedAudio: String(c.selectedAudio || "") }; })()
+        });
+        if (!accepted?.ok) throw new Error(accepted?.error || 'Download wurde nicht in die Warteschlange aufgenommen.');
+        sendResponse({ ok: true, mode: "browser-hls", jobId, queued: Boolean(accepted.queued), position: accepted.position });
       })().catch(err => sendResponse({ ok: false, error: String(err?.message || err) }));
     } else if (c.kind === "dash") {
       (async()=>{
@@ -657,11 +678,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         await ensureOffscreen();
         const jobId = crypto.randomUUID();
         await setDownloadStatus(message.tabId, c.id, { reset: true, state: "preparing", phase: "preparing", progress: 0, downloadProgress: 0, muxProgress: 0, speedBps: 0, etaSeconds: 0, etaPending: true, segmentDone: 0, segmentTotal: 0, muxSegmentDone: 0, muxSegmentTotal: 0, retries: 0, concurrency: 0, activeRequests: 0, queuedRequests: 0, bufferPairs: 0, bufferCapacity: 0, bottleneck: "", downloadedBytes: 0, outputBytes: 0, message: probeWarning ? `Analysewarnung: ${probeWarning} – Download versucht es erneut …` : "DASH wird vorbereitet …" });
-        chrome.runtime.sendMessage({
+        const accepted = await chrome.runtime.sendMessage({
           type: "sf_dash_start", target: "offscreen",
-          job: { jobId, tabId: message.tabId, candidateId: c.id, url: c.url, referer: c.referer || "", origin: c.origin || "", requestProfile: c.requestProfile || {}, frameId: Number.isInteger(c.frameId) ? c.frameId : -1, pageUrl: c.pageUrl || "", title: c.title || "StreamForge-Download", outputBaseName, naming:namingCheck.value, height: Number(probe?.height || 0), selectedAudio: String(c.selectedAudio || "") }
-        }).catch(async err => setDownloadStatus(message.tabId, c.id, { state: "error", progress: 0, message: String(err?.message||err) }));
-        sendResponse({ ok: true, mode: "browser-dash", jobId });
+          job: { jobId, tabId: message.tabId, candidateId: c.id, url: c.url, referer: c.referer || "", origin: c.origin || "", requestProfile: c.requestProfile || {}, frameId: Number.isInteger(c.frameId) ? c.frameId : -1, pageUrl: c.pageUrl || "", title: c.title || "StreamForge-Download", outputBaseName, naming:namingCheck.value, performanceProfile:profile, height: Number(probe?.height || 0), selectedAudio: String(c.selectedAudio || "") }
+        });
+        if (!accepted?.ok) throw new Error(accepted?.error || 'Download wurde nicht in die Warteschlange aufgenommen.');
+        sendResponse({ ok: true, mode: "browser-dash", jobId, queued: Boolean(accepted.queued), position: accepted.position });
       })().catch(err => sendResponse({ ok: false, error: String(err?.message || err) }));
     } else {
       sendResponse({ ok: false, error: "Dieser Medientyp wird vom Browser-Downloader nicht unterstützt." });
@@ -702,5 +724,17 @@ chrome.downloads.onChanged.addListener(async delta => {
   }
 });
 
+// Resume only persisted *waiting* jobs after Chrome starts. Active transfers
+// are marked interrupted by the persistent queue and must be started manually.
+async function restorePendingQueueOnStartup() {
+  try {
+    const saved = (await chrome.storage.local.get('sf_queue_v170'))?.sf_queue_v170;
+    if (saved?.version === 1 && (saved.active || (Array.isArray(saved.pending) && saved.pending.length))) {
+      await ensureOffscreen();
+    }
+  } catch (error) { console.warn('StreamForge queue recovery:', error); }
+}
+chrome.runtime.onStartup?.addListener(() => { restorePendingQueueOnStartup().catch(() => {}); });
+chrome.runtime.onInstalled?.addListener(() => { restorePendingQueueOnStartup().catch(() => {}); });
 chrome.tabs.onRemoved.addListener(tabId => chrome.storage.session.remove([stateKey(tabId), previewKey(tabId), pageMetaKey(tabId)]));
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => { if (changeInfo.status === "loading") updateBadge(tabId).catch(() => {}); });
