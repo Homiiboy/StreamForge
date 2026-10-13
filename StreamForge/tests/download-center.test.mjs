@@ -7,7 +7,8 @@ for(const id of ['viewMedia','viewDownloads','downloadCenter','centerStats','act
  assert.match(html,new RegExp('id="'+id+'"'), 'missing popup element '+id);
  assert.ok(js.includes("'#"+id+"'"),'missing JavaScript binding '+id);
 }
-assert.match(html,/Browser Connector 1\.7\.3/);
+const version=JSON.parse(fs.readFileSync(new URL('../manifest.json',import.meta.url),'utf8')).version;
+assert.ok(html.includes('Browser Connector '+version));
 assert.match(css,/#downloadCenter/);
 assert.match(js,/aria-pressed/);
 console.log('download center markup checks passed');
