@@ -1,4 +1,5 @@
 import { PersistentDownloadQueue } from './persistent-queue.js';
+import { performanceProfile } from './performance-profile.js';
 import { parseMasterPlaylist, parseMediaPlaylist, chooseBestVariant, chooseVariant, isHlsPlaylist, isMasterPlaylist, looksLikeHlsPlaylistBytes } from './hls.js';
 import { parseDashManifest } from './dash.js';
 import { muxFmp4Files } from './fmp4mux.js';
@@ -23,7 +24,7 @@ const downloadQueue = new PersistentDownloadQueue({
 function formatBytes(bytes){const n=Number(bytes||0);if(n>=1073741824)return `${(n/1073741824).toFixed(2)} GB`;if(n>=1048576)return `${(n/1048576).toFixed(1)} MB`;if(n>=1024)return `${(n/1024).toFixed(1)} KB`;return `${n} B`;}
 function safeName(raw,fallback='StreamForge-Download'){ const text=String(raw||fallback).replace(/[<>:"/\\|?*\x00-\x1f]/g,' ').replace(/\s+/g,' ').trim(); return (text||fallback).slice(0,140); }
 function networkState(job){
-  if(!job._net) job._net={concurrency:4,min:1,max:8,successStreak:0,retries:0,lastRetryAt:0,lastDecreaseAt:0,growthCooldownUntil:0};
+  if(!job._net) { const profile=performanceProfile(job.performanceProfile); job._net={concurrency:profile.start,min:1,max:profile.max,successStreak:0,retries:0,lastRetryAt:0,lastDecreaseAt:0,growthCooldownUntil:0}; }
   return job._net;
 }
 function metricsState(job){ if(!job._metrics) job._metrics=new TransferMetrics(); return job._metrics; }
