@@ -1,3 +1,4 @@
+import { DownloadQueue } from './download-queue.js';
 import { parseMasterPlaylist, parseMediaPlaylist, chooseBestVariant, chooseVariant, isHlsPlaylist, isMasterPlaylist, looksLikeHlsPlaylistBytes } from './hls.js';
 import { parseDashManifest } from './dash.js';
 import { muxFmp4Files } from './fmp4mux.js';
@@ -10,6 +11,7 @@ import { createDynamicLimiter, recommendedBufferLimits, effectiveBufferPairs, pi
 import { canonicalMediaMime, normalizeMediaFilename, inspectMediaHead, createTypedMediaBlob, describeDownloadError } from './export.js';
 
 const activeUrls=new Map();
+const downloadQueue = new DownloadQueue();
 function formatBytes(bytes){const n=Number(bytes||0);if(n>=1073741824)return `${(n/1073741824).toFixed(2)} GB`;if(n>=1048576)return `${(n/1048576).toFixed(1)} MB`;if(n>=1024)return `${(n/1024).toFixed(1)} KB`;return `${n} B`;}
 function safeName(raw,fallback='StreamForge-Download'){ const text=String(raw||fallback).replace(/[<>:"/\\|?*\x00-\x1f]/g,' ').replace(/\s+/g,' ').trim(); return (text||fallback).slice(0,140); }
 function networkState(job){
@@ -561,7 +563,15 @@ async function cleanup(jobId,fallbackTempNames=[]){
 }
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   if(message?.target!=='offscreen')return;
-  if(message.type==='sf_hls_start'||message.type==='sf_dash_start'){ const fn=message.type==='sf_hls_start'?downloadHls:downloadDash; fn(message.job).then(()=>sendResponse({ok:true})).catch(async e=>{await sendProgress(message.job,'error',0,String(e?.message||e));sendResponse({ok:false,error:String(e?.message||e)});});return true; }
+  if(message.type==='sf_hls_start'||message.type==='sf_dash_start'){
+    const fn=message.type==='sf_hls_start'?downloadHls:downloadDash;
+    const position=downloadQueue.waiting+(downloadQueue.busy?1:0);
+    if(position>0) sendProgress(message.job,'queued',0,`Warteschlange · Position ${position}`).catch(()=>{});
+    const queued=downloadQueue.enqueue(()=>fn(message.job));
+    queued.promise.catch(async e=>{await sendProgress(message.job,'error',0,String(e?.message||e));});
+    sendResponse({ok:true,queued:position>0,position});
+    return false;
+  }
   if(message.type==='sf_export_prepare'){prepareExportBlob(message.export||{}).then(x=>sendResponse({ok:true,...x})).catch(e=>sendResponse({ok:false,error:String(e?.message||e),code:e?.code||'EXPORT_PREPARE_FAILED'}));return true;}
   if(message.type==='sf_export_release'){releaseExport(message.jobId).then(()=>sendResponse({ok:true}));return true;}
   if(message.type==='sf_export_discard'||message.type==='sf_download_cleanup'){cleanup(message.jobId,message.tempNames||[]).then(()=>sendResponse({ok:true}));return true;}
