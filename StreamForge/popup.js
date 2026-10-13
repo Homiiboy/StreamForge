@@ -22,6 +22,7 @@ profileSelect.addEventListener('change',()=>{selectedProfile=profileSelect.value
 const audioSelections = new Map();
 const qualitySelections = new Map();
 const namingSelections = new Map();
+const subtitleSelections = new Map();
 const namingSaveTimers = new Map();
 const renderGate = new RenderGate();
 let deferredRenderScheduled = false;
@@ -97,16 +98,41 @@ function render(){
     const audioRow=node.querySelector('.audioRow'), audioSelect=node.querySelector('.audioSelect');
     const variantLabel=v=>[v.height?`${v.height}p`:(v.width?`${v.width}px`:''),v.bandwidth?`${(v.bandwidth/1_000_000).toFixed(v.bandwidth>=10_000_000?0:1)} Mbps`:'',v.frameRate?`${v.frameRate} fps`:''].filter(Boolean).join(' · ')||'Variante';
     const fillAudio=(selectedVariant='')=>{
-      const chosen=variants.find(v=>v.uri===selectedVariant)||variants[0]||null;
+      const chosen=variants.find(v=>(v.uri||v.id)===selectedVariant)||variants[0]||null;
       const all=item.probe?.allAudioTracks||item.probe?.audioTracks||[];
       const tracks=chosen?.audioGroup?all.filter(t=>t.groupId===chosen.audioGroup):all;
       audioSelect.textContent='';
-      if(item.kind==='hls'&&tracks.length){ audioRow.hidden=false; for(const t of tracks){const o=document.createElement('option');o.value=t.key;o.textContent=[t.language||t.name,t.name&&t.name!==t.language?t.name:'',t.channels?t.channels+' ch':'',t.isDefault?'Standard':''].filter(Boolean).join(' · ');audioSelect.appendChild(o);} const remembered=audioSelections.get(item.id); const def=tracks.find(x=>x.isDefault)?.key||tracks[0]?.key||''; audioSelect.value=(remembered&&tracks.some(x=>x.key===remembered))?remembered:def; audioSelections.set(item.id,audioSelect.value); }
+      if((item.kind==='hls'||item.kind==='dash')&&tracks.length){ audioRow.hidden=false; for(const t of tracks){const o=document.createElement('option');o.value=t.key;o.textContent=[t.language||t.name,t.name&&t.name!==t.language?t.name:'',t.channels?t.channels+' ch':'',t.isDefault?'Standard':''].filter(Boolean).join(' · ');audioSelect.appendChild(o);} const remembered=audioSelections.get(item.id); const def=tracks.find(x=>x.isDefault)?.key||tracks[0]?.key||''; audioSelect.value=(remembered&&tracks.some(x=>x.key===remembered))?remembered:def; audioSelections.set(item.id,audioSelect.value); }
       else { audioRow.hidden=true; audioSelections.delete(item.id); }
     };
-    if(item.kind==='hls'&&variants.length>1){ qualityRow.hidden=false; for(const v of variants){const o=document.createElement('option');o.value=v.uri;o.textContent=variantLabel(v);qualitySelect.appendChild(o);} const remembered=qualitySelections.get(item.id); const def=variants[0]?.uri||''; qualitySelect.value=(remembered&&variants.some(v=>v.uri===remembered))?remembered:def; qualitySelections.set(item.id,qualitySelect.value); node.querySelector('.qualityBadge').textContent=variantLabel(variants.find(v=>v.uri===qualitySelect.value)||variants[0]); qualitySelect.addEventListener('change',()=>{qualitySelections.set(item.id,qualitySelect.value);node.querySelector('.qualityBadge').textContent=variantLabel(variants.find(v=>v.uri===qualitySelect.value)||variants[0]);fillAudio(qualitySelect.value);}); fillAudio(qualitySelect.value); }
-    else { const only=variants[0]?.uri||''; if(only)qualitySelections.set(item.id,only); fillAudio(only); }
+    if((item.kind==='hls'||item.kind==='dash')&&variants.length>1){ qualityRow.hidden=false; for(const v of variants){const o=document.createElement('option');o.value=v.uri||v.id;o.textContent=variantLabel(v);qualitySelect.appendChild(o);} const remembered=qualitySelections.get(item.id); const def=(variants[0]?.uri||variants[0]?.id||''); qualitySelect.value=(remembered&&variants.some(v=>(v.uri||v.id)===remembered))?remembered:def; qualitySelections.set(item.id,qualitySelect.value); node.querySelector('.qualityBadge').textContent=variantLabel(variants.find(v=>(v.uri||v.id)===qualitySelect.value)||variants[0]); qualitySelect.addEventListener('change',()=>{qualitySelections.set(item.id,qualitySelect.value);node.querySelector('.qualityBadge').textContent=variantLabel(variants.find(v=>v.uri===qualitySelect.value)||variants[0]);fillAudio(qualitySelect.value);}); fillAudio(qualitySelect.value); }
+    else { const only=variants[0]?.uri||variants[0]?.id||''; if(only)qualitySelections.set(item.id,only); fillAudio(only); }
     audioSelect.addEventListener('change',()=>audioSelections.set(item.id,audioSelect.value));
+    const subtitleRow=node.querySelector('.subtitleRow'),subtitleSelect=node.querySelector('.subtitleSelect');
+    const availableSubtitles=(item.probe?.subtitleTracks||[]).filter(t=>t.uri);
+    const currentVariant=()=>variants.find(v=>(v.uri||v.id)===(qualitySelections.get(item.id)||''))||variants[0]||null;
+    const refreshSubtitles=()=>{
+      const group=currentVariant()?.subtitleGroup||'';
+      const tracks=group?availableSubtitles.filter(t=>t.groupId===group):availableSubtitles;
+      subtitleRow.hidden=tracks.length===0;
+      subtitleSelect.textContent='';
+      for(const track of tracks) {
+        const opt=document.createElement('option');opt.value=track.uri;
+        opt.textContent=[track.language||track.name,track.name!==track.language?track.name:'',track.isDefault?'Standard':''].filter(Boolean).join(' · ');
+        subtitleSelect.appendChild(opt);
+      }
+      const remembered=subtitleSelections.get(item.id);
+      subtitleSelect.value=(remembered&&tracks.some(t=>t.uri===remembered))?remembered:tracks.find(t=>t.isDefault)?.uri||tracks[0]?.uri||'';
+      if(subtitleSelect.value)subtitleSelections.set(item.id,subtitleSelect.value);
+    };
+    refreshSubtitles();
+    qualitySelect.addEventListener('change',refreshSubtitles);
+    subtitleSelect.addEventListener('change',()=>subtitleSelections.set(item.id,subtitleSelect.value));
+    node.querySelector('.subtitleCopy').addEventListener('click',async e=>{
+      if(!subtitleSelect.value)return;
+      await navigator.clipboard.writeText(subtitleSelect.value);
+      const b=e.currentTarget;b.textContent='Kopiert';setTimeout(()=>b.textContent='Link kopieren',1200);
+    });
     const mediaType=node.querySelector('.mediaType'), nameTitle=node.querySelector('.nameTitle'), nameYear=node.querySelector('.nameYear'), nameSeason=node.querySelector('.nameSeason'), nameEpisode=node.querySelector('.nameEpisode'), movieNaming=node.querySelector('.movieNaming'), seriesNaming=node.querySelector('.seriesNaming'), filenamePreview=node.querySelector('.filenamePreview');
     const initialNaming={...(namingSelections.get(item.id)||item.naming||suggestNaming({mediaMeta:item.mediaMeta||{},title:item.title||''}))};
     namingSelections.set(item.id,initialNaming);
