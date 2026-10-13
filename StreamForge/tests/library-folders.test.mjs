@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {libraryParts,downloadsRelativePath,normalizeLibraryOptions,safeFolderPart} from '../library-folders.js';
+const movie={type:'movie',title:'Interstellar',year:'2014'};
+const series={type:'series',title:'Slugterra',season:2,episode:8};
+assert.equal(downloadsRelativePath(movie),'Movies/Interstellar (2014)/Interstellar (2014).mp4');
+assert.equal(downloadsRelativePath(series),'Shows/Slugterra/Season 02/Slugterra S02E08.mp4');
+assert.deepEqual(libraryParts(series,'.mp4','series').folders,['Season 02']);
+assert.deepEqual(libraryParts(series,'.mp4','season').folders,[]);
+assert.deepEqual(libraryParts(movie,'.mp4','category').folders,['Interstellar (2014)']);
+assert.throws(()=>libraryParts(movie,'.exe'),/Dateityp/);
+assert.throws(()=>safeFolderPart('..'),/Ordnername/);
+assert.deepEqual(normalizeLibraryOptions({mode:'fake',placement:'wrong'}),{mode:'ask',placement:'library'});
+console.log('library folder path tests passed');
