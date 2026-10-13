@@ -1,6 +1,6 @@
 # StreamForge
 
-**StreamForge Browser Extension — Version 1.6.5**
+**StreamForge Browser Extension — Version 1.7.2**
 
 StreamForge ist eine Chrome-/Edge-Erweiterung (Manifest V3) für das Erkennen und Herunterladen unterstützter, nicht DRM-geschützter Medienstreams bei entsprechender Berechtigung.
 
@@ -10,7 +10,7 @@ Die installierbare Erweiterung liegt im Unterordner [StreamForge](./StreamForge/
 
 ```text
 StreamForge/
-├── manifest.json          # Manifest V3, Version 1.6.5
+├── manifest.json          # Manifest V3, Version 1.7.2
 ├── background.js          # Service Worker
 ├── content.js             # Content Script
 ├── offscreen.html
