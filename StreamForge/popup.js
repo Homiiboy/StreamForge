@@ -22,6 +22,8 @@ async function updateLibrarySettings(){
 async function saveLibrarySelection(){
   librarySelection=normalizeLibraryOptions({mode:libraryMode.value,placement:libraryPlacement.value});
   await chrome.storage.local.set({[LIBRARY_PREF_KEY]:librarySelection});
+  seasonFolderSelections.clear();
+  seasonSearchResults.clear();
 }
 libraryMode.addEventListener('change',()=>saveLibrarySelection().catch(error=>alert(String(error?.message||error))));
 libraryPlacement.addEventListener('change',()=>saveLibrarySelection().catch(error=>alert(String(error?.message||error))));
