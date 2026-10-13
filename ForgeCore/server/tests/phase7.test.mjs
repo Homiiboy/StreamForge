@@ -67,7 +67,7 @@ test('mock Docker lifecycle exercises update backup and manual rollback with no 
  ' case "$*" in',
  '  *".Image"*) printf "sha256:";printf "%064d\n" 0;;',
  '  *".Mounts"*) echo forgecore_forgecore-data;;',
- '  *".State.Health"*) echo healthy;;',
+ '  *".State.Health"*) if [ -n "$MOCK_SWITCH" ]; then if [ -f "$MOCK_SWITCH" ];then echo healthy;else : > "$MOCK_SWITCH";echo unhealthy;fi;else echo healthy;fi;;',
  ' esac;exit 0',
  'fi',
  'if [ "$1" = run ]; then',
@@ -92,10 +92,14 @@ test('mock Docker lifecycle exercises update backup and manual rollback with no 
   assert.ok((await readFile(join(dir,snapshots[0],'data.tar.gz'))).length>0);
   const rollback=run('rollback',join(dir,snapshots[0]));
   assert.equal(rollback.status,0,rollback.stderr);
+  const failed=spawnSync('bash',[join(root,'manage.sh'),'update'],{env:{...env,MOCK_SWITCH:join(root,'switch')},encoding:'utf8',timeout:15000});
+  assert.notEqual(failed.status,0);
+  assert.match(failed.stderr,/rolled back/i);
   const commands=await readFile(log,'utf8');
   assert.match(commands,/compose build forgecore/);
   assert.match(commands,/compose stop forgecore/);
   assert.match(commands,/compose up -d --no-build/);
   assert.ok(!commands.includes('/media'));
+  assert.match(commands,/tag sha256:/);
  }finally{await rm(root,{force:true,recursive:true})}
 });
