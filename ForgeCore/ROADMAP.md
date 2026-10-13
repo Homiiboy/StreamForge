@@ -71,7 +71,13 @@
 
 **Offen:** Native ZimaOS-App-Store-Bereitstellung, echte SMB-/Volume-/Upgrade-Abnahme auf deiner Hardware, dauerhafter HTTPS-Zugang, mehrtägige Soak-Tests, Streaming-/Codec-Prüfung und Wiederherstellung nach Stromverlust. Diese Abnahmekriterien bleiben vor v1.0.0 verpflichtend.
 
-## Stable Release – v1.0.0
+## Phase 8 – v1.0.0 (Releasekandidat; Hardware-Abnahme ausstehend)
+
+**Code-Stand v1.0.0 umgesetzt:** Zusammenführung der Phasen 1–7, zusätzliche Authentifizierungs-/Backup-/SQLite-Regressionen und gehärtete Volume-Rollbacks mit SHA-256-Prüfung und Datenvolume-Abgleich. Die GitHub-Veröffentlichung wird als **Prerelease** gekennzeichnet, bis die realen ZimaOS-/SMB-/Jellyfin-/Langzeittests bestanden sind.
+
+Das verbindliche Prüfprotokoll steht unter [ACCEPTANCE-v1.0.0.md](./ACCEPTANCE-v1.0.0.md). Die v1.0.0-Versionsnummer bedeutet **nicht**, dass die Prüfung auf deiner Hardware bereits bestanden wurde.
+
+## Anforderungen für den späteren stabilen Betrieb
 
 **v1.0.0** ist erst geplant, wenn ForgeCore auf einer unterstützten ZimaOS-Installation Filme und Serien von technisch unterstützten, berechtigt nutzbaren Quellen vollständig verwalten kann und Installation, Updates, Sicherheit, Jellyfin-Export und Recovery praktisch überprüft sind.
 
@@ -93,4 +99,4 @@
 - Docker-Build geprüft; tatsächliche ZimaOS-Kompatibilität nur behaupten, wenn praktisch getestet
 - Version und Git-Tag nur nach bestandenem Release-Gate veröffentlicht
 
-**Nächster Entwicklungsschritt:** ZimaOS-/SMB-/Jellyfin-Abnahme für v0.9.9 (Freigabe, Zeitplan, Download, FFmpeg, SRT, Datenmigration). Danach die offen genannten Phase-3-Komfortfunktionen vervollständigen und auf Grundlage realer Tests zur v1.0.0 stabilisieren.
+**Nächster Entwicklungsschritt:** Phase-8-Abnahmekriterien mit ForgeCore v1.0.0 auf dem echten ZimaOS erfüllen und dokumentieren. Erst danach darf der Beta-/Prerelease-Status als produktiv stabiles Release entfallen.
