@@ -27,9 +27,9 @@ async function harness(fn,options={}){
  }
  try{await fn({app,root,request,close:()=>app.close()});}finally{await app.close();await rm(root,{recursive:true,force:true});}
 }
-test('v0.3.9 setup, auth, CRUD, jobs, exports and secure API',async()=>harness(async({app,request,root})=>{
- assert.equal(APP_VERSION,'0.3.9');
- assert.equal((await request('/api/health')).data.version,'0.3.9');
+test('v0.4.9 setup, auth, CRUD, jobs, exports and secure API',async()=>harness(async({app,request,root})=>{
+ assert.equal(APP_VERSION,'0.4.9');
+ assert.equal((await request('/api/health')).data.version,'0.4.9');
  assert.equal((await request('/api/status')).data.capabilities.downloads,true);
  assert.equal((await request('/api/media')).status,401);
  assert.equal((await request('/api/setup','POST',{password:'short'})).status,400);
@@ -81,7 +81,7 @@ test('persisted media and queued jobs survive restart',async()=>{
   let db=openDatabase(dbPath);const q=new JobQueue(db,{mediaRoot:dir});
   const item=q.enqueue('library_scan');assert.equal(item.state,'queued');db.close();
   db=openDatabase(dbPath);assert.equal(db.prepare('SELECT state FROM jobs WHERE id=?').get(item.id).state,'queued');
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version,6);db.close();
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version,7);db.close();
  }finally{await rm(dir,{recursive:true,force:true});}
 });
 
@@ -163,7 +163,7 @@ test('0.0.9 database migrates in-place to 0.1.9 without losing existing media',a
   db.exec('DROP TABLE transfer_jobs; DROP TABLE source_items; DROP TABLE sources; PRAGMA user_version=3');
   db.close();
   db=openDatabase(file);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version,6);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version,7);
   assert.equal(db.prepare('SELECT title FROM media WHERE id=?').get(id).title,'Interstellar');
   assert.equal(db.prepare("SELECT name FROM sqlite_master WHERE name='transfer_jobs'").get().name,'transfer_jobs');
   db.close();
@@ -209,4 +209,36 @@ test('Phase 3 API: schedule, ranking, planner, notifications and VTT subtitle',a
   assert.equal((await request('/api/notifications/'+noticeId+'/read','POST',{})).data.ok,true);
   assert.equal((await request('/api/diagnostics')).data.unreadNotifications,0);
  },{subtitleFetch,sourceFetch});
+});
+
+test('Phase 5 authenticated automation API and safe JSON backup restore',async()=>{
+ const sourceFetch=async url=>({url,body:Buffer.from('<a title="Slugterra S01E01" href="/Slugterra-S01E01.m3u8">1</a>')});
+ await harness(async({app,request})=>{
+  assert.equal((await request('/api/automation/sources')).status,401);
+  assert.equal((await request('/api/setup','POST',{password:'automation security test passphrase'})).status,201);
+  assert.equal((await request('/api/auth/login','POST',{password:'automation security test passphrase'})).status,200);
+  const media=(await request('/api/media','POST',{kind:'series',title:'Slugterra'})).data.item;
+  const source=(await request('/api/media/'+media.id+'/sources','POST',{url:'https://example.org/slugterra'})).data.item;
+  const base='/api/sources/'+source.id+'/automation';
+  assert.equal((await request(base)).data.policy.enabled,false);
+  assert.equal((await request(base,'PUT',{enabled:true,autoQueue:false,intervalMinutes:10})).status,400);
+  const policy=await request(base,'PUT',{enabled:true,autoQueue:false,intervalMinutes:30,maxPerCheck:5});
+  assert.equal(policy.status,200);
+  assert.equal(policy.data.policy.enabled,true);
+  assert.equal((await request('/api/automation/sources')).data.items.length,1);
+  const check=await request(base+'/check','POST',{});
+  assert.equal(check.status,200);assert.equal(check.data.newEpisodes,1);assert.equal(check.data.queued,0);
+  assert.equal((await request(base+'/history')).data.items[0].status,'success');
+  const backup=(await request('/api/backup/export')).data;
+  assert.equal(backup.source_automation.length,1);
+  const restored=await request('/api/backup/import','POST',{...backup,confirm:'REPLACE'});
+  assert.equal(restored.status,200);
+  const after=(await request(base)).data.policy;
+  assert.equal(after.enabled,false);
+  assert.equal(after.autoQueue,false);
+  assert.equal(after.intervalMinutes,30);
+  const manual=await request(base+'/check','POST',{});
+  assert.equal(manual.status,200);assert.equal(manual.data.newEpisodes,0);
+  assert.equal((await request('/api/transfers')).data.items.length,0);
+ },{sourceFetch});
 });

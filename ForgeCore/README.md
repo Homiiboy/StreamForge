@@ -1,8 +1,32 @@
 # ForgeCore
 
-**ForgeCore v0.3.9 – Phase 4 Alpha (Medienintegrität und Wiederherstellung).** Eigenständiger Docker-/ZimaOS-Server. Die beigefügte Browser-Erweiterung in `browser-extension/` bleibt unverändert auf **StreamForge 1.8.1**.
+**ForgeCore v0.4.9 – Phase 5 Alpha (Quellen- und Episodenautomatisierung).** Eigenständiger Docker-/ZimaOS-Server. Die beigefügte Browser-Erweiterung in `browser-extension/` bleibt unverändert auf **StreamForge 1.8.1**.
 
 > **Abnahmestand:** Automatisierte Node-/HTTP-/Docker-Tests und lokaler HLS/FFmpeg-Medientest sind durchgeführt. **Reale Websites, lange Serienläufe, ZimaOS-Mounts und SMB-Speicherpfade sind noch nicht auf deiner Hardware getestet.** Die App unterstützt ausdrücklich nur ausgewählte unverschlüsselte Formate, nicht jede Streaming-Website.
+
+## Phase 5 – v0.4.9 (automatisiert getestete Alpha)
+
+- **Opt-in-Quellenüberwachung pro Serie:** In der Medienbibliothek bei einer Quelle den Bereich „Automatische Quellenprüfung“ öffnen. Standardmäßig ist jede Automatisierung **deaktiviert**.
+- **Prüfintervalle:** 30–10080 Minuten (bis 7 Tage). Prüfungen laufen im ForgeCore-Docker-Server ohne dauerhaft geöffneten Browser. Die nächste Prüfung und Fehler werden in SQLite gespeichert und überleben Neustarts.
+- **Neue Episoden:** Der bestehende HTML-Link-Adapter liest Links zu unterstützten HLS-/DASH-/MP4-Medien mit erkennbarer Staffel-/Episodennummer. Neue Episoden werden auf Wunsch in die Film-/Serien-Datenbank übernommen.
+- **Automatische Downloads als separate Zustimmung:** `autoQueue` kann pro Quelle aktiviert werden. Dann werden nur noch fehlende Episoden in einer begrenzten Zahl je Prüfung (1–50) in die bestehende Download-Queue übernommen. Vorhandene oder ignorierte Episoden werden nicht automatisch geladen.
+- **Sicherheit und Kontrolle:** Quellen müssen ausdrücklich angelegt und aktiviert sein. Keine DRM- oder Zugangsbeschränkungsumgehung, kein Login- oder Javascript-Crawler. Die Website-Abfrage nutzt die bestehenden URL-/SSRF-Schutzmechanismen.
+- **Fehlerverhalten:** Änderungen an einer Quellseite oder eine leere Episode-Liste führen zu einem dokumentierten Fehler, **ohne** bereits gefundene Episoden zu löschen. Rückfallintervall mit begrenztem Backoff, Prüfverlauf und Benachrichtigungen.
+- **Backup:** Quellenautomatisierungsregeln werden im JSON-Export mitgesichert. Bei einem JSON-Restore werden sie absichtlich **deaktiviert** wiederhergestellt, damit keine unbeabsichtigten Downloads beginnen. Ein vollständiger SQLite-Datenbanksnapshot bewahrt den exakten Zustand und muss vertraulich behandelt werden.
+
+### Neue API-Endpunkte
+
+| Endpunkt | Aufgabe |
+| --- | --- |
+| `GET /api/automation/sources` | Alle konfigurierten Quellenprüfungen |
+| `GET /api/sources/:id/automation` | Quelle und ihre Prüfregeln |
+| `PUT /api/sources/:id/automation` | Prüfregeln anpassen; CSRF und Login erforderlich |
+| `POST /api/sources/:id/automation/check` | Einmalige manuelle Prüfung |
+| `GET /api/sources/:id/automation/history` | Letzte 60 Prüfungen / Fehler anzeigen |
+
+Die Einstellungen `enabled`, `autoQueue`, `autoAddEpisodes`, `intervalMinutes` und `maxPerCheck` sind voneinander getrennt; `autoQueue` benötigt `autoAddEpisodes`. Quelle und zugelassene Episoden bleiben an die eigene Medienbibliothek gebunden.
+
+**Grenzen:** Es werden derzeit **nur HTML-Seiten mit direkt auffindbaren, benannten Medienlinks** für automatische Episodenerkennung unterstützt. JavaScript-basierte Player, wechselnde Seitenlayouts, komplexe Anbieteradapter, nur innerhalb von Skripten vorhandene Links oder nicht passende Dateinamen können nicht zuverlässig erkannt werden. Die Anwendung erkennt keine Episoden aus einem bloßen Staffelverzeichnis ohne passende URLs. Echte Websites und ZimaOS/SMB-Mounts sind vor Freigabe für den Dauerbetrieb noch praktisch zu testen. Ein fehlgeschlagener Check darf die Bibliothek nicht beschädigen, ersetzt aber keine geprüfte Medienquelle.
 
 ## Phase 4 – v0.3.9 (automatisiert getestete Alpha)
 
@@ -125,7 +149,7 @@ Geschützte APIs benötigen einen Sessioncookie. Schreibaufrufe zusätzlich `X-F
 
 ## Versions- und Releasepolitik
 
-- **ForgeCore:** eigene Versionsnummer ab `v0.0.1`. Der aktuelle Phase-4-Alpha-Stand ist `v0.3.9`.
+- **ForgeCore:** eigene Versionsnummer ab `v0.0.1`. Der aktuelle Phase-5-Alpha-Stand ist `v0.4.9`.
 - **Browser-Snapshot:** `ForgeCore/browser-extension/` bleibt auf **StreamForge v1.8.1**; Änderungen erfolgen ausschließlich bewusst und separat.
 - Release-Tags für ForgeCore tragen den Präfix `forgecore-vX.Y.Z`, um mit der bestehenden Browser-Erweiterung keine Tags zu kollidieren.
 - Die detaillierten Meilensteine stehen in [ROADMAP.md](./ROADMAP.md), die konkreten Änderungen in [CHANGELOG.md](./CHANGELOG.md).

@@ -40,7 +40,11 @@ CREATE INDEX IF NOT EXISTS idx_subtitle_state ON subtitle_jobs(state,created_at)
 `ALTER TABLE transfer_jobs ADD COLUMN retry_after_epoch INTEGER NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS idx_transfer_retry ON transfer_jobs(state,retry_after_epoch);
 CREATE TABLE IF NOT EXISTS transfer_events(id INTEGER PRIMARY KEY AUTOINCREMENT,transfer_id TEXT NOT NULL,category TEXT NOT NULL,description TEXT NOT NULL,created_at TEXT NOT NULL);
-CREATE INDEX IF NOT EXISTS idx_transfer_events ON transfer_events(transfer_id,id);`
+CREATE INDEX IF NOT EXISTS idx_transfer_events ON transfer_events(transfer_id,id);`,
+`CREATE TABLE IF NOT EXISTS source_automation(source_id TEXT PRIMARY KEY REFERENCES sources(id) ON DELETE CASCADE,enabled INTEGER NOT NULL DEFAULT 0 CHECK(enabled IN (0,1)),auto_queue INTEGER NOT NULL DEFAULT 0 CHECK(auto_queue IN (0,1)),auto_add_episodes INTEGER NOT NULL DEFAULT 1 CHECK(auto_add_episodes IN (0,1)),interval_minutes INTEGER NOT NULL DEFAULT 360 CHECK(interval_minutes BETWEEN 30 AND 10080),max_per_check INTEGER NOT NULL DEFAULT 10 CHECK(max_per_check BETWEEN 1 AND 50),next_check_epoch INTEGER NOT NULL DEFAULT 0,last_check_epoch INTEGER,failures INTEGER NOT NULL DEFAULT 0,last_error TEXT,last_discovered INTEGER NOT NULL DEFAULT 0,updated_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_source_automation_due ON source_automation(enabled,next_check_epoch);
+CREATE TABLE IF NOT EXISTS source_check_events(id INTEGER PRIMARY KEY AUTOINCREMENT,source_id TEXT NOT NULL REFERENCES sources(id) ON DELETE CASCADE,checked_at TEXT NOT NULL,status TEXT NOT NULL,discovered INTEGER NOT NULL DEFAULT 0,new_episodes INTEGER NOT NULL DEFAULT 0,queued INTEGER NOT NULL DEFAULT 0,message TEXT NOT NULL DEFAULT '');
+CREATE INDEX IF NOT EXISTS idx_source_check_events_source ON source_check_events(source_id,id);`
 ];
 export const utc=()=>new Date().toISOString();
 export function openDatabase(path=':memory:'){

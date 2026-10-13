@@ -11,13 +11,14 @@ import {isSetup,setupAdmin,verifyAdmin,createSession,readSession,deleteSession,c
 import {checkMediaRoot,previewLibrary} from './library.mjs';
 import {JobQueue} from './queue.mjs';
 import {TransferQueue} from './transfer-queue.mjs';
+import {SourceAutomation} from './source-automation.mjs';
 import {parseWebUrl} from './source-security.mjs';
 import {analyzeSource,SOURCE_ADAPTERS} from './source-adapters.mjs';
 import {loadSchedule,setSchedule,sourceRanking,missingEpisodePlan,addNotification,listNotifications,markNotificationRead,diagnostics} from './phase3.mjs';
 import {downloadSubtitle,normalizeLanguage} from './subtitles.mjs';
 
 export const APP_NAME='ForgeCore';
-export const APP_VERSION='0.3.9';
+export const APP_VERSION='0.4.9';
 const staticDir=resolve(dirname(fileURLToPath(import.meta.url)),'../public');
 const MAX_BODY=64*1024;
 const limitText=(v,max=150)=>typeof v==='string'?v.trim().slice(0,max):'';
@@ -47,14 +48,15 @@ function response(res,status,data,headers={}){
  res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','x-frame-options':'DENY',...headers});
  res.end(JSON.stringify(data));
 }
-function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'alpha-foundation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
-export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,download,subtitleFetch}={}){
+function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'alpha-foundation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,sourceAutomation:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
+export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,download,subtitleFetch,automationInterval=60000}={}){
  const db=openDatabase(dbPath);
  const queue=new JobQueue(db,{mediaRoot});
  const transfers=new TransferQueue(db,{mediaRoot,...(download?{download}:{})});
+ const automation=new SourceAutomation(db,{transfers,fetcher:sourceFetch,interval:automationInterval});
  if(startWorker){
   void cleanOldStaging(process.env.FORGECORE_STAGING_ROOT||'/data',db).catch(error=>process.stderr.write('Recovery cleanup warning: '+error.message+'\n'));
-  queue.start();transfers.start();
+  queue.start();transfers.start();automation.start();
  }
  const authAttempts=new Map();
  const gate=(req)=>{
@@ -197,6 +199,18 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     }
    }
 
+   // Phase 5: source monitors require admin sessions and CSRF on all mutations.
+   if(path==='/api/automation/sources'&&method==='GET')
+    return response(res,200,{items:automation.list()});
+   const monitorMatch=path.match(/^\/api\/sources\/([0-9a-f-]{36})\/automation(?:\/(check|history))?$/);
+   if(monitorMatch){
+    const id=idCheck(monitorMatch[1]),op=monitorMatch[2];
+    if(!op&&method==='GET')return response(res,200,{policy:automation.get(id)});
+    if(!op&&method==='PUT')return response(res,200,{policy:automation.configure(id,await readJson(req))});
+    if(op==='history'&&method==='GET')return response(res,200,{items:automation.history(id)});
+    if(op==='check'&&method==='POST')return response(res,200,await automation.check(id,{manual:true}));
+   }
+
    if(path==='/api/source-adapters'&&method==='GET')
     return response(res,200,{items:SOURCE_ADAPTERS});
 
@@ -326,9 +340,10 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     if(!Array.isArray(backup.media)||!Array.isArray(backup.episodes)||!Array.isArray(backup.config))fail('Incomplete backup');
     if(backup.sources!==undefined&&!Array.isArray(backup.sources))fail('Invalid source backup');
     if(backup.source_items!==undefined&&!Array.isArray(backup.source_items))fail('Invalid discovered-item backup');
-    if(backup.media.length>10000||backup.episodes.length>200000||backup.config.length>100||(backup.sources?.length||0)>20000||(backup.source_items?.length||0)>100000)fail('Backup exceeds safety limits');
+    if(backup.source_automation!==undefined&&!Array.isArray(backup.source_automation))fail('Invalid automation backup');
+    if(backup.media.length>10000||backup.episodes.length>200000||backup.config.length>100||(backup.sources?.length||0)>20000||(backup.source_items?.length||0)>100000||(backup.source_automation?.length||0)>20000)fail('Backup exceeds safety limits');
     transaction(db,()=>{
-     db.exec('DELETE FROM transfer_jobs; DELETE FROM source_items; DELETE FROM sources; DELETE FROM jobs; DELETE FROM episodes; DELETE FROM media; DELETE FROM config;');
+     db.exec('DELETE FROM source_check_events; DELETE FROM source_automation; DELETE FROM transfer_jobs; DELETE FROM source_items; DELETE FROM sources; DELETE FROM jobs; DELETE FROM episodes; DELETE FROM media; DELETE FROM config;');
      for(const media of backup.media){
       const m=mediaInput(media);idCheck(media.id);
       db.prepare('INSERT INTO media(id,kind,title,year,external_id,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').run(media.id,m.kind,m.title,m.year,m.external_id,m.notes,utc(),utc());
@@ -350,6 +365,11 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
       if(season!==null&&(!Number.isInteger(season)||season<0||season>999))fail('Invalid discovered season');
       if(ep!==null&&(!Number.isInteger(ep)||ep<0||ep>9999))fail('Invalid discovered episode');
       db.prepare('INSERT INTO source_items(id,source_id,url,title,season,episode,created_at) VALUES(?,?,?,?,?,?,?)').run(item.id,item.source_id,urlValue,limitText(item.title,140),season,ep,utc());
+     }
+     for(const policy of backup.source_automation||[]){
+      idCheck(policy.source_id);
+      const p=automation.configure(policy.source_id,{enabled:false,autoQueue:!!policy.auto_queue,autoAddEpisodes:!!policy.auto_add_episodes,intervalMinutes:policy.interval_minutes,maxPerCheck:policy.max_per_check});
+      // Backups never silently reactivate unattended downloads after restore.
      }
      for(const item of backup.config){
       if(!['jellyfin_url','library_label','preferred_language','transfer_schedule'].includes(item.key))continue;
@@ -373,7 +393,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     return response(res,200,{items:rows(db,'SELECT id,category,description,created_at FROM transfer_events WHERE transfer_id=? ORDER BY id DESC LIMIT 150',job)});
    }
    if(path==='/api/backup/export'&&method==='GET'){
-    const data={format:'forgecore-export-v1',version:APP_VERSION,createdAt:utc(),media:rows(db,'SELECT * FROM media'),episodes:rows(db,'SELECT * FROM episodes'),config:rows(db,'SELECT * FROM config'),sources:rows(db,'SELECT * FROM sources'),source_items:rows(db,'SELECT * FROM source_items')};
+    const data={format:'forgecore-export-v1',version:APP_VERSION,createdAt:utc(),media:rows(db,'SELECT * FROM media'),episodes:rows(db,'SELECT * FROM episodes'),config:rows(db,'SELECT * FROM config'),sources:rows(db,'SELECT * FROM sources'),source_items:rows(db,'SELECT * FROM source_items'),source_automation:rows(db,'SELECT * FROM source_automation')};
     return response(res,200,data,{'content-disposition':'attachment; filename="forgecore-backup.json"'});
    }
    if(path.startsWith('/api/'))fail('Unknown endpoint',404);
@@ -386,7 +406,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
   }catch(err){response(res,Number(err?.status)||500,{error:Number(err?.status)?err.message:'Internal server error'});}
  };
  const server=http.createServer((req,res)=>{handler(req,res).catch(()=>{if(!res.headersSent)response(res,500,{error:'Internal server error'});else res.destroy();});});
- return {db,queue,transfers,server,close:async()=>{queue.stop();await transfers.stop();await new Promise(resolve=>server.listening?server.close(resolve):resolve());db.close();}};
+ return {db,queue,transfers,automation,server,close:async()=>{queue.stop();await automation.stop();await transfers.stop();await new Promise(resolve=>server.listening?server.close(resolve):resolve());db.close();}};
 }
 export function createServer(){return createApp().server;}
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
