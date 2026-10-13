@@ -118,7 +118,9 @@ export function parseHtmlDataEpisodes(html,base){
  const found=new Map();
  for(const tag of html.matchAll(/<(?:a|video|source)\b([^>]*)>/gi)){
   const attrs=tag[1];
-  const season=Number(attr(attrs,'data-season')),episode=Number(attr(attrs,'data-episode'));
+  const rawSeason=attr(attrs,'data-season'),rawEpisode=attr(attrs,'data-episode');
+  if(rawSeason===''||rawEpisode==='')continue;
+  const season=Number(rawSeason),episode=Number(rawEpisode);
   if(!Number.isInteger(season)||season<0||season>999||!Number.isInteger(episode)||episode<0||episode>9999)continue;
   const raw=attr(attrs,'href')||attr(attrs,'src');if(!raw)continue;
   let uri;try{uri=new URL(raw.replaceAll('&amp;','&'),base)}catch{continue}
