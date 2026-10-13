@@ -1,6 +1,6 @@
-import {safeFetch,parseWebUrl} from './source-security.mjs';
+import {safeFetch,safeStream,parseWebUrl} from './source-security.mjs';
 import {parseHls,parseDash} from './source-adapters.mjs';
-import {mkdir,mkdtemp,open,rm,stat,lstat,link,unlink,rename} from 'node:fs/promises';
+import {mkdir,mkdtemp,open,rm,stat,lstat,link,unlink} from 'node:fs/promises';
 import {createWriteStream} from 'node:fs';
 import {pipeline} from 'node:stream/promises';
 import {Readable} from 'node:stream';
@@ -33,10 +33,18 @@ async function writeParts(destination,parts,{fetcher=safeFetch,signal,onProgress
  try{
   for(let i=0;i<parts.length;i++){
    ensureNotAborted(signal);
-   const {body}=await fetcher(parts[i],{maxBytes:MAX_SEGMENT});
-   if(!body?.length)throw Error('Empty media segment '+(i+1));
-   bytes+=body.length;if(bytes>budget)throw Error('Media exceeds configured size limit');
-   let cursor=0;while(cursor<body.length){const {bytesWritten}=await fd.write(body,cursor,body.length-cursor,null);if(bytesWritten<=0)throw Error('Incomplete segment write');cursor+=bytesWritten;}await onProgress({segments:i+1,total:parts.length,bytes});
+   const maxBytes=parts.length===1?budget:MAX_SEGMENT;
+   const write=async body=>{bytes+=body.length;if(bytes>budget)throw Error('Media exceeds configured size limit');
+     let cursor=0;while(cursor<body.length){const {bytesWritten}=await fd.write(body,cursor,body.length-cursor,null);if(bytesWritten<=0)throw Error('Incomplete segment write');cursor+=bytesWritten;}};
+   let segmentBytes=0;
+   if(fetcher===safeFetch){
+     await safeStream(parts[i],{maxBytes,signal,onChunk:async body=>{segmentBytes+=body.length;await write(body)}});
+   }else{
+     const {body}=await fetcher(parts[i],{maxBytes,signal});
+     if(body?.length){segmentBytes=body.length;await write(body)}
+   }
+   if(!segmentBytes)throw Error('Empty media segment '+(i+1));
+   await onProgress({segments:i+1,total:parts.length,bytes});
   }
  }finally{await fd.close()}
  return bytes;
@@ -96,10 +104,18 @@ async function verifyDirectoryChain(root,destination){
   catch(e){if(e.code!=='ENOENT')throw e;await mkdir(dir,{mode:0o755})}
  }
 }
+async function assertMp4Signature(filename){
+ const file=await open(filename,'r');
+ try{
+  const head=Buffer.alloc(12);
+  const {bytesRead}=await file.read(head,0,12,0);
+  if(bytesRead<12||head.toString('ascii',4,8)!=='ftyp')throw Error('Invalid MP4 media signature; refusing HTML or unrelated content');
+ }finally{await file.close()}
+}
 export async function downloadMedia({sourceUrl,media,episode=null,root,fetcher=safeFetch,signal,onProgress,ffmpeg='ffmpeg'}={}){
  if(!root)throw Error('Jellyfin media root is not configured');
  const uri=parseWebUrl(sourceUrl);
- const staging=await mkdtemp(join(tmpdir(),'forgecore-transfer-'));
+ const staging=await mkdtemp(join(process.env.FORGECORE_STAGING_ROOT||tmpdir(),'forgecore-transfer-'));
  try{
   const kind=uri.pathname.toLowerCase();
   let video=join(staging,'video.data'),audio='',output=join(staging,'output.mp4');
@@ -118,6 +134,7 @@ export async function downloadMedia({sourceUrl,media,episode=null,root,fetcher=s
    output=video;
   }else throw Error('Only supported HLS, DASH, or direct MP4 URLs are accepted');
   const final=await stat(output);if(final.size<1024)throw Error('Output media invalid: too small');
+  await assertMp4Signature(output);
   return await safePublish(output,root,media,episode,{signal});
  }finally{await rm(staging,{recursive:true,force:true})}
 }

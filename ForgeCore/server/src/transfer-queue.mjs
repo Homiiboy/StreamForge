@@ -4,7 +4,7 @@ import {previewLibrary} from './library.mjs';
 
 const states=new Set(['failed','cancelled']);
 export class TransferQueue {
- constructor(db,{mediaRoot='',interval=1800,download=downloadMedia}={}){this.db=db;this.root=mediaRoot;this.interval=interval;this.download=download;this.timer=null;this.busy=false;this.active=new Map();}
+ constructor(db,{mediaRoot='',interval=1800,download=downloadMedia}={}){this.db=db;this.root=mediaRoot;this.interval=interval;this.download=download;this.timer=null;this.busy=false;this.active=new Map();this.inFlight=null;}
  enqueue({mediaId,episodeId=null,sourceId,itemId=null}){
   const media=one(this.db,'SELECT * FROM media WHERE id=?',mediaId);
   if(!media)throw Object.assign(Error('Media project not found'),{status:404});
@@ -29,8 +29,8 @@ export class TransferQueue {
   return this.db.prepare("UPDATE transfer_jobs SET state='cancelled',updated_at=? WHERE id=? AND state='queued'").run(utc(),id).changes>0;
  }
  retry(id){return this.db.prepare("UPDATE transfer_jobs SET state='queued',error=NULL,progress=0,updated_at=? WHERE id=? AND state IN ('failed','cancelled')").run(utc(),id).changes>0;}
- start(){if(this.timer)return;this.timer=setInterval(()=>this.tick().catch(()=>{}),this.interval);this.timer.unref?.();}
- stop(){if(this.timer)clearInterval(this.timer);this.timer=null;for(const x of this.active.values())x.abort();}
+ start(){if(this.timer)return;this.timer=setInterval(()=>{this.inFlight=this.tick().catch(()=>{});},this.interval);this.timer.unref?.();}
+ async stop(){if(this.timer)clearInterval(this.timer);this.timer=null;for(const x of this.active.values())x.abort();if(this.inFlight)await this.inFlight;}
  async tick(){
   if(this.busy)return false;
   const item=one(this.db,"SELECT * FROM transfer_jobs WHERE state='queued' ORDER BY created_at,id LIMIT 1");if(!item)return false;

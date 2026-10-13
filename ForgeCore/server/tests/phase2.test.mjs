@@ -53,12 +53,13 @@ test('direct MP4 pipeline stores Jellyfin output without overwrite',async()=>{
  const root=await mkdtemp(join(tmpdir(),'forgecore-phase2-'));
  try{
   const media={kind:'series',title:'Slugterra'},episode={season:2,episode:8};
-  const fake=Buffer.alloc(2048,0x55);
+  const fake=Buffer.alloc(2048,0x55);fake.write('ftyp',4,'ascii');
   const fetcher=async(url)=>({url,body:fake});
   const result=await downloadMedia({sourceUrl:'https://example.org/movie.mp4',media,episode,root,fetcher});
   assert.equal(result.path,'Shows/Slugterra/Season 02/Slugterra S02E08.mp4');
   assert.equal((await readFile(join(root,result.path))).length,2048);
   await assert.rejects(downloadMedia({sourceUrl:'https://example.org/movie.mp4',media,episode,root,fetcher}),/already exists/);
+  await assert.rejects(downloadMedia({sourceUrl:'https://example.org/bad.mp4',media:{kind:'movie',title:'Bad'},root,fetcher:async url=>({url,body:Buffer.alloc(2048)})}),/Invalid MP4/);
  }finally{await rm(root,{recursive:true,force:true})}
 });
 test('safePublish reuses existing Staffel and preserves episode files',async()=>{

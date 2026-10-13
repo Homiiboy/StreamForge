@@ -23,14 +23,18 @@ export async function authorizeUrl(raw,{allowPrivate=false,lookup=dns.lookup}={}
  return {url:u,ip:ips[0].address,family:ips[0].family};
 }
 /** Requests connect to the already verified IP, preserving Host and SNI; redirects get reauthorized. */
-export async function safeFetch(raw,{maxBytes=2*1024*1024,timeout=15000,allowPrivate=false,lookup=dns.lookup,redirects=3}={}){
+export async function safeStream(raw,{maxBytes=48*1024*1024,timeout=15000,allowPrivate=false,lookup=dns.lookup,redirects=3,onChunk=async()=>{},signal}={}){
  let current=raw;
  for(let n=0;n<=redirects;n++){
+  if(signal?.aborted)throw Error('Source request aborted');
   const {url,ip,family}=await authorizeUrl(current,{allowPrivate,lookup});
   const library=url.protocol==='https:'?https:http;
   const response=await new Promise((resolve,reject)=>{
-   const req=library.request(url,{method:'GET',lookup:(_host,_opts,cb)=>cb(null,ip,family),headers:{'user-agent':'ForgeCore/0.1.0 (authorized-source-client)','accept':'application/vnd.apple.mpegurl,application/dash+xml,text/html,video/*,*/*;q=0.5','accept-encoding':'identity'},timeout},resolve);
-   req.once('error',reject);req.once('timeout',()=>req.destroy(Error('Source request timed out')));req.end();
+   const req=library.request(url,{method:'GET',lookup:(_host,_opts,cb)=>cb(null,ip,family),headers:{'user-agent':'ForgeCore/0.1.9 (authorized-source-client)','accept':'application/vnd.apple.mpegurl,application/dash+xml,text/html,video/*,*/*;q=0.5','accept-encoding':'identity'},timeout},resolve);
+   const abort=()=>req.destroy(Error('Source request aborted'));
+   signal?.addEventListener('abort',abort,{once:true});
+   req.once('error',reject);req.once('timeout',()=>req.destroy(Error('Source request timed out')));
+   req.once('close',()=>signal?.removeEventListener('abort',abort));req.end();
   });
   const status=response.statusCode||0;
   if([301,302,303,307,308].includes(status)){
@@ -39,9 +43,20 @@ export async function safeFetch(raw,{maxBytes=2*1024*1024,timeout=15000,allowPri
   }
   if(status!==200){response.destroy();throw Error('Source HTTP '+status)}
   const len=Number(response.headers['content-length']);if(len>maxBytes){response.destroy();throw Error('Source content exceeds limit')}
-  const chunks=[];let bytes=0;
-  for await(const chunk of response){bytes+=chunk.length;if(bytes>maxBytes){response.destroy();throw Error('Source content exceeds limit')}chunks.push(chunk)}
-  return {url:url.href,body:Buffer.concat(chunks),contentType:String(response.headers['content-type']||'')};
+  let bytes=0;
+  try{
+   for await(const chunk of response){
+    if(signal?.aborted)throw Error('Source request aborted');
+    bytes+=chunk.length;if(bytes>maxBytes)throw Error('Source content exceeds limit');
+    await onChunk(chunk);
+   }
+  }catch(error){response.destroy();throw error}
+  return {url:url.href,bytes,contentType:String(response.headers['content-type']||'')};
  }
  throw Error('Too many source redirects');
+}
+export async function safeFetch(raw,opts={}){
+ const chunks=[];
+ const result=await safeStream(raw,{...opts,onChunk:chunk=>{chunks.push(chunk)}});
+ return {...result,body:Buffer.concat(chunks)};
 }
