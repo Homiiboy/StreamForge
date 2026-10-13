@@ -1,3 +1,4 @@
+import {validateSegmentPayload,validateDownloadProgress} from './download-reliability.js';
 import { PersistentDownloadQueue } from './persistent-queue.js';
 import { performanceProfile } from './performance-profile.js';
 import { parseMasterPlaylist, parseMediaPlaylist, chooseBestVariant, chooseVariant, isHlsPlaylist, isMasterPlaylist, looksLikeHlsPlaylistBytes } from './hls.js';
@@ -250,7 +251,7 @@ async function writePartsToTemp(parts,tempName,job,{start=3,end=80,label='Spur',
         const settled=await slots.get(nextWrite);
         if(!settled)throw new Error(`${label}-Prefetch-Puffer ist inkonsistent.`);
         if(settled.error)throw settled.error;
-        const bytes=settled.bytes;
+        const bytes=validateSegmentPayload(settled.bytes,{index:nextWrite+1,total:parts.length,label});
         const writeIndex=nextWrite;
         slots.delete(writeIndex);
         ready=Math.max(0,ready-1);
@@ -268,6 +269,7 @@ async function writePartsToTemp(parts,tempName,job,{start=3,end=80,label='Spur',
       clearInterval(ticker);
     }
     await emitProgress();
+    validateDownloadProgress({written,total:parts.length,done:nextWrite});
     await writable.close();
     return {handle,bytes:written};
   }catch(e){
