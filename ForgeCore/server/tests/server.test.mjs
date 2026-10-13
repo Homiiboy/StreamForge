@@ -13,7 +13,9 @@ test('health, status and unknown paths',async()=>{
     assert.equal(health.headers.get('cache-control'),'no-store');
     const status=await fetch(url+'/api/status');
     assert.equal(status.status,200);
-    assert.equal((await status.json()).capabilities.downloads,false);
+    const statusBody=await status.json();
+    assert.equal(statusBody.version,'0.0.1');
+    assert.equal(statusBody.capabilities.downloads,false);
     const missing=await fetch(url+'/api/not-found');
     assert.equal(missing.status,404);
     const invalid=await fetch(url+'/api/health',{method:'POST'});
