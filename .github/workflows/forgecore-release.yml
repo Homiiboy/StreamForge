@@ -31,7 +31,7 @@ jobs:
           test "$VERSION" = "0.2.9"
           mkdir -p dist
           zip -qr "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
-            ForgeCore/server ForgeCore/compose.yaml ForgeCore/.env.example \
+            ForgeCore/server ForgeCore/compose.yaml ForgeCore/.env.example ForgeCore/install.sh \
             ForgeCore/README.md ForgeCore/ROADMAP.md ForgeCore/CHANGELOG.md
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
