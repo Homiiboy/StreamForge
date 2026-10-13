@@ -1,61 +1,66 @@
 # StreamForge
 
-**StreamForge Browser Extension — Version 1.7.3**
+**StreamForge Browser Extension – Version 1.7.9**
 
-StreamForge ist eine Chrome-/Edge-Erweiterung (Manifest V3) für das Erkennen und Herunterladen unterstützter, nicht DRM-geschützter Medienstreams bei entsprechender Berechtigung.
+StreamForge ist eine Chrome-/Edge-Erweiterung (Manifest V3) zum Erkennen und lokalen Herunterladen unterstützter, nicht DRM-geschützter Medienstreams, sofern du über die entsprechenden Rechte verfügst.
 
-## Projektstruktur
+[**Aktuelle Version 1.7.9 herunterladen**](https://github.com/Homiiboy/StreamForge/releases/tag/v1.7.9) · [Changelog](./StreamForge/CHANGELOG.md) · [Technische Dokumentation](./StreamForge/README.md)
 
-Die installierbare Erweiterung liegt im Unterordner [StreamForge](./StreamForge/).
+## Funktionsumfang
 
-```text
-StreamForge/
-├── manifest.json          # Manifest V3, Version 1.7.3
-├── background.js          # Service Worker
-├── content.js             # Content Script
-├── offscreen.html
-├── offscreen.js
-├── popup.html
-├── popup.js
-├── popup.css
-├── *.js                   # Streaming-, Export- und Muxing-Module
-├── icons/                 # icon16, icon32, icon48, icon128
-├── tests/
-│   ├── *.test.mjs         # 19 automatisierte Testdateien
-│   ├── dash-browser-test.html
-│   └── fixtures/          # MPEG-TS-Testdaten
-├── archive/
-│   └── unclassified/      # Zusätzliche Upload-Dateien, nicht zugeordnet
-├── README.md              # Technische Details
-├── CHANGELOG.md
-├── TEST_REPORT.md
-└── package.json
-```
+- Erkennung direkter Medien, HLS und DASH sowie Auswahl unterstützter Video- und Audiospuren.
+- Persistente HLS-/DASH-Warteschlange mit Pause für wartende Aufträge, Abbruch, Priorisierung und Wiederherstellung nach Browser-Neustart.
+- Download-Center mit Fortschritt, Geschwindigkeit, Restzeit und lokalem Verlauf.
+- Adaptive Leistungsprofile und RAM-abhängige Begrenzung gleichzeitiger Segment-Downloads.
+- Segmentvalidierung sowie Stichprobenprüfung von MPEG-TS-Kopf und -Endbereich.
+- Direkter WebVTT-Export und unterstützte HLS-WebVTT-Untertitel als separate SRT-Dateien.
+- Jellyfin-kompatible Film-/Serienbenennung und kopierbare relative Ordnerpfade.
+- Wiederholbarer finaler Export bereits gemuxter Dateien bei unterstützten Speicherfehlern.
 
-Die Dateien in `archive/unclassified/` gehören **nicht** zum aktiven Extension-Build und wurden zur verlustfreien Aufbewahrung getrennt. Die darin befindlichen CSS-Dateien mit Hashnamen sowie `api.js.Herunterladen` sind bislang nicht als Teil der Extension identifiziert.
+## Neuerungen der 1.7.X-Reihe
+
+| Version | Wesentliche Neuerung |
+| --- | --- |
+| 1.7.0 | Persistente Download-Warteschlange und Leistungsprofile |
+| 1.7.1 | Stabilisierung der Wiederherstellung und konkurrierender Speicheroperationen |
+| 1.7.2 | Video-/Audioauswahl und Untertitel-Erkennung |
+| 1.7.3 | Download-Center und lokaler Verlauf |
+| 1.7.4 | Schutz vor leeren/ungültigen Mediensegmenten |
+| 1.7.5 | WebVTT-/SRT-Untertitelexport |
+| 1.7.6 | Jellyfin-Ordner- und Dateipfade |
+| 1.7.7 | Speicherbewusste Download-Parallelität |
+| 1.7.8 | Stichprobenartige MPEG-TS-Integritätsprüfung |
+| 1.7.9 | Priorisierung wartender Downloads |
 
 ## Installation
 
-1. Dieses Repository herunterladen oder klonen.
-2. `chrome://extensions` in Chrome bzw. `edge://extensions` in Edge öffnen.
-3. Entwicklermodus aktivieren.
-4. **Entpackte Erweiterung laden** auswählen.
-5. Den lokalen **`StreamForge/`**-Ordner mit `manifest.json` auswählen.
+1. Das [ZIP von StreamForge 1.7.9](https://github.com/Homiiboy/StreamForge/releases/download/v1.7.9/StreamForge-v1.7.9.zip) herunterladen und entpacken.
+2. `chrome://extensions` (Chrome) oder `edge://extensions` (Edge) öffnen.
+3. Den Entwicklermodus aktivieren und **Entpackte Erweiterung laden** auswählen.
+4. Den entpackten Ordner `StreamForge/` auswählen, in dem sich die `manifest.json` befindet.
 
-## Tests
+## Projektstruktur
 
-Mit Node.js im Ordner `StreamForge/`:
+Die eigentliche Erweiterung liegt in [`StreamForge/`](./StreamForge/): Manifest, Service Worker, Content Script, Offscreen-Muxing, Popup, Module, Icons und Tests. Historische Upload-Dateien sind unter `StreamForge/archive/unclassified/` getrennt abgelegt und gehören nicht zum installierbaren ZIP.
+
+## Automatisierte Tests
+
+Das Projekt enthält **30 Testdateien**. Die Test-Suite kann mit Node.js aus dem Unterordner ausgeführt werden:
 
 ```bash
+cd StreamForge
 npm test
 ```
 
-Das Projekt enthält 19 Testdateien. Ein erfolgreicher historischer Testlauf ist in [TEST_REPORT.md](./StreamForge/TEST_REPORT.md) dokumentiert; **nach der GitHub-Neuordnung wurden die Tests hier noch nicht erneut ausgeführt**.
+GitHub Actions prüft Tests, Versionen und JavaScript-Syntax und erzeugt Release-ZIP-Dateien. Siehe [GitHub Actions](https://github.com/Homiiboy/StreamForge/actions).
 
-## Version und Änderungen
+## Bekannte Grenzen
 
-Siehe [Changelog](./StreamForge/CHANGELOG.md) und [technische Beschreibung](./StreamForge/README.md). 1.6.5 verbessert insbesondere MPEG-TS-Muxing mit B-Frames, PTS/DTS-Reihenfolge und HLS-Discontinuities.
+- **Keine DRM-Umgehung.** Nur Streams nutzen, für die eine Downloadberechtigung besteht.
+- Ein bereits aktiver HLS-/DASH-Transfer wird nach Unterbrechung **nicht bytegenau fortgesetzt**. Die persistente Warteschlange betrifft wartende Aufträge.
+- Jellyfin-Pfade sind Vorschläge. Die Erweiterung kann Browser-/Dateisystemberechtigungen für ZimaOS-Netzlaufwerke nicht umgehen.
+- Die Medienintegritätsprüfung ist stichprobenartig, keine vollständige Codec-Dekodierung.
+- Nicht alle Untertitelvarianten sind als SRT konvertierbar; Untertitel werden nicht automatisch in MP4 eingemuxt.
+- Reale Langzeit- und ZimaOS-Netzlaufwerkstests sind zusätzlich zu CI weiterhin notwendig.
 
-## Sicherheit
-
-Nur Medien herunterladen, für die eine entsprechende Berechtigung besteht. DRM-geschützte Inhalte werden nicht unterstützt. Berechtigungen der Erweiterung vor produktiver Nutzung prüfen.
+Technische Details und ausführliche Änderungen stehen in [`StreamForge/README.md`](./StreamForge/README.md) und im [Changelog](./StreamForge/CHANGELOG.md).
