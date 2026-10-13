@@ -1,7 +1,7 @@
 import http from 'node:http';
 
 export const APP_NAME='ForgeCore';
-export const APP_VERSION='0.1.0';
+export const APP_VERSION='0.0.1';
 
 export function handleRequest(req,res){
   const path=new URL(req.url||'/', 'http://localhost').pathname;
