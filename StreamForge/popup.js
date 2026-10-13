@@ -75,6 +75,7 @@ profileSelect.addEventListener('change',()=>{selectedProfile=profileSelect.value
 const audioSelections = new Map();
 const qualitySelections = new Map();
 const namingSelections = new Map();
+const seasonFolderSelections = new Map();
 const subtitleSelections = new Map();
 const namingSaveTimers = new Map();
 const renderGate = new RenderGate();
@@ -297,7 +298,8 @@ function render(){
     const scanSeasons=node.querySelector('.seasonScan');
     const foundSeasons=node.querySelector('.seasonFound');
     const seasonHint=node.querySelector('.seasonHint');
-    let selectedSeasonFolder='';
+    let selectedSeasonFolder=seasonFolderSelections.get(item.id)||'';
+    if(selectedSeasonFolder)seasonHint.textContent='Ausgewählter Ordner: '+selectedSeasonFolder;
     const readNaming=()=>({type:mediaType.value==='series'?'series':'movie',title:nameTitle.value.trim(),year:nameYear.value.trim(),season:nameSeason.value,episode:nameEpisode.value});
     const updateSeasonVisibility=()=>{
       seasonBox.hidden=mediaType.value!=='series';
@@ -335,18 +337,22 @@ function render(){
       const option=foundSeasons.selectedOptions[0];
       if(!option?.value)return;
       selectedSeasonFolder=option.value;
+      seasonFolderSelections.set(item.id,selectedSeasonFolder);
       nameSeason.value=option.dataset.season;
       refreshNaming();
     });
     nameSeason.addEventListener('input',()=>{
       selectedSeasonFolder='';
+      seasonFolderSelections.delete(item.id);
       foundSeasons.value='';
     });
     nameTitle.addEventListener('input',()=>{
       selectedSeasonFolder='';
+      seasonFolderSelections.delete(item.id);
       foundSeasons.hidden=true;
       foundSeasons.textContent='';
     });
+    mediaType.addEventListener('change',()=>{selectedSeasonFolder='';seasonFolderSelections.delete(item.id);});
     const refreshNaming=({save=true}={})=>{
       const naming=readNaming(); const isSeries=naming.type==='series'; movieNaming.hidden=isSeries; seriesNaming.hidden=!isSeries; updateSeasonVisibility();
       const checked=validateNaming(naming); filenamePreview.dataset.valid=checked.ok?'true':'false'; filenamePreview.textContent=checked.ok?`Dateiname: ${buildMediaBasename(checked.value)}`:`Dateiname: ${filenamePreviewText(naming)}`;
