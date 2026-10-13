@@ -22,4 +22,16 @@ assert.deepEqual(events, ['first-start', 'first-end', 'second-start', 'third-sta
 assert.equal(q.busy, false);
 assert.equal(q.waiting, 0);
 assert.throws(() => q.enqueue(null), TypeError);
+const cancelQueue = new DownloadQueue();
+let unblock;
+const hold = cancelQueue.enqueue(() => new Promise(resolve => { unblock=resolve; }), 'active');
+const pending = cancelQueue.enqueue(() => { throw Error('cancelled task ran'); }, 'queued');
+const cancelError=assert.rejects(pending.promise, error => error.code === 'QUEUE_CANCELLED');
+assert.equal(cancelQueue.cancel('queued'),true);
+assert.equal(cancelQueue.cancel('queued'),false);
+assert.equal(cancelQueue.cancel('active'),false);
+await cancelError;
+unblock();
+await hold.promise;
+assert.equal(cancelQueue.waiting,0);
 console.log('DownloadQueue tests passed');
