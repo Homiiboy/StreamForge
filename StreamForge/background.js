@@ -375,11 +375,11 @@ function parseAttrs(line) {
 }
 function fmtMbps(bps) { return bps ? `${(bps / 1_000_000).toFixed(bps >= 10_000_000 ? 0 : 1)} Mbps` : ""; }
 function parseHls(text, baseUrl = "") {
-  const lines = text.split(/\r?\n/).map(x => x.trim()).filter(Boolean); const variants = []; const audioTracks=[];
+  const lines = text.split(/\r?\n/).map(x => x.trim()).filter(Boolean); const variants = []; const audioTracks=[]; const subtitleTracks=[];
   const absolute=(raw)=>{try{return new URL(String(raw||'').trim(),baseUrl).href}catch{return ''}};
   for (const line of lines) if (line.startsWith("#EXT-X-MEDIA:")) {
-    const a=parseAttrs(line); if(String(a.TYPE||'').toUpperCase()!=='AUDIO'||!a['GROUP-ID']) continue;
-    audioTracks.push({
+    const a=parseAttrs(line); const type=String(a.TYPE||'').toUpperCase(); if(!['AUDIO','SUBTITLES'].includes(type)||!a['GROUP-ID']) continue;
+    (type==='SUBTITLES'?subtitleTracks:audioTracks).push({
       key:[a['GROUP-ID']||'',a.LANGUAGE||'',a.NAME||'Audio'].join('|'), groupId:a['GROUP-ID']||'', language:a.LANGUAGE||'', name:a.NAME||'Audio', channels:a.CHANNELS||'', isDefault:String(a.DEFAULT||'').toUpperCase()==='YES', isAutoSelect:String(a.AUTOSELECT||'').toUpperCase()==='YES', uri:absolute(a.URI)
     });
   }
@@ -387,12 +387,12 @@ function parseHls(text, baseUrl = "") {
     const a = parseAttrs(lines[i]); const res = (a.RESOLUTION || "").match(/(\d+)x(\d+)/i); const bandwidth = Number(a["AVERAGE-BANDWIDTH"] || a.BANDWIDTH || 0);
     let uri=''; for(let j=i+1;j<lines.length;j++){if(!lines[j]||lines[j].startsWith('#'))continue;uri=absolute(lines[j]);break;}
     if(!uri)continue;
-    variants.push({ key:uri, uri, width: Number(res?.[1] || 0), height: Number(res?.[2] || 0), bandwidth, codecs: a.CODECS || "", frameRate:Number(a['FRAME-RATE']||0), audioGroup:a.AUDIO||"" });
+    variants.push({ key:uri, uri, width: Number(res?.[1] || 0), height: Number(res?.[2] || 0), bandwidth, codecs: a.CODECS || "", frameRate:Number(a['FRAME-RATE']||0), audioGroup:a.AUDIO||"",subtitleGroup:a.SUBTITLES||"" });
   }
   const encrypted = lines.some(l => l.startsWith("#EXT-X-KEY:") && !/METHOD=NONE/i.test(l));
   variants.sort((a,b) => (b.height - a.height) || (b.bandwidth - a.bandwidth)); const best = variants[0] || {};
   const relevantAudio=best.audioGroup?audioTracks.filter(x=>x.groupId===best.audioGroup):audioTracks;
-  return { variants: variants.length, variantOptions:variants, width: best.width || 0, height: best.height || 0, bandwidth: best.bandwidth || 0, codecs: best.codecs || "", encrypted, audioTracks:relevantAudio, allAudioTracks:audioTracks, playlistType: hlsPlaylistType(text) };
+  return { variants: variants.length, variantOptions:variants, width: best.width || 0, height: best.height || 0, bandwidth: best.bandwidth || 0, codecs: best.codecs || "", encrypted, audioTracks:relevantAudio, allAudioTracks:audioTracks, subtitleTracks, playlistType: hlsPlaylistType(text) };
 }
 function parseDash(text) {
   const reps = []; const re = /<Representation\b([^>]*)>/gi; let m;
