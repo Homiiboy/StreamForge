@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {inspectTransportStreamWindow,inspectMediaSample} from '../media-integrity.js';
+const ts=new Uint8Array(188*40);for(let p=0;p<40;p++)ts[p*188]=0x47;
+assert.equal(inspectTransportStreamWindow(ts).ok,true);
+assert.equal(inspectMediaSample(ts,ts,'video/mp2t').ok,true);
+assert.equal(inspectMediaSample(ts,ts,'video/mp4').ok,true);
+ts[5*188+1]=0x80;const error=inspectTransportStreamWindow(ts);
+assert.equal(error.ok,false);assert.equal(error.code,'EXPORT_TS_TRANSPORT_ERROR');
+const bad=new Uint8Array(188*10);assert.equal(inspectTransportStreamWindow(bad).ok,false);
+console.log('MPEG-TS sample integrity tests passed');
