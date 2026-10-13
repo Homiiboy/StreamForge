@@ -351,8 +351,23 @@ function render(){
       if(librarySelection.mode==='picked' && !(await libraryStore.get().catch(()=>null))){
         alert('Bitte zuerst über „Medienordner auswählen“ ein Zielverzeichnis festlegen.');b.disabled=false;b.textContent=old;return;
       }
-      const candidateForDownload={...item,naming:namingCheck.value,library:{...librarySelection},selectedVariant:qualitySelections.get(item.id)||'',selectedAudio:audioSelections.get(item.id)||''};
-      const r=await chrome.runtime.sendMessage({type:'sf_download',tabId,candidate:candidateForDownload,performanceProfile:selectedProfile});
+      let handleKey='';
+      try{
+        if(librarySelection.mode==='picked'&&item.kind!=='media'){
+          const handle=await libraryStore.get();
+          if(!handle)throw Error('Bitte Medienordner erneut auswählen.');
+          handleKey='job-'+crypto.randomUUID();
+          await libraryStore.put(handle,handleKey);
+        }
+      }catch(error){
+        alert('Ordnerauswahl konnte nicht gespeichert werden: '+String(error?.message||error));
+        b.disabled=false;b.textContent=old;return;
+      }
+      const candidateForDownload={...item,naming:namingCheck.value,library:{...librarySelection,handleKey},selectedVariant:qualitySelections.get(item.id)||'',selectedAudio:audioSelections.get(item.id)||''};
+      let r;
+      try{r=await chrome.runtime.sendMessage({type:'sf_download',tabId,candidate:candidateForDownload,performanceProfile:selectedProfile});}
+      catch(error){r={ok:false,error:String(error?.message||error)};}
+      if(!r?.ok&&handleKey)await libraryStore.clear(handleKey).catch(()=>{});
       if(!r?.ok){ alert(`Download konnte nicht gestartet werden:\n${r?.error||'Unbekannter Fehler'}`); b.disabled=false;b.textContent=old; }
       else if(r.mode==='browser-hls'||r.mode==='browser-dash'){ b.textContent='Lädt 0%'; setTimeout(load,250); }
       else { b.textContent='Gestartet'; setTimeout(()=>{b.disabled=false;b.textContent=old},1600); }
