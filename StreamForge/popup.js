@@ -37,6 +37,14 @@ libraryPick.addEventListener('click',async()=>{
     if(error?.name!=='AbortError')alert('Ordnerauswahl fehlgeschlagen: '+String(error?.message||error));
   }
 });
+document.querySelector('#libraryForget').addEventListener('click',async()=>{
+  try {
+    await libraryStore.clear();
+    libraryMode.value='ask';
+    await saveLibrarySelection();
+    libraryTarget.textContent='Kein Ordner ausgewählt';
+  }catch(error){alert('Ordnerauswahl konnte nicht entfernt werden: '+String(error?.message||error));}
+});
 updateLibrarySettings().catch(()=>{});
 let tabId = null, items = [];
 let currentView='media';
