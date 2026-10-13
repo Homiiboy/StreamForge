@@ -28,6 +28,7 @@ const FRIENDLY = {
   EXPORT_EMPTY: ['Fertige Datei ist leer', 'StreamForge hat eine leere temporäre Datei erzeugt und den Export deshalb gestoppt.', 'Starte den Mediendownload erneut und öffne die Fehlerdetails, falls es wieder passiert.'],
   EXPORT_PLAYLIST_CONTENT: ['Playlist statt Videodatei erkannt', 'Die fertige temporäre Datei enthält eine M3U8-Playlist statt Mediendaten. StreamForge speichert sie nicht als Film.', 'Starte den Download erneut. Falls es wieder passiert, sende die Fehlerdetails; der Playlist-als-Segment-Pfad muss dann angepasst werden.'],
   EXPORT_HTML_CONTENT: ['Fehlerseite statt Videodatei erkannt', 'Die fertige temporäre Datei beginnt mit HTML statt Video-/Audiodaten.', 'Der Hoster hat vermutlich eine Fehler- oder Zwischenseite geliefert. Starte den Download erneut.'],
+  EXPORT_TS_TRANSPORT_ERROR: ['TS-Transportfehler erkannt', 'Die TS-Stichprobe enthält gesetzte Transport-Fehlerbits.', 'Starte den Download erneut; der Export wurde zum Schutz vor beschädigten Dateien angehalten.'],
   EXPORT_INVALID_TS: ['Ungültige TS-Ausgabe erkannt', 'Die fertige Datei enthält keine plausible MPEG-TS-Paketstruktur.', 'Starte den Download erneut. StreamForge verhindert bewusst, dass eine falsche Datei als .ts gespeichert wird.'],
   EXPORT_INVALID_MP4: ['Ungültige MP4-Ausgabe erkannt', 'Die fertige Datei enthält keine plausible ISO-BMFF/MP4-Struktur.', 'Starte den Download erneut. StreamForge verhindert bewusst, dass eine falsche Datei als .mp4 gespeichert wird.'],
   EXPORT_TYPE_MISMATCH: ['Dateityp stimmt nicht', 'Der erkannte Inhalt der fertigen Datei passt nicht zum vorgesehenen Container.', 'Starte den Download erneut und öffne die Fehlerdetails, falls der Fehler reproduzierbar ist.']
@@ -36,7 +37,7 @@ const FRIENDLY = {
 const NON_RETRYABLE = new Set([
   'FILE_VIRUS_INFECTED', 'FILE_BLOCKED', 'FILE_SECURITY_CHECK_FAILED',
   'EXPORT_EMPTY', 'EXPORT_PLAYLIST_CONTENT', 'EXPORT_HTML_CONTENT',
-  'EXPORT_INVALID_TS', 'EXPORT_INVALID_MP4', 'EXPORT_TYPE_MISMATCH'
+  'EXPORT_INVALID_TS', 'EXPORT_TS_TRANSPORT_ERROR', 'EXPORT_INVALID_MP4', 'EXPORT_TYPE_MISMATCH'
 ]);
 
 const MIME_TO_EXT = new Map([
