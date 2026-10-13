@@ -1,5 +1,9 @@
 # ForgeCore
 
+**ForgeCore-Version: v0.0.1 (Fundament).** Die unabhängige Versionsreihe startet bei v0.0.1; die unter `browser-extension/` eingefrorene StreamForge-Browserkopie bleibt unverändert auf v1.8.1.
+
+**[Roadmap v0.0.1 → v1.0.0](./ROADMAP.md)** mit Abnahmekriterien für ZimaOS, Datenbank, Quellenverwaltung, Downloads und Jellyfin.
+
 **ForgeCore** ist die zukünftige, eigenständige ZimaOS-/Docker-Serverkomponente von StreamForge.
 
 > **Status: technisches Grundgerüst, noch keine automatische Webseitenanalyse und kein HLS-/DASH-Download im Server.**
@@ -16,9 +20,10 @@
 ```text
 ForgeCore/
 ├── README.md
+├── ROADMAP.md
 ├── compose.yaml
 ├── .env.example
-├── browser-extension/     # StreamForge v1.8.1 Snapshot (nicht 1.8.1)
+├── browser-extension/     # StreamForge v1.8.1 Snapshot (separat versioniert)
 │   ├── manifest.json
 │   ├── background.js
 │   ├── popup.html
@@ -63,11 +68,7 @@ Es findet **keine** automatische Mediensuche, Webseitenabfrage, Netzwerküberwac
 
 ## Geplante Meilensteine
 
-1. Serverarchitektur, persistenten Speicher, Authentifizierung und sichere API festlegen.
-2. Medienprojekte für Filme und Serien mit Metadaten anlegen.
-3. Quellenadapter für technisch zugängliche und rechtmäßig nutzbare Websites entwickeln.
-4. Berechtigt zugängliche HLS-/DASH-Medien erkennen und sichere Download-Warteschlangen implementieren.
-5. Jellyfin-Bibliothek und vorhandene Ordner/Staffeln mit ZimaOS-Volumes synchronisieren.
+Die vollständige, in Versionen aufgeteilte Planung steht in der **[ForgeCore-Roadmap](./ROADMAP.md)**. Nächster Schritt ist v0.0.2 (persistente SQLite-Datenbank mit Migrationen).
 
 ## Lizenz und Grenzen
 
