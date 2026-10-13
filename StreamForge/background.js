@@ -618,6 +618,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })().catch(err => sendResponse({ ok: false, error: String(err?.message || err), code: err?.code || '' }));
     return true;
   }
+  if (message?.type === 'sf_queue_pause' && typeof message.paused === 'boolean') {
+    (async()=>{
+      await ensureOffscreen();
+      const result=await chrome.runtime.sendMessage({target:'offscreen',type:'sf_queue_pause',paused:message.paused});
+      sendResponse(result?.ok ? result : {ok:false,error:result?.error||'Warteschlangenstatus konnte nicht gespeichert werden.'});
+    })().catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
+    return true;
+  }
   if (message?.type === 'sf_queue_cancel' && Number.isInteger(message.tabId) && message.candidateId) {
     (async()=>{
       await ensureOffscreen();
