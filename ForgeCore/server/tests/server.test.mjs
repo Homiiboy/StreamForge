@@ -130,6 +130,9 @@ test('Phase 2 sources, episode discovery and persistent transfer processing',asy
   assert.equal(items[0].season,2);assert.equal(items[0].episode,8);
   const imported=await request('/api/sources/'+source.id+'/import-episodes','POST',{});
   assert.equal(imported.data.added,1);
+  const saved=(await request('/api/backup/export')).data;
+  assert.equal(saved.sources.length,1);
+  assert.equal(saved.source_items.length,1);
   assert.equal((await request('/api/sources/'+source.id+'/import-episodes','POST',{})).data.added,0);
   const episode=(await request('/api/media/'+media.id+'/episodes')).data.items[0];
   assert.equal((await request('/api/transfers','POST',{mediaId:media.id,sourceId:source.id,itemId:items[0].id})).status,400);
@@ -140,10 +143,28 @@ test('Phase 2 sources, episode discovery and persistent transfer processing',asy
   assert.equal(calls.length,1);
   assert.equal(calls[0].sourceUrl,items[0].url);
   assert.equal((await request('/api/transfers')).data.items[0].state,'complete');
+  assert.equal((await request('/api/backup/import','POST',{...saved,confirm:'REPLACE'})).status,200);
+  assert.equal((await request('/api/media/'+media.id+'/sources')).data.items.length,1);
   assert.equal((await request('/api/media/'+media.id+'/episodes')).data.items[0].status,'available');
   const another=await request('/api/transfers','POST',{mediaId:media.id,sourceId:source.id,itemId:items[0].id,episodeId:episode.id});
   assert.equal(another.status,201);
   assert.equal((await request('/api/transfers/'+another.data.item.id+'/cancel','POST',{})).status,200);
   assert.equal((await request('/api/transfers/'+another.data.item.id+'/retry','POST',{})).status,200);
  },{sourceFetch,download});
+});
+
+test('0.0.9 database migrates in-place to 0.1.9 without losing existing media',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'forgecore-migration-')),file=join(root,'old.sqlite');
+ try{
+  let db=openDatabase(file);
+  const now=new Date().toISOString(),id='123e4567-e89b-12d3-a456-426614174000';
+  db.prepare('INSERT INTO media(id,kind,title,created_at,updated_at) VALUES(?,?,?,?,?)').run(id,'movie','Interstellar',now,now);
+  db.exec('DROP TABLE transfer_jobs; DROP TABLE source_items; DROP TABLE sources; PRAGMA user_version=3');
+  db.close();
+  db=openDatabase(file);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version,4);
+  assert.equal(db.prepare('SELECT title FROM media WHERE id=?').get(id).title,'Interstellar');
+  assert.equal(db.prepare("SELECT name FROM sqlite_master WHERE name='transfer_jobs'").get().name,'transfer_jobs');
+  db.close();
+ }finally{await rm(root,{recursive:true,force:true});}
 });
