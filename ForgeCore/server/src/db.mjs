@@ -12,7 +12,27 @@ CREATE TABLE IF NOT EXISTS episodes (id TEXT PRIMARY KEY, media_id TEXT NOT NULL
 CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, type TEXT NOT NULL CHECK(type IN ('library_scan','metadata_check')), state TEXT NOT NULL CHECK(state IN ('queued','running','complete','failed','cancelled')), payload TEXT NOT NULL DEFAULT '{}', result TEXT, attempts INTEGER NOT NULL DEFAULT 0, error TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);`,
 `CREATE INDEX IF NOT EXISTS idx_jobs_state_created ON jobs(state,created_at);`,
-`CREATE INDEX IF NOT EXISTS idx_episodes_media ON episodes(media_id,season,episode);`
+`CREATE INDEX IF NOT EXISTS idx_episodes_media ON episodes(media_id,season,episode);`,
+`CREATE TABLE IF NOT EXISTS sources (
+ id TEXT PRIMARY KEY,media_id TEXT NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+ url TEXT NOT NULL,label TEXT NOT NULL DEFAULT '', enabled INTEGER NOT NULL DEFAULT 1,
+ created_at TEXT NOT NULL,updated_at TEXT NOT NULL, UNIQUE(media_id,url));
+CREATE INDEX IF NOT EXISTS idx_sources_media ON sources(media_id);
+CREATE TABLE IF NOT EXISTS source_items (
+ id TEXT PRIMARY KEY,source_id TEXT NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+ url TEXT NOT NULL,title TEXT NOT NULL DEFAULT '',season INTEGER,episode INTEGER,
+ created_at TEXT NOT NULL, UNIQUE(source_id,url));
+CREATE TABLE IF NOT EXISTS transfer_jobs (
+ id TEXT PRIMARY KEY,media_id TEXT NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+ episode_id TEXT REFERENCES episodes(id) ON DELETE SET NULL,
+ source_id TEXT NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+ item_id TEXT REFERENCES source_items(id) ON DELETE SET NULL,
+ url TEXT NOT NULL,state TEXT NOT NULL CHECK(state IN ('queued','running','complete','failed','cancelled')),
+ progress INTEGER NOT NULL DEFAULT 0,downloaded_bytes INTEGER NOT NULL DEFAULT 0,
+ attempts INTEGER NOT NULL DEFAULT 0,result_json TEXT,error TEXT,
+ created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_transfer_state ON transfer_jobs(state,created_at);
+CREATE INDEX IF NOT EXISTS idx_source_items_source ON source_items(source_id);`
 ];
 export const utc=()=>new Date().toISOString();
 export function openDatabase(path=':memory:'){
@@ -27,6 +47,7 @@ export function openDatabase(path=':memory:'){
   catch(e){db.exec('ROLLBACK;');throw e;}
  }
  db.prepare("UPDATE jobs SET state='queued',updated_at=? WHERE state='running'").run(utc());
+ db.prepare("UPDATE transfer_jobs SET state='queued',updated_at=? WHERE state='running'").run(utc());
  return db;
 }
 export function newId(){return randomUUID();}

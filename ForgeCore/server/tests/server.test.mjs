@@ -8,9 +8,9 @@ import {openDatabase} from '../src/db.mjs';
 import {mediaRelative,mediaBaseName,safePart,ensureWithin,previewLibrary} from '../src/library.mjs';
 import {JobQueue} from '../src/queue.mjs';
 
-async function harness(fn){
+async function harness(fn,options={}){
  const root=await mkdtemp(join(tmpdir(),'forgecore-test-'));
- let app=createApp({dbPath:join(root,'db.sqlite'),mediaRoot:root,startWorker:false});
+ let app=createApp({dbPath:join(root,'db.sqlite'),mediaRoot:root,startWorker:false,...options});
  await new Promise((ok,fail)=>{app.server.once('error',fail);app.server.listen(0,'127.0.0.1',ok);});
  const base='http://127.0.0.1:'+app.server.address().port;
  let cookie='',csrf='';
@@ -27,10 +27,10 @@ async function harness(fn){
  }
  try{await fn({app,root,request,close:()=>app.close()});}finally{await app.close();await rm(root,{recursive:true,force:true});}
 }
-test('v0.0.9 setup, auth, CRUD, jobs, exports and secure API',async()=>harness(async({app,request,root})=>{
- assert.equal(APP_VERSION,'0.0.9');
- assert.equal((await request('/api/health')).data.version,'0.0.9');
- assert.equal((await request('/api/status')).data.capabilities.downloads,false);
+test('v0.1.9 setup, auth, CRUD, jobs, exports and secure API',async()=>harness(async({app,request,root})=>{
+ assert.equal(APP_VERSION,'0.1.9');
+ assert.equal((await request('/api/health')).data.version,'0.1.9');
+ assert.equal((await request('/api/status')).data.capabilities.downloads,true);
  assert.equal((await request('/api/media')).status,401);
  assert.equal((await request('/api/setup','POST',{password:'short'})).status,400);
  assert.equal((await request('/api/setup','POST',{password:'correct horse battery staple 2026'})).status,201);
@@ -81,7 +81,7 @@ test('persisted media and queued jobs survive restart',async()=>{
   let db=openDatabase(dbPath);const q=new JobQueue(db,{mediaRoot:dir});
   const item=q.enqueue('library_scan');assert.equal(item.state,'queued');db.close();
   db=openDatabase(dbPath);assert.equal(db.prepare('SELECT state FROM jobs WHERE id=?').get(item.id).state,'queued');
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version,3);db.close();
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version,4);db.close();
  }finally{await rm(dir,{recursive:true,force:true});}
 });
 
@@ -108,5 +108,64 @@ test('Library recognizes existing Staffel directories',async()=>{
   await writeFile(join(target,'Slugterra S02E08.mkv'),'ok');
   const preview=await previewLibrary(root,{kind:'series',title:'Slugterra'},{season:2,episode:8});
   assert.equal(preview.exists,true);assert.equal(preview.directory,'Shows/Slugterra/Staffel 2');
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('Phase 2 sources, episode discovery and persistent transfer processing',async()=>{
+ const calls=[];
+ const sourceFetch=async(url)=>({url,body:Buffer.from('<a href="/Slugterra-S02E08.m3u8" title="Slugterra S02E08">Episode</a>')});
+ const download=async(args)=>{calls.push(args);return {path:'Shows/Slugterra/Season 02/Slugterra S02E08.mp4',bytes:2048};};
+ await harness(async({app,request})=>{
+  assert.equal((await request('/api/sources/not-an-id')).status,401);
+  await request('/api/setup','POST',{password:'long passphrase for alpha testing'});
+  await request('/api/auth/login','POST',{password:'long passphrase for alpha testing'});
+  const media=(await request('/api/media','POST',{kind:'series',title:'Slugterra'})).data.item;
+  assert.equal((await request('/api/media/'+media.id+'/sources','POST',{url:'ftp://unsafe.invalid/video'})).status,400);
+  const src=(await request('/api/media/'+media.id+'/sources','POST',{url:'https://example.org/slugterra.html',label:'Testquelle'}));
+  assert.equal(src.status,201);
+  const source=src.data.item;
+  assert.equal((await request('/api/media/'+media.id+'/sources','POST',{url:source.url})).status,409);
+  assert.equal((await request('/api/sources/'+source.id+'/analyze','POST',{})).data.items.length,1);
+  const items=(await request('/api/sources/'+source.id+'/items')).data.items;
+  assert.equal(items[0].season,2);assert.equal(items[0].episode,8);
+  const imported=await request('/api/sources/'+source.id+'/import-episodes','POST',{});
+  assert.equal(imported.data.added,1);
+  const saved=(await request('/api/backup/export')).data;
+  assert.equal(saved.sources.length,1);
+  assert.equal(saved.source_items.length,1);
+  assert.equal((await request('/api/sources/'+source.id+'/import-episodes','POST',{})).data.added,0);
+  const episode=(await request('/api/media/'+media.id+'/episodes')).data.items[0];
+  assert.equal((await request('/api/transfers','POST',{mediaId:media.id,sourceId:source.id,itemId:items[0].id})).status,400);
+  const transfer=await request('/api/transfers','POST',{mediaId:media.id,sourceId:source.id,itemId:items[0].id,episodeId:episode.id});
+  assert.equal(transfer.status,201);
+  assert.equal((await request('/api/transfers','POST',{mediaId:media.id,sourceId:source.id,itemId:items[0].id,episodeId:episode.id})).status,409);
+  await app.transfers.tick();
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].sourceUrl,items[0].url);
+  assert.equal((await request('/api/transfers')).data.items[0].state,'complete');
+  assert.equal((await request('/api/media/'+media.id+'/episodes')).data.items[0].status,'available');
+  assert.equal((await request('/api/backup/import','POST',{...saved,confirm:'REPLACE'})).status,200);
+  assert.equal((await request('/api/media/'+media.id+'/sources')).data.items.length,1);
+  assert.equal((await request('/api/media/'+media.id+'/episodes')).data.items[0].status,'missing');
+  const another=await request('/api/transfers','POST',{mediaId:media.id,sourceId:source.id,itemId:items[0].id,episodeId:episode.id});
+  assert.equal(another.status,201);
+  assert.equal((await request('/api/transfers/'+another.data.item.id+'/cancel','POST',{})).status,200);
+  assert.equal((await request('/api/transfers/'+another.data.item.id+'/retry','POST',{})).status,200);
+ },{sourceFetch,download});
+});
+
+test('0.0.9 database migrates in-place to 0.1.9 without losing existing media',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'forgecore-migration-')),file=join(root,'old.sqlite');
+ try{
+  let db=openDatabase(file);
+  const now=new Date().toISOString(),id='123e4567-e89b-12d3-a456-426614174000';
+  db.prepare('INSERT INTO media(id,kind,title,created_at,updated_at) VALUES(?,?,?,?,?)').run(id,'movie','Interstellar',now,now);
+  db.exec('DROP TABLE transfer_jobs; DROP TABLE source_items; DROP TABLE sources; PRAGMA user_version=3');
+  db.close();
+  db=openDatabase(file);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version,4);
+  assert.equal(db.prepare('SELECT title FROM media WHERE id=?').get(id).title,'Interstellar');
+  assert.equal(db.prepare("SELECT name FROM sqlite_master WHERE name='transfer_jobs'").get().name,'transfer_jobs');
+  db.close();
  }finally{await rm(root,{recursive:true,force:true});}
 });

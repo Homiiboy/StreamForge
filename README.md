@@ -49,9 +49,9 @@ Bei Serien in einem freigegebenen Medienordner kann StreamForge bestehende `Seas
 
 Die künftige Server-App heißt **[ForgeCore](./ForgeCore/)**. Unter `ForgeCore/browser-extension/` liegt eine vollständige Kopie der aktiven Browser-Erweiterung aus dem **Git-Release v1.8.1** (ohne das nicht aktive Upload-Archiv). Der neue `ForgeCore/server/`-Bereich enthält das eigenständige Docker-/ZimaOS-Grundgerüst.
 
-Die eigenständige ForgeCore-App startete bei **v0.0.1**. Die technischen Meilensteine der Phase 1 sind in **[ForgeCore v0.0.9](./ForgeCore/)** umgesetzt: SQLite, Admin-Anmeldung, Dashboard, Film-/Serienbibliothek, lesender Jellyfin-Scan, Hintergrundjobs und Backups. Die [Roadmap](./ForgeCore/ROADMAP.md) und das [ForgeCore-Changelog](./ForgeCore/CHANGELOG.md) dokumentieren den Stand und die nächsten Phasen.
+Die eigenständige ForgeCore-App startete bei **v0.0.1**. Die Meilensteine der Phasen 1 und 2 sind bis **[ForgeCore v0.1.9](./ForgeCore/)** als Alpha-Grundlage umgesetzt: SQLite, Admin-Anmeldung, Dashboard, Film-/Serienbibliothek, Jellyfin-Scan, Quellenverwaltung, begrenzte HLS-/DASH-VOD-Transfers, Hintergrundjobs und Backups. Die [Roadmap](./ForgeCore/ROADMAP.md) und das [ForgeCore-Changelog](./ForgeCore/CHANGELOG.md) dokumentieren den Stand und die nächsten Phasen.
 
-**StreamForge selbst bleibt unverändert:** Die ursprüngliche Erweiterung unter `StreamForge/` entwickelt sich getrennt weiter. ForgeCore ist aktuell eine eigenständige Alpha-Verwaltungs-App, **noch kein automatisierter HLS-/DASH-Downloader**. Ein realer ZimaOS-/SMB-Test steht aus.
+**StreamForge selbst bleibt unverändert:** Die ursprüngliche Erweiterung unter `StreamForge/` entwickelt sich getrennt weiter. ForgeCore ist aktuell eine eigenständige Alpha-Verwaltungs-App, **ein Alpha-Downloader für einen begrenzten Satz ungeschützter HLS-/DASH-/MP4-Quellen; echte ZimaOS- und Quellseiten-Tests stehen noch aus**. Ein realer ZimaOS-/SMB-Test steht aus.
 
 ## Installation
 
