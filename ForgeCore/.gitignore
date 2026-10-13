@@ -1,0 +1,9 @@
+# ForgeCore sensitive host-only configuration and snapshots
+.env
+backups/
+media/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.tar.gz
+.DS_Store
