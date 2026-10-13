@@ -1,4 +1,14 @@
-# StreamForge Browser Connector 1.6.5
+# StreamForge Browser Connector 1.7.2
+
+## Neu in 1.7.2: Medienauswahl
+
+- DASH-Videoqualität und Audiospur nach Representation-ID auswählen.
+- HLS-Untertitelspuren mit Name, Sprache und Standardauswahl erkennen; Untertitel-URL kopieren.
+- Direkte `.vtt`-Untertitel getrennt mit passender Jellyfin-Dateibenennung speichern.
+- Segmentierte HLS-Untertitelplaylist bleibt als Link verfügbar; keine unzuverlässige automatische SRT-/MP4-Konvertierung.
+- Vorhandene Download-Warteschlange und Performance-Profile aus 1.7.0 sowie die Stabilitätsverbesserungen aus 1.7.1 bleiben erhalten.
+
+
 
 Chrome-/Edge-Erweiterung zum Erkennen und lokalen Herunterladen unterstützter, nicht DRM-geschützter Medienstreams, für die du eine Downloadberechtigung hast.
 
