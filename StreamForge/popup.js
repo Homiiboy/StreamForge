@@ -37,7 +37,7 @@ function flushDeferredRender(){
   },0);
 }
 async function load({forceProbe=false}={}){ const tab=await getCurrentTab(); tabId=tab?.id??null; if(!Number.isInteger(tabId))return; const result=await chrome.runtime.sendMessage({type:'sf_get',tabId}); items=result?.items||[]; requestRender(); enrichVisible({force:forceProbe}); }
-function qualityText(item){ const p=item.probe||null; if(p?.summary)return p.summary; if(p?.height)return `${p.height}p`; if(p?.contentLength)return fmtSize(p.contentLength); if(p&&item.kind==='hls')return p.playlistType==='media'?'HLS · bereit':'HLS · analysiert'; if(p&&item.kind==='dash')return 'DASH · analysiert'; if(p&&item.kind==='media')return 'Medium · bereit'; if(['preparing','downloading','muxing','saving'].includes(item.download?.state))return `${shortKind(item.kind)} · aktiv`; if(item.probeError)return 'Analysefehler'; return 'Analysiere …'; }
+function qualityText(item){ const p=item.probe||null; if(p?.summary)return p.summary; if(p?.height)return `${p.height}p`; if(p?.contentLength)return fmtSize(p.contentLength); if(p&&item.kind==='hls')return p.playlistType==='media'?'HLS · bereit':'HLS · analysiert'; if(p&&item.kind==='dash')return 'DASH · analysiert'; if(p&&item.kind==='media')return 'Medium · bereit'; if(['queued','preparing','downloading','muxing','saving'].includes(item.download?.state))return `${shortKind(item.kind)} · aktiv`; if(item.probeError)return 'Analysefehler'; return 'Analysiere …'; }
 function diagnosticEntries(item){
   const out=[];
   if(item.probeDiagnostic) out.push(item.probeDiagnostic);
@@ -106,9 +106,10 @@ function render(){
     }
     if(entries.length){ details.hidden=false; fillDiagnostics(diagBox,entries); details.addEventListener('click',()=>{diagBox.hidden=!diagBox.hidden;details.textContent=diagBox.hidden?'Details anzeigen':'Details ausblenden';}); }
     const downloadButton=node.querySelector('.download');
-    if(['preparing','downloading','muxing','ready','saving'].includes(item.download?.state)){
+    if(['queued','preparing','downloading','muxing','ready','saving'].includes(item.download?.state)){
       downloadButton.disabled=true;
-      if(item.download?.state==='saving') downloadButton.textContent='Speichern …';
+      if(item.download?.state==='queued') downloadButton.textContent='In Warteschlange';
+       else if(item.download?.state==='saving') downloadButton.textContent='Speichern …';
       else if(item.download?.state==='ready') downloadButton.textContent='Fertig …';
       else if(item.download?.state==='preparing') downloadButton.textContent='Bereitet vor …';
       else if(item.download?.state==='muxing') downloadButton.textContent=`Muxxt ${Math.round(item.download?.muxProgress??item.download?.progress??0)}%`;
