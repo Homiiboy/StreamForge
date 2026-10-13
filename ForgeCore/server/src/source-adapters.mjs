@@ -6,17 +6,20 @@ export function parseHls(text,base){
  if(!text.startsWith('#EXTM3U'))throw Error('Not an HLS playlist');
  if(/#EXT-X-KEY:|#EXT-X-SESSION-KEY:/i.test(text))throw Error('Encrypted HLS unsupported');
  const lines=text.replace(/\r/g,'').split('\n').map(x=>x.trim()).filter(Boolean);
- const master=[];const segments=[];let expected='';let init='';let ended=false;
- if(/#EXT-X-MEDIA:TYPE=AUDIO.*URI=/i.test(text))throw Error('Separate HLS audio playlists require an explicit audio adapter (not supported yet)');
+ const master=[];const audioGroups=[];const segments=[];let expected='';let init='';let ended=false;
+ for(const line of lines){if(!line.startsWith('#EXT-X-MEDIA:')||!/(?:^|,)TYPE=AUDIO(?:,|$)/.test(line))continue;
+  const match=line.match(/URI="([^"]+)"/i);if(!match)continue;
+  audioGroups.push({url:new URL(match[1],base).href,group:(line.match(/GROUP-ID="([^"]+)"/)||[])[1]||'',language:(line.match(/LANGUAGE="([^"]+)"/)||[])[1]||'',default:/DEFAULT=YES/.test(line)});
+ }
  for(let i=0;i<lines.length;i++){
   const line=lines[i];if(line.startsWith('#EXT-X-STREAM-INF:')){
-   const next=lines.slice(i+1).find(s=>!s.startsWith('#'));if(next)master.push({url:new URL(next,base).href,bandwidth:Number((line.match(/BANDWIDTH=(\d+)/)||[])[1]||0),resolution:(line.match(/RESOLUTION=(\d+x\d+)/)||[])[1]||''});
+   const next=lines.slice(i+1).find(s=>!s.startsWith('#'));if(next)master.push({url:new URL(next,base).href,bandwidth:Number((line.match(/BANDWIDTH=(\d+)/)||[])[1]||0),resolution:(line.match(/RESOLUTION=(\d+x\d+)/)||[])[1]||'',audioGroup:(line.match(/AUDIO="([^"]+)"/)||[])[1]||''});
   }else if(line.startsWith('#EXT-X-MAP:')){const uri=(line.match(/URI="([^"]+)"/)||[])[1];if(!uri)throw Error('HLS map without URI');init=new URL(uri,base).href;}
   else if(line.startsWith('#EXTINF:'))expected='media';
   else if(line==='#EXT-X-ENDLIST')ended=true;
   else if(!line.startsWith('#')&&expected==='media'){segments.push(new URL(line,base).href);expected='';}
  }
- if(master.length)return {kind:'master',variants:master.sort((a,b)=>b.bandwidth-a.bandwidth)};
+ if(master.length)return {kind:'master',variants:master.sort((a,b)=>b.bandwidth-a.bandwidth),audioGroups};
  if(!ended)throw Error('Live HLS playlist not supported');
  if(/#EXT-X-BYTERANGE|#EXT-X-PART|#EXT-X-DISCONTINUITY|#EXT-X-I-FRAMES-ONLY/.test(text))throw Error('Unsupported HLS segment feature');
  if(!segments.length||segments.length>4000)throw Error('Invalid HLS segment count');
