@@ -3,6 +3,7 @@ import {readFile} from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
 import {pipeline} from 'node:stream/promises';
 import {withDatabaseSnapshot} from './database-backup.mjs';
+import {cleanOldStaging} from './transfer-recovery.mjs';
 import {fileURLToPath} from 'node:url';
 import {dirname,join,resolve} from 'node:path';
 import {openDatabase,newId,utc,rows,one,transaction} from './db.mjs';
@@ -51,7 +52,10 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
  const db=openDatabase(dbPath);
  const queue=new JobQueue(db,{mediaRoot});
  const transfers=new TransferQueue(db,{mediaRoot,...(download?{download}:{})});
- if(startWorker){queue.start();transfers.start();}
+ if(startWorker){
+  void cleanOldStaging(process.env.FORGECORE_STAGING_ROOT||'/data',db).catch(error=>process.stderr.write('Recovery cleanup warning: '+error.message+'\n'));
+  queue.start();transfers.start();
+ }
  const authAttempts=new Map();
  const gate=(req)=>{
   const origin=req.headers.origin;
