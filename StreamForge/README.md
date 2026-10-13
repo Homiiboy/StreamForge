@@ -1,5 +1,30 @@
 # StreamForge Browser Connector 1.7.9
 
+## Aktueller Stand der 1.7.X-Reihe
+
+**Version 1.7.9** enthält sämtliche Funktionen seit 1.7.0:
+
+- **1.7.9:** Dauerhafte Priorisierung wartender HLS-/DASH-Downloads im Download-Center.
+- **1.7.8:** Stichprobenartige MPEG-TS-Integritätsprüfung an Dateianfang und -ende.
+- **1.7.7:** RAM-bewusste Netzwerkparallelität und differenzierte Engpassdiagnose.
+- **1.7.6:** Jellyfin-kompatible relative Film- und Serienpfade zum Kopieren.
+- **1.7.5:** Separater SRT-Export unterstützter WebVTT- und HLS-WebVTT-Untertitel.
+- **1.7.4:** Überprüfung auf leere, unvollständige oder offensichtlich ungültige Segmente.
+- **1.7.3:** Download-Center, Fortschrittsanzeige und begrenzter lokaler Verlauf.
+- **1.7.2:** Video-/Audiospuren und Untertitel-Erkennung.
+- **1.7.1:** Sicherere Queue-Wiederherstellung.
+- **1.7.0:** Persistente Warteschlange und adaptive Leistungsprofile.
+
+[Download 1.7.9](https://github.com/Homiiboy/StreamForge/releases/tag/v1.7.9) · [Changelog](./CHANGELOG.md) · [Release-Checkliste](./RELEASE_CHECKLIST_1.7.0.md)
+
+### Technische Grenzen
+
+- Bereits laufende HLS-/DASH-Downloads lassen sich nicht bytegenau wiederaufnehmen.
+- Browser-Schreibrechte auf ZimaOS-Netzlaufwerken lassen sich nicht automatisch vergeben.
+- Untertitel werden separat exportiert, nicht in MP4 eingemuxt.
+- TS-Stichprobenprüfung ist keine vollständige Medien-Dekodierung.
+- Chrome-/Edge- und ZimaOS-Praxistests sind weiterhin erforderlich.
+
 ## Neu in 1.7.3: Download-Center
 
 - Medien und Download-Center als separate Popup-Ansichten.
