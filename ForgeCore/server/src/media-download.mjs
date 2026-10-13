@@ -15,7 +15,7 @@ const MAX_SEGMENT=48*1024*1024;
 const MAX_MEDIA=12*1024*1024*1024;
 const MAX_SEGMENTS=4000;
 function ensureNotAborted(signal){if(signal?.aborted)throw Object.assign(Error('Download aborted'),{code:'ABORT_ERR'});}
-export async function fetchManifest(url,fetcher=safeFetch,depth=0){
+export async function fetchManifest(url,fetcher=safeFetch,depth=0,language='de'){
  if(depth>2)throw Error('Too many nested HLS playlists');
  const response=await fetcher(url,{maxBytes:4*1024*1024});
  const finalUrl=response.url||url;
@@ -24,7 +24,17 @@ export async function fetchManifest(url,fetcher=safeFetch,depth=0){
  const hls=parseHls(text,finalUrl);
  if(hls.kind==='master'){
   if(!hls.variants.length)throw Error('Empty HLS master playlist');
-  return fetchManifest(hls.variants[0].url,fetcher,depth+1);
+  const variant=hls.variants[0];
+  const video=await fetchManifest(variant.url,fetcher,depth+1,language);
+  const available=(hls.audioGroups||[]).filter(x=>x.group===variant.audioGroup);
+  if(!available.length)return video;
+  const matching=available.find(x=>x.language.toLowerCase()===language.toLowerCase())
+    ||available.find(x=>x.language.toLowerCase().split('-')[0]===language.toLowerCase().split('-')[0])
+    ||available.find(x=>x.default)||available[0];
+  if(!matching)return video;
+  const track=await fetchManifest(matching.url,fetcher,depth+1,language);
+  if(track.kind!=='hls'||video.kind!=='hls')throw Error('Invalid separate HLS audio track');
+  return {...video,audioSegments:[...(track.init?[track.init]:[]),...track.segments],audioLanguage:matching.language};
  }
  return {url:finalUrl,...hls};
 }
@@ -143,7 +153,7 @@ async function assertMp4Signature(filename){
   if(bytesRead<12||head.toString('ascii',4,8)!=='ftyp')throw Error('Invalid MP4 media signature; refusing HTML or unrelated content');
  }finally{await file.close()}
 }
-export async function downloadMedia({sourceUrl,media,episode=null,root,fetcher=safeFetch,signal,onProgress,ffmpeg='ffmpeg',rateLimitBytesPerSecond=0,jobId=null,verifyCodecs=true}={}){
+export async function downloadMedia({sourceUrl,media,episode=null,root,fetcher=safeFetch,signal,onProgress,ffmpeg='ffmpeg',rateLimitBytesPerSecond=0,jobId=null,verifyCodecs=true,language='de'}={}){
  if(!root)throw Error('Jellyfin media root is not configured');
  if(!Number.isFinite(rateLimitBytesPerSecond)||rateLimitBytesPerSecond<0||rateLimitBytesPerSecond>52428800)throw Error('Invalid transfer bandwidth');
  const uri=parseWebUrl(sourceUrl);
@@ -153,9 +163,10 @@ export async function downloadMedia({sourceUrl,media,episode=null,root,fetcher=s
   const kind=uri.pathname.toLowerCase();
   let video=join(staging,'video.data'),audio='',output=join(staging,'output.mp4');
   if(kind.endsWith('.m3u8')||kind.endsWith('.mpd')){
-   const manifest=await fetchManifest(sourceUrl,fetcher);
+   const manifest=await fetchManifest(sourceUrl,fetcher,0,language);
    if(manifest.kind==='hls'){
     await cacheSegments({staging,track:'video',urls:[...(manifest.init?[manifest.init]:[]),...manifest.segments],fetcher,signal,onProgress,rateLimitBytesPerSecond});
+    if(manifest.audioSegments?.length){audio=join(staging,'audio.data');await cacheSegments({staging,track:'audio',urls:manifest.audioSegments,fetcher,signal,onProgress,rateLimitBytesPerSecond});}
    }else if(manifest.kind==='dash'){
     await cacheSegments({staging,track:'video',urls:[manifest.video.init,...manifest.video.segments],fetcher,signal,onProgress,rateLimitBytesPerSecond});
     if(manifest.audio){audio=join(staging,'audio.data');await cacheSegments({staging,track:'audio',urls:[manifest.audio.init,...manifest.audio.segments],fetcher,signal,onProgress,rateLimitBytesPerSecond});}
