@@ -24,3 +24,23 @@
 .subtitleRow{display:flex;align-items:center;gap:7px;margin-top:8px}.subtitleRow[hidden]{display:none}.subtitleRow span{width:48px;flex:0 0 48px;color:#8f9baa;font-size:10px}.subtitleRow select{min-width:0;flex:1;padding:6px 8px;font-size:10px}.subtitleCopy{font-size:10px;padding:6px 7px}
 
 .subtitleDownload[hidden]{display:none}.subtitleRow .subtitleDownload{font-size:10px;padding:6px 7px;white-space:nowrap}
+
+/* v1.7.3 Download-Center */
+.viewTabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px 12px;background:#141921;border-bottom:1px solid #303944}
+.viewTabs .tab{padding:9px;border:1px solid #303944;background:#19212b;border-radius:9px;font-size:12px;font-weight:650}
+.viewTabs .tab.active{background:#3c2b18;color:#ffbe73;border-color:#b46b1c}
+#activeCount{display:inline-block;min-width:18px;padding:2px 5px;border-radius:999px;background:#303945;font-size:10px}
+#downloadCenter{max-height:500px;overflow-y:auto;padding:12px}
+#downloadCenter[hidden],main[hidden],.empty[hidden],.toolbar[hidden]{display:none!important}
+.centerHeader{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:14px}
+.centerStats{color:#b7c4d3;margin:0 0 10px;font-size:11px}
+.centerList{display:grid;gap:8px}.centerEntry{background:#181e27;border:1px solid #303b48;border-radius:10px;padding:10px}
+.entryTitle{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.entryTitle strong{min-width:0;overflow-wrap:anywhere;font-size:12px}
+.entryState{flex-shrink:0;color:#ffbd76;font-size:10px;text-transform:capitalize}
+.centerEntry p{color:#a8b6c6;font-size:11px;line-height:1.5;overflow-wrap:anywhere;margin:6px 0 0}
+.centerProgress{margin-top:9px;height:5px;border-radius:8px;background:#303a47;overflow:hidden}
+.centerProgress div{height:100%;background:#ff941f;transition:width .25s}
+.historyHeading{margin:17px 0 8px;font-size:13px;color:#dfe8f5}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #ffae54;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.centerProgress div,.progressFill{transition:none}}
