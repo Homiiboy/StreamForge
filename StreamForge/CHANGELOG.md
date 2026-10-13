@@ -1,5 +1,12 @@
 # StreamForge Browser Connector – Changelog
 
+## 1.7.4 – Download-Validierung
+
+- Leere Segmentantworten und offensichtliche HTML-/XML-Fehlerseiten werden vor dem Muxing erkannt.
+- Leere oder unvollständige Ausgaben werden als Fehler gemeldet statt exportiert.
+- Regressionstests für ungültige Download-Inhalte.
+- Keine bytegenaue Wiederaufnahme teilweise heruntergeladener HLS-/DASH-Streams.
+
 ## 1.7.3 – Download-Center
 
 - Neue eigene Download-Center-Ansicht mit aktuellen Aufträgen, Fortschrittsleisten, Geschwindigkeit und Restzeit.
