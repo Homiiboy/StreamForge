@@ -3,7 +3,7 @@ services:
   forgecore:
     build:
       context: ./server
-    image: forgecore:0.0.9
+    image: forgecore:0.1.9
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -16,14 +16,14 @@ services:
       - "${FORGECORE_BIND_ADDRESS:-127.0.0.1}:8787:8787"
     volumes:
       - forgecore-data:/data
-      - ${FORGECORE_MEDIA_HOST_PATH:-./media}:/media:ro
+      - ${FORGECORE_MEDIA_HOST_PATH:-./media}:/media:rw
     security_opt:
       - no-new-privileges:true
     read_only: true
     tmpfs:
       - /tmp:size=32m,noexec,nosuid
     pids_limit: 100
-    mem_limit: 512m
+    mem_limit: 768m
     cpus: 1.5
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
