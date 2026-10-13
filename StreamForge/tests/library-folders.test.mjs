@@ -10,4 +10,8 @@ assert.deepEqual(libraryParts(movie,'.mp4','category').folders,['Interstellar (2
 assert.throws(()=>libraryParts(movie,'.exe'),/Dateityp/);
 assert.throws(()=>safeFolderPart('..'),/Ordnername/);
 assert.deepEqual(normalizeLibraryOptions({mode:'fake',placement:'wrong'}),{mode:'ask',placement:'library'});
+const keyed=normalizeLibraryOptions({mode:'picked',placement:'series',handleKey:'job-123e4567-e89b-12d3-a456-426614174000'});
+assert.equal(keyed.handleKey,'job-123e4567-e89b-12d3-a456-426614174000');
+assert.equal(normalizeLibraryOptions({mode:'picked',handleKey:'../../secret'}).handleKey,undefined);
+assert.deepEqual(libraryParts(series,'.mp4','category').folders,['Slugterra','Season 02']);
 console.log('library folder path tests passed');
