@@ -3,7 +3,7 @@
 ## 1.7.2 (Medienauswahl)
 
 - HLS-Master-Playlists: Untertitelgruppen (SUBTITLES) mit Sprache, Name, Default und URL erkennen.
-- Auswahl verfügbarer Untertitel im Popup und Kopieren der Spur-URL; eine HLS-Untertitelplaylist wird **nicht** als fertige VTT-Datei ausgegeben.
+- Auswahl verfügbarer Untertitel im Popup und Kopieren der Spur-URL. Direkte `.vtt`-WebVTT-Spuren können mit Jellyfin-Dateinamen separat gespeichert werden; eine HLS-Untertitelplaylist wird **nicht** als fertige VTT-Datei ausgegeben.
 - DASH: auswählbare Video- und Audio-Representations nach ID inklusive Audio-Sprachanzeige.
 - Die gewählten DASH-Representations werden beim eigentlichen MP4-Muxing verwendet.
 - Bestehende Jellyfin-konforme Film-/Serienbenennung bleibt erhalten.
