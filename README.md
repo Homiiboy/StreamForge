@@ -47,7 +47,7 @@ Bei Serien in einem freigegebenen Medienordner kann StreamForge bestehende `Seas
 
 ## Neues ZimaOS-Projekt: ForgeCore
 
-Die künftige Server-App heißt **[ForgeCore](./ForgeCore/)**. Unter `ForgeCore/browser-extension/` liegt eine vollständige Kopie der aktiven Browser-Erweiterung aus dem **Git-Release v1.8.0** (ohne das nicht aktive Upload-Archiv). Der neue `ForgeCore/server/`-Bereich enthält das eigenständige Docker-/ZimaOS-Grundgerüst.
+Die künftige Server-App heißt **[ForgeCore](./ForgeCore/)**. Unter `ForgeCore/browser-extension/` liegt eine vollständige Kopie der aktiven Browser-Erweiterung aus dem **Git-Release v1.8.1** (ohne das nicht aktive Upload-Archiv). Der neue `ForgeCore/server/`-Bereich enthält das eigenständige Docker-/ZimaOS-Grundgerüst.
 
 **StreamForge selbst bleibt unverändert:** Die ursprüngliche Erweiterung unter `StreamForge/` entwickelt sich getrennt weiter. ForgeCore ist aktuell ein Architektur- und Servicefundament, noch kein automatisierter Downloader.
 

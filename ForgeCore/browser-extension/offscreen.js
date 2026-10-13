@@ -414,7 +414,8 @@ async function publishFile(job,tempName,filename,tempNames){
       await sendProgress(job,'saving',99,'Jellyfin-Ordner wird angelegt bzw. wiederverwendet …');
       const saved=await writeIntoLibrary(rootHandle,file,job.naming,extension,job.library.placement,
         async(written,total)=>sendProgress(job,'saving',99,
-          'Im Jellyfin-Ordner speichern: '+Math.round(written/total*100)+'%'));
+          'Im Jellyfin-Ordner speichern: '+Math.round(written/total*100)+'%'),
+        {seasonFolder:job.library.seasonFolder||''});
       await sendProgress(job,'complete',100,'Abgeschlossen: '+saved.relativePath,{
         bytes:saved.bytes,outputBytes:saved.bytes,phase:'complete',downloadProgress:100,muxProgress:100
       });

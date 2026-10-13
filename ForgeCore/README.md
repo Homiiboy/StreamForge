@@ -7,7 +7,7 @@
 ## Warum ein eigener Ordner?
 
 - `/StreamForge/` bleibt die vorhandene Browser-Erweiterung und wird durch diese Änderung nicht verändert.
-- `/ForgeCore/browser-extension/` ist eine **unveränderte Kopie der aktiven Dateien aus dem offiziellen Git-Tag `v1.8.0`**. Die historischen, für den Extension-Build irrelevanten Uploads aus `StreamForge/archive/unclassified/` sind bewusst ausgeschlossen.
+- `/ForgeCore/browser-extension/` ist eine **unveränderte Kopie der aktiven Dateien aus dem offiziellen Git-Tag `v1.8.1`**. Die historischen, für den Extension-Build irrelevanten Uploads aus `StreamForge/archive/unclassified/` sind bewusst ausgeschlossen.
 - `/ForgeCore/server/` wird die separate App für ZimaOS. Sie kann langfristig Medienprojekte, Quellenadapter, Warteschlange und Jellyfin-Integration verwalten.
 - `/ForgeCore/compose.yaml` ist die lokale Docker-Startkonfiguration. **Keine Abhängigkeit vom laufenden Chrome.**
 
@@ -18,7 +18,7 @@ ForgeCore/
 ├── README.md
 ├── compose.yaml
 ├── .env.example
-├── browser-extension/     # StreamForge v1.8.0 Snapshot (nicht 1.8.1)
+├── browser-extension/     # StreamForge v1.8.1 Snapshot (nicht 1.8.1)
 │   ├── manifest.json
 │   ├── background.js
 │   ├── popup.html
@@ -71,6 +71,6 @@ Es findet **keine** automatische Mediensuche, Webseitenabfrage, Netzwerküberwac
 
 ## Lizenz und Grenzen
 
-Das Browser-Snapshot stammt aus dem eigenen Projekt `StreamForge`; seine Dateien wurden anhand des Git-Tags `v1.8.0` übernommen. Die Lizenzlage weiterer, später integrierter Komponenten muss jeweils gesondert geprüft werden. DRM-Umgehung und das Umgehen von Zugangs- oder Nutzungsbeschränkungen sind **nicht** Teil der geplanten Funktionen.
+Das Browser-Snapshot stammt aus dem eigenen Projekt `StreamForge`; seine Dateien wurden anhand des Git-Tags `v1.8.1` übernommen. Die Lizenzlage weiterer, später integrierter Komponenten muss jeweils gesondert geprüft werden. DRM-Umgehung und das Umgehen von Zugangs- oder Nutzungsbeschränkungen sind **nicht** Teil der geplanten Funktionen.
 
 **Wichtig:** Das hier ist das Fundament der neuen ZimaOS-App, noch keine vollständige Sonarr-/Radarr-Alternative.
