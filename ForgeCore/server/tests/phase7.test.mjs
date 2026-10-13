@@ -90,6 +90,12 @@ test('mock Docker lifecycle exercises update backup and manual rollback with no 
   const snapshots=await readdir(dir);
   assert.equal(snapshots.length,1);
   assert.ok((await readFile(join(dir,snapshots[0],'data.tar.gz'))).length>0);
+  const originalArchive=await readFile(join(dir,snapshots[0],'data.tar.gz'));
+  await writeFile(join(dir,snapshots[0],'data.tar.gz'),'CORRUPTED');
+  const rejected=run('rollback',join(dir,snapshots[0]));
+  assert.notEqual(rejected.status,0,'Corrupted archives must not restore');
+  assert.match(rejected.stderr,/checksum mismatch/i);
+  await writeFile(join(dir,snapshots[0],'data.tar.gz'),originalArchive);
   const rollback=run('rollback',join(dir,snapshots[0]));
   assert.equal(rollback.status,0,rollback.stderr);
   const failed=spawnSync('bash',[join(root,'manage.sh'),'update'],{env:{...env,MOCK_SWITCH:join(root,'switch')},encoding:'utf8',timeout:15000});
