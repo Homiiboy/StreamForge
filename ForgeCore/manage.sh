@@ -65,7 +65,7 @@ restore(){
  [ -n "$id" ] && healthy "$id" || die "Rolled back data but old service healthcheck failed."
  log "Previous image and data volume restored."
 }
-case "$1" in
+case "${1:-help}" in
  doctor)
   preflight;log "Docker, Compose and host path OK; check container UID/GID on ZimaOS."
   ;;
@@ -84,7 +84,10 @@ case "$1" in
   image="$(image_id "$id")";volume="$(data_volume "$id")"
   docker compose stop forgecore
   target="$BACKUP_ROOT/backup-$(date -u +%Y%m%dT%H%M%SZ)-$$"
-  snapshot "$image" "$volume" "$target"
+  if ! (snapshot "$image" "$volume" "$target"); then
+   docker compose start forgecore || true
+   die "Backup failed; previous service was restarted."
+  fi
   docker compose start forgecore
   ;;
  update)
@@ -93,7 +96,10 @@ case "$1" in
   docker compose build forgecore
   docker compose stop forgecore
   target="$BACKUP_ROOT/backup-$(date -u +%Y%m%dT%H%M%SZ)-$$"
-  snapshot "$image" "$volume" "$target"
+  if ! (snapshot "$image" "$volume" "$target"); then
+   docker compose start forgecore || true
+   die "Pre-upgrade backup failed; old service was restarted."
+  fi
   if docker compose up -d --no-build --force-recreate forgecore && [ -n "$(cid)" ] && healthy "$(cid)"; then
    log "Update succeeded. Rollback snapshot: $target"
   else
