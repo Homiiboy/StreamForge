@@ -76,6 +76,8 @@ test('safePublish reuses existing Staffel and preserves episode files',async()=>
   const from=join(root,'temp.mp4');await writeFile(from,Buffer.alloc(2048,33));
   // library.relative identifies an existing "Staffel 2" but safePublish currently prefers canonical Season 02.
   // Ensure no overwrite regardless of existing path.
+  const savedAlt=await safePublish(from,root,{kind:'series',title:'Slugterra'},{season:2,episode:8});
+  assert.equal(savedAlt.path,'Shows/Slugterra/Staffel 2/Slugterra S02E08.mp4');
   const saved=await safePublish(from,root,{kind:'movie',title:'Interstellar',year:2014});
   assert.equal(saved.path,'Movies/Interstellar (2014)/Interstellar (2014).mp4');
   await assert.rejects(safePublish(from,root,{kind:'movie',title:'Interstellar',year:2014}),/already exists|EEXIST/);
