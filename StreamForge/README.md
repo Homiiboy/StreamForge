@@ -1,4 +1,17 @@
-# StreamForge Browser Connector 1.7.9
+# StreamForge Browser Connector 1.8.0
+
+## Neu in 1.8.0 – Automatische Jellyfin-Ordnerverwaltung
+
+- **Downloads-Unterordner:** Bei automatischer Ablage entstehen relative Dateipfade wie `Movies/Interstellar (2014)/Interstellar (2014).mp4` und `Shows/Slugterra/Season 02/Slugterra S02E08.mp4`. Chrome legt diese innerhalb seines Download-Verzeichnisses an.
+- **Ausgewählter Medienordner:** Über „Medienordner auswählen“ kann ein Benutzer einen beschreibbaren lokalen oder eingebundenen Ordner freigeben. Muxte HLS-/DASH-Dateien werden nach erfolgreicher Browser-Berechtigungsprüfung direkt dort hineingeschrieben.
+- **Vorhandene Ordner:** Der Zielordner kann die Bibliothekswurzel, ein Movies-/Shows-Hauptordner, ein vorhandener Serienordner oder ein vorhandener Staffelordner sein. Ordner werden wiederverwendet, fehlende Unterordner bei Bedarf erstellt.
+- **Sicherer Fallback:** Bei fehlenden Dateisystemrechten oder Speicherfehlern bleibt die fertig gemuxte temporäre Datei erhalten und der normale Speicherdialog wird geöffnet.
+- **Bestehende Episoden:** Die direkte Ordnerfunktion überschreibt keine bereits vorhandenen Dateien. Bei Chrome-Downloads verhindert `conflictAction:uniquify` ungewolltes Überschreiben.
+- **Direkte Medien-URLs:** Automatische Ablage innerhalb des Chrome-Download-Verzeichnisses wird unterstützt. Für einen frei ausgewählten externen Medienordner wird bei nativen Direktdownloads weiterhin der Browser-Speicherdialog verwendet.
+
+**Wichtig:** Ein ZimaOS-/SMB-Laufwerk muss lokal eingebunden, für Chrome erreichbar und beschreibbar sein. Der File System Access API wird keine Berechtigung vorgetäuscht. Reale Browser-/SMB-Tests stehen noch aus.
+
+
 
 ## Aktueller Stand der 1.7.X-Reihe
 
