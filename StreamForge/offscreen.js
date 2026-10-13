@@ -22,9 +22,12 @@ const downloadQueue = new PersistentDownloadQueue({
   storage: chrome.storage.local,
   execute: async record => (record.type === 'sf_hls_start' ? downloadHls : downloadDash)(record.job),
   onQueued: async (record, position) => sendProgress(record.job, 'queued', 0, `Warteschlange · Position ${position}`),
-  onInterrupted: async record => sendProgress(record.job, 'error', 0,
-    'Browser-Neustart während der Verarbeitung. Der laufende Auftrag wurde aus Sicherheitsgründen nicht automatisch neu gestartet.',
-    { diagnostic: { code: 'QUEUE_INTERRUPTED', title: 'Download unterbrochen', text: 'Bitte den Download manuell erneut starten.' } }),
+  onInterrupted: async record => {
+    if(record.job.library?.handleKey)await directoryHandleStore().clear(record.job.library.handleKey).catch(()=>{});
+    await sendProgress(record.job, 'error', 0,
+      'Browser-Neustart während der Verarbeitung. Der laufende Auftrag wurde aus Sicherheitsgründen nicht automatisch neu gestartet.',
+      { diagnostic: { code: 'QUEUE_INTERRUPTED', title: 'Download unterbrochen', text: 'Bitte den Download manuell erneut starten.' } });
+  },
   onError: async (record, error) => {
     if(record.job.library?.handleKey)await directoryHandleStore().clear(record.job.library.handleKey).catch(()=>{});
     await sendProgress(record.job, 'error', 0, String(error?.message || error));
@@ -641,8 +644,13 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
     return true;
   }
   if(message.type==='sf_queue_cancel'){
+    const pendingRecord=downloadQueue.pending.find(x=>x.id===`${message.tabId}:${message.candidateId}`);
     downloadQueue.cancel(`${message.tabId}:${message.candidateId}`)
-      .then(ok=>sendResponse({ok}))
+      .then(async ok=>{
+        if(ok&&pendingRecord?.job?.library?.handleKey)
+          await directoryHandleStore().clear(pendingRecord.job.library.handleKey).catch(()=>{});
+        sendResponse({ok});
+      })
       .catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
     return true;
   }
