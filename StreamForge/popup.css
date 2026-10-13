@@ -20,3 +20,5 @@
 .toolbar{flex-wrap:wrap}.toolbar #performanceProfile{flex:0 1 125px;font-size:11px}.queueSummary{padding:8px 13px;background:#1d2834;border-bottom:1px solid #344354;color:#cbdaf0;font-size:11px}.queueSummary[hidden]{display:none}.downloadStatus[data-state="queued"] .progressText{color:#ffc681}.downloadStatus[data-state="cancelled"] .progressText{color:#afbac9}.actions .ghost{white-space:normal}
 
 .queueControls{display:flex;padding:6px 12px;background:#1d2834}.queueControls[hidden]{display:none}.queueControls button{width:100%;font-size:11px}.downloadStatus[data-state="queued"] .progressTrack{opacity:.45}
+
+.subtitleRow{display:flex;align-items:center;gap:7px;margin-top:8px}.subtitleRow[hidden]{display:none}.subtitleRow span{width:48px;flex:0 0 48px;color:#8f9baa;font-size:10px}.subtitleRow select{min-width:0;flex:1;padding:6px 8px;font-size:10px}.subtitleCopy{font-size:10px;padding:6px 7px}
