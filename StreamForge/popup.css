@@ -18,3 +18,5 @@
 
 /* v1.7.0: Compact transfer settings and persistent queue status */
 .toolbar{flex-wrap:wrap}.toolbar #performanceProfile{flex:0 1 125px;font-size:11px}.queueSummary{padding:8px 13px;background:#1d2834;border-bottom:1px solid #344354;color:#cbdaf0;font-size:11px}.queueSummary[hidden]{display:none}.downloadStatus[data-state="queued"] .progressText{color:#ffc681}.downloadStatus[data-state="cancelled"] .progressText{color:#afbac9}.actions .ghost{white-space:normal}
+
+.queueControls{display:flex;padding:6px 12px;background:#1d2834}.queueControls[hidden]{display:none}.queueControls button{width:100%;font-size:11px}.downloadStatus[data-state="queued"] .progressTrack{opacity:.45}
