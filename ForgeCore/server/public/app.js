@@ -13,7 +13,7 @@ async function api(path,{method='GET',body}={}){
 }
 function node(tag,text='',klass=''){const element=document.createElement(tag);element.textContent=text;if(klass)element.className=klass;return element;}
 function action(text,fn,klass='outline'){const b=node('button',text,klass);b.type='button';b.addEventListener('click',async()=>{b.disabled=true;try{await fn();}catch(error){notify(error.message,true);}finally{b.disabled=false;}});return b;}
-function showView(view){for(const v of ['library','tasks','settings'])$('#'+v+'View').hidden=v!==view;document.querySelectorAll('nav .tab').forEach(t=>t.classList.toggle('selected',t.dataset.view===view));if(view==='tasks'){refreshJobs().catch(e=>notify(e.message,true));refreshTransfers().catch(e=>notify(e.message,true));refreshNotices().catch(e=>notify(e.message,true));refreshDiagnostics().catch(e=>notify(e.message,true));}if(view==='settings'){refreshSettings().catch(e=>notify(e.message,true));refreshSchedule().catch(e=>notify(e.message,true));}}
+function showView(view){for(const v of ['library','tasks','settings'])$('#'+v+'View').hidden=v!==view;document.querySelectorAll('nav .tab').forEach(t=>t.classList.toggle('selected',t.dataset.view===view));if(view==='tasks'){refreshJobs().catch(e=>notify(e.message,true));refreshTransfers().catch(e=>notify(e.message,true));refreshNotices().catch(e=>notify(e.message,true));refreshDiagnostics().catch(e=>notify(e.message,true));}if(view==='settings'){refreshSettings().catch(e=>notify(e.message,true));refreshSchedule().catch(e=>notify(e.message,true));refreshJellyfin().catch(e=>notify(e.message,true));}}
 async function startup(){
  try{const me=await api('/api/me');csrf=me.csrf||'';$('#connection').textContent='Verbunden';
   $('#setup').hidden=me.configured;$('#login').hidden=!me.configured||me.authenticated;$('#app').hidden=!me.authenticated;
@@ -75,6 +75,15 @@ async function refreshLibrary(){const data=await api('/api/media');const root=$(
     const row=node('div','','sourceEntry');
     row.append(node('strong',source.label||'Quelle'));
     row.append(node('small',source.url,'muted'));
+    const adapterSelector=node('select');adapterSelector.setAttribute('aria-label','Adapter für '+(source.label||'Quelle'));
+    const defaults=[{id:'auto',label:'Automatisch erkennen'},...(await api('/api/source-adapters')).items];
+    for(const a of defaults){const option=node('option',a.label);option.value=a.id;adapterSelector.append(option);}
+    adapterSelector.value=source.adapter_id||'auto';
+    row.append(node('small','Quellenadapter','muted'),adapterSelector);
+    row.append(action('Adapter wählen',async()=>{
+     await api('/api/sources/'+source.id,{method:'PATCH',body:{adapterId:adapterSelector.value}});
+     notify('Quellenadapter aktualisiert.');
+    }));
     const controls=node('div','','sourceControls');
     const itemSelect=node('select');itemSelect.setAttribute('aria-label','Entdeckten Stream auswählen');
     itemSelect.append(node('option','Direkte Quell-URL'));itemSelect.options[0].value='';
@@ -266,8 +275,51 @@ async function refreshSchedule(){
  $('#scheduleDays').value=r.schedule.days.join(',');$('#scheduleBandwidth').value=r.schedule.bandwidthKbps||0;
  $('#scheduleTimezone').textContent='Server-Zeitzone: '+r.timezone+' (0 = Sonntag, 1 = Montag, …, 6 = Samstag)';
 }
-async function refreshSettings(){const c=await api('/api/config');const entries=Object.fromEntries(c.items.map(x=>[x.key,x.value]));$('#jellyfinUrl').value=entries.jellyfin_url||'';$('#libraryLabel').value=entries.library_label||'';$('#preferredLanguage').value=entries.preferred_language||'';$('#volumeStatus').textContent=c.mediaRoot.configured?`Medienvolume: ${c.mediaRoot.readable?'lesbar':'nicht lesbar'} · Schreibrecht: ${c.mediaRoot.writeable?'vorhanden':'nicht vorhanden'}`:'Kein Medienvolume eingebunden';}
-$('#settingsForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/config',{method:'PUT',body:{jellyfin_url:$('#jellyfinUrl').value,library_label:$('#libraryLabel').value,preferred_language:$('#preferredLanguage').value}});notify('Einstellungen gespeichert.');}catch(err){notify(err.message,true);}});
+
+async function refreshJellyfin(){
+ const result=await api('/api/jellyfin');
+ $('#jellyfinConnectUrl').value=result.url||'';
+ $('#jellyfinConnectKey').value='';
+ $('#jellyfinInfo').textContent=result.configured?'Jellyfin API-Zugang konfiguriert: '+result.url:'Noch keine Jellyfin API-Verbindung konfiguriert.';
+}
+$('#jellyfinConnectForm').addEventListener('submit',async e=>{
+ e.preventDefault();try{
+  const result=await api('/api/jellyfin',{method:'PUT',body:{url:$('#jellyfinConnectUrl').value,apiKey:$('#jellyfinConnectKey').value}});
+  $('#jellyfinConnectKey').value='';
+  notify('Jellyfin-Verbindung gespeichert. Jetzt testen.');
+  $('#jellyfinInfo').textContent='Konfiguriert: '+result.url;
+ }catch(error){notify(error.message,true)}
+});
+$('#jellyfinTest').addEventListener('click',async()=>{
+ try{const r=await api('/api/jellyfin/test',{method:'POST'});$('#jellyfinInfo').textContent='Verbunden: '+(r.serverName||'Jellyfin')+' · '+r.serverVersion;}
+ catch(error){notify('Jellyfin nicht erreichbar: '+error.message,true)}
+});
+$('#jellyfinRefresh').addEventListener('click',async()=>{
+ try{await api('/api/jellyfin/refresh',{method:'POST'});notify('Jellyfin wurde zur Aktualisierung aufgefordert.');}
+ catch(error){notify(error.message,true)}
+});
+let jellyfinPreview=null;
+$('#jellyfinPreview').addEventListener('click',async()=>{
+ try{
+  const r=await api('/api/jellyfin/sync/preview',{method:'POST'});
+  jellyfinPreview=r;
+  $('#jellyfinPreviewText').textContent='Vorgeschlagen: '+r.availableToMark+' bisher fehlende Episoden als vorhanden markieren; '+r.matched+' Treffer insgesamt, '+r.unmatched+' nicht zuordenbar.';
+  notify('Jellyfin-Episodenabgleich geprüft.');
+ }catch(error){jellyfinPreview=null;notify(error.message,true)}
+});
+$('#jellyfinSync').addEventListener('click',async()=>{
+ try{
+  if(!jellyfinPreview)throw Error('Bitte zuerst den Abgleich prüfen.');
+  if(!confirm('Bis zu '+jellyfinPreview.availableToMark+' Episoden anhand des aktuellen Jellyfin-Bestandes als verfügbar markieren?'))return;
+  const result=await api('/api/jellyfin/sync/apply',{method:'POST',body:{confirm:'MARK_AVAILABLE'}});
+  jellyfinPreview=null;
+  $('#jellyfinPreviewText').textContent=result.updated+' Episoden als vorhanden markiert.';
+  notify(result.updated+' Episoden aktualisiert.');await refreshLibrary();
+ }catch(error){notify(error.message,true)}
+});
+
+async function refreshSettings(){const c=await api('/api/config');const entries=Object.fromEntries(c.items.map(x=>[x.key,x.value]));$('#libraryLabel').value=entries.library_label||'';$('#preferredLanguage').value=entries.preferred_language||'';$('#volumeStatus').textContent=c.mediaRoot.configured?`Medienvolume: ${c.mediaRoot.readable?'lesbar':'nicht lesbar'} · Schreibrecht: ${c.mediaRoot.writeable?'vorhanden':'nicht vorhanden'}`:'Kein Medienvolume eingebunden';}
+$('#settingsForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/config',{method:'PUT',body:{library_label:$('#libraryLabel').value,preferred_language:$('#preferredLanguage').value}});notify('Einstellungen gespeichert.');}catch(err){notify(err.message,true);}});
 $('#fullBackupDownload').addEventListener('click',async()=>{
  try{
   const result=await fetch('/api/backup/database',{headers:{'x-forgecore-request':'1'},credentials:'same-origin'});
