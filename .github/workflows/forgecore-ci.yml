@@ -1,4 +1,4 @@
-name: ForgeCore Foundation Checks
+name: ForgeCore Phase 1 CI
 on:
   pull_request:
     paths:
@@ -29,8 +29,19 @@ jobs:
         working-directory: ForgeCore/server
         run: |
           npm test
-          node --check src/server.mjs
+          npm run check
       - name: Validate Docker Compose
         run: docker compose -f ForgeCore/compose.yaml config --quiet
       - name: Build ForgeCore image
         run: docker build -t forgecore:test ForgeCore/server
+
+      - name: Smoke test Docker HTTP service
+        run: |
+          docker run --detach --name forgecore-ci --read-only --tmpfs /tmp -p 127.0.0.1:18787:8787 forgecore:test
+          trap 'docker rm -f forgecore-ci || true' EXIT
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:18787/api/health >/tmp/forgecore-health.json; then break; fi
+            sleep 1
+          done
+          node -e "const fs=require('fs');const h=JSON.parse(fs.readFileSync('/tmp/forgecore-health.json'));if(h.version!=='0.0.9'||h.ok!==true)process.exit(1)"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18787/api/media)" = 401
