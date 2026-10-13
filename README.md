@@ -39,7 +39,7 @@ StreamForge ist eine Chrome-/Edge-Erweiterung (Manifest V3) zum Erkennen und lok
 | 1.7.6 | Jellyfin-Ordner- und Dateipfade |
 | 1.7.7 | Speicherbewusste Download-Parallelität |
 | 1.7.8 | Stichprobenartige MPEG-TS-Integritätsprüfung |
-| 1.8.0 | Priorisierung wartender Downloads |
+| 1.7.9 | Priorisierung wartender Downloads |
 
 ## Installation
 
