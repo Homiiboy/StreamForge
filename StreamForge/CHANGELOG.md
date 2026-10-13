@@ -1,5 +1,15 @@
 # StreamForge Browser Connector – Changelog
 
+## 1.8.1 – Vorhandene Staffelordner erkennen
+
+- Bei Serien lassen sich die vorhandenen Staffelordner des ausgewählten Medienverzeichnisses anzeigen und mit einem Klick übernehmen.
+- Erkennt `Season 01`, `Season 2`, `Staffel 02` und `Specials` (Staffel 0).
+- Die Auswahl übernimmt die Staffelnummer und den exakten vorhandenen Ordnernamen (auch bei Schreibweisen wie `Staffel 2`).
+- Bestehende Staffelordner werden bei der Speicherung bevorzugt wiederverwendet; neue Ordner werden nur bei fehlender Staffel erstellt.
+- Der Suchvorgang liest nur Ordnernamen; die Suche selbst erstellt oder verändert keine Dateien.
+- Die Funktion benötigt einen im Browser freigegebenen Medienordner. Im reinen Chrome-Downloads-Modus bleibt die manuelle Staffelnummer maßgeblich.
+- Automatisierte Tests für Suche, Auswahl und tatsächliches Zielverzeichnis.
+
 ## 1.8.0 – Automatische Jellyfin-Ordnerverwaltung
 
 - Filme: Ordner `Movies/Titel (Jahr)` erzeugen oder vorhandenen Ordner wiederverwenden.
