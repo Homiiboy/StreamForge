@@ -340,9 +340,10 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     if(!Array.isArray(backup.media)||!Array.isArray(backup.episodes)||!Array.isArray(backup.config))fail('Incomplete backup');
     if(backup.sources!==undefined&&!Array.isArray(backup.sources))fail('Invalid source backup');
     if(backup.source_items!==undefined&&!Array.isArray(backup.source_items))fail('Invalid discovered-item backup');
-    if(backup.media.length>10000||backup.episodes.length>200000||backup.config.length>100||(backup.sources?.length||0)>20000||(backup.source_items?.length||0)>100000)fail('Backup exceeds safety limits');
+    if(backup.source_automation!==undefined&&!Array.isArray(backup.source_automation))fail('Invalid automation backup');
+    if(backup.media.length>10000||backup.episodes.length>200000||backup.config.length>100||(backup.sources?.length||0)>20000||(backup.source_items?.length||0)>100000||(backup.source_automation?.length||0)>20000)fail('Backup exceeds safety limits');
     transaction(db,()=>{
-     db.exec('DELETE FROM transfer_jobs; DELETE FROM source_items; DELETE FROM sources; DELETE FROM jobs; DELETE FROM episodes; DELETE FROM media; DELETE FROM config;');
+     db.exec('DELETE FROM source_check_events; DELETE FROM source_automation; DELETE FROM transfer_jobs; DELETE FROM source_items; DELETE FROM sources; DELETE FROM jobs; DELETE FROM episodes; DELETE FROM media; DELETE FROM config;');
      for(const media of backup.media){
       const m=mediaInput(media);idCheck(media.id);
       db.prepare('INSERT INTO media(id,kind,title,year,external_id,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').run(media.id,m.kind,m.title,m.year,m.external_id,m.notes,utc(),utc());
@@ -364,6 +365,11 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
       if(season!==null&&(!Number.isInteger(season)||season<0||season>999))fail('Invalid discovered season');
       if(ep!==null&&(!Number.isInteger(ep)||ep<0||ep>9999))fail('Invalid discovered episode');
       db.prepare('INSERT INTO source_items(id,source_id,url,title,season,episode,created_at) VALUES(?,?,?,?,?,?,?)').run(item.id,item.source_id,urlValue,limitText(item.title,140),season,ep,utc());
+     }
+     for(const policy of backup.source_automation||[]){
+      idCheck(policy.source_id);
+      const p=automation.configure(policy.source_id,{enabled:false,autoQueue:!!policy.auto_queue,autoAddEpisodes:!!policy.auto_add_episodes,intervalMinutes:policy.interval_minutes,maxPerCheck:policy.max_per_check});
+      // Backups never silently reactivate unattended downloads after restore.
      }
      for(const item of backup.config){
       if(!['jellyfin_url','library_label','preferred_language','transfer_schedule'].includes(item.key))continue;
@@ -387,7 +393,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     return response(res,200,{items:rows(db,'SELECT id,category,description,created_at FROM transfer_events WHERE transfer_id=? ORDER BY id DESC LIMIT 150',job)});
    }
    if(path==='/api/backup/export'&&method==='GET'){
-    const data={format:'forgecore-export-v1',version:APP_VERSION,createdAt:utc(),media:rows(db,'SELECT * FROM media'),episodes:rows(db,'SELECT * FROM episodes'),config:rows(db,'SELECT * FROM config'),sources:rows(db,'SELECT * FROM sources'),source_items:rows(db,'SELECT * FROM source_items')};
+    const data={format:'forgecore-export-v1',version:APP_VERSION,createdAt:utc(),media:rows(db,'SELECT * FROM media'),episodes:rows(db,'SELECT * FROM episodes'),config:rows(db,'SELECT * FROM config'),sources:rows(db,'SELECT * FROM sources'),source_items:rows(db,'SELECT * FROM source_items'),source_automation:rows(db,'SELECT * FROM source_automation')};
     return response(res,200,data,{'content-disposition':'attachment; filename="forgecore-backup.json"'});
    }
    if(path.startsWith('/api/'))fail('Unknown endpoint',404);
