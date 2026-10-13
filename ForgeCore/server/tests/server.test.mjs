@@ -143,9 +143,10 @@ test('Phase 2 sources, episode discovery and persistent transfer processing',asy
   assert.equal(calls.length,1);
   assert.equal(calls[0].sourceUrl,items[0].url);
   assert.equal((await request('/api/transfers')).data.items[0].state,'complete');
+  assert.equal((await request('/api/media/'+media.id+'/episodes')).data.items[0].status,'available');
   assert.equal((await request('/api/backup/import','POST',{...saved,confirm:'REPLACE'})).status,200);
   assert.equal((await request('/api/media/'+media.id+'/sources')).data.items.length,1);
-  assert.equal((await request('/api/media/'+media.id+'/episodes')).data.items[0].status,'available');
+  assert.equal((await request('/api/media/'+media.id+'/episodes')).data.items[0].status,'missing');
   const another=await request('/api/transfers','POST',{mediaId:media.id,sourceId:source.id,itemId:items[0].id,episodeId:episode.id});
   assert.equal(another.status,201);
   assert.equal((await request('/api/transfers/'+another.data.item.id+'/cancel','POST',{})).status,200);
