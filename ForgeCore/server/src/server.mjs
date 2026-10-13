@@ -266,9 +266,11 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     const backup=await readJson(req,8*1024*1024);
     if(backup.format!=='forgecore-export-v1'||backup.confirm!=='REPLACE')fail('Backup format or confirmation invalid');
     if(!Array.isArray(backup.media)||!Array.isArray(backup.episodes)||!Array.isArray(backup.config))fail('Incomplete backup');
-    if(backup.media.length>10000||backup.episodes.length>200000||backup.config.length>100)fail('Backup exceeds safety limits');
+    if(backup.sources!==undefined&&!Array.isArray(backup.sources))fail('Invalid source backup');
+    if(backup.source_items!==undefined&&!Array.isArray(backup.source_items))fail('Invalid discovered-item backup');
+    if(backup.media.length>10000||backup.episodes.length>200000||backup.config.length>100||(backup.sources?.length||0)>20000||(backup.source_items?.length||0)>100000)fail('Backup exceeds safety limits');
     transaction(db,()=>{
-     db.exec('DELETE FROM jobs; DELETE FROM episodes; DELETE FROM media; DELETE FROM config;');
+     db.exec('DELETE FROM transfer_jobs; DELETE FROM source_items; DELETE FROM sources; DELETE FROM jobs; DELETE FROM episodes; DELETE FROM media; DELETE FROM config;');
      for(const media of backup.media){
       const m=mediaInput(media);idCheck(media.id);
       db.prepare('INSERT INTO media(id,kind,title,year,external_id,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').run(media.id,m.kind,m.title,m.year,m.external_id,m.notes,utc(),utc());
@@ -278,6 +280,19 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
       const status=['missing','available','ignored'].includes(ep.status)?ep.status:'missing';
       db.prepare('INSERT INTO episodes(id,media_id,season,episode,title,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').run(ep.id,ep.media_id,e.season,e.episode,e.title,status,utc(),utc());
      }
+     for(const src of backup.sources||[]){
+      idCheck(src.id);idCheck(src.media_id);
+      const urlValue=String(src.url||'');try{parseWebUrl(urlValue);}catch{fail('Invalid source URL in backup');}
+      db.prepare('INSERT INTO sources(id,media_id,url,label,enabled,created_at,updated_at) VALUES(?,?,?,?,?,?,?)').run(src.id,src.media_id,urlValue,limitText(src.label,140),src.enabled?1:0,utc(),utc());
+     }
+     for(const item of backup.source_items||[]){
+      idCheck(item.id);idCheck(item.source_id);
+      const urlValue=String(item.url||'');try{parseWebUrl(urlValue);}catch{fail('Invalid discovered source URL in backup');}
+      const season=item.season===null?null:Number(item.season),ep=item.episode===null?null:Number(item.episode);
+      if(season!==null&&(!Number.isInteger(season)||season<0||season>999))fail('Invalid discovered season');
+      if(ep!==null&&(!Number.isInteger(ep)||ep<0||ep>9999))fail('Invalid discovered episode');
+      db.prepare('INSERT INTO source_items(id,source_id,url,title,season,episode,created_at) VALUES(?,?,?,?,?,?,?)').run(item.id,item.source_id,urlValue,limitText(item.title,140),season,ep,utc());
+     }
      for(const item of backup.config){
       if(!['jellyfin_url','library_label','preferred_language'].includes(item.key))continue;
       db.prepare('INSERT INTO config(key,value) VALUES(?,?)').run(item.key,limitText(item.value,300));
@@ -286,7 +301,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     return response(res,200,{ok:true,media:backup.media.length,episodes:backup.episodes.length});
    }
    if(path==='/api/backup/export'&&method==='GET'){
-    const data={format:'forgecore-export-v1',version:APP_VERSION,createdAt:utc(),media:rows(db,'SELECT * FROM media'),episodes:rows(db,'SELECT * FROM episodes'),config:rows(db,'SELECT * FROM config')};
+    const data={format:'forgecore-export-v1',version:APP_VERSION,createdAt:utc(),media:rows(db,'SELECT * FROM media'),episodes:rows(db,'SELECT * FROM episodes'),config:rows(db,'SELECT * FROM config'),sources:rows(db,'SELECT * FROM sources'),source_items:rows(db,'SELECT * FROM source_items')};
     return response(res,200,data,{'content-disposition':'attachment; filename="forgecore-backup.json"'});
    }
    if(path.startsWith('/api/'))fail('Unknown endpoint',404);
