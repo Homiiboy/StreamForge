@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {bufferAwareConcurrency,performanceSignal} from '../performance-engine.js';
+assert.equal(bufferAwareConcurrency(12,0,100),12);
+assert.equal(bufferAwareConcurrency(12,60,100),9);
+assert.equal(bufferAwareConcurrency(12,76,100),6);
+assert.equal(bufferAwareConcurrency(12,95,100),3);
+assert.equal(bufferAwareConcurrency(2,100,100),1);
+assert.equal(performanceSignal({bufferedBytes:90,bufferMaxBytes:100}),'Muxing/Speicher');
+assert.equal(performanceSignal({activeRequests:3,bufferedBytes:0,bufferMaxBytes:100}),'Netzwerk');
+console.log('performance backpressure tests passed');
