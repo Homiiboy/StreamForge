@@ -280,11 +280,12 @@ async function refreshJellyfin(){
  const result=await api('/api/jellyfin');
  $('#jellyfinConnectUrl').value=result.url||'';
  $('#jellyfinConnectKey').value='';
+ $('#jellyfinAutoRefresh').checked=!!result.autoRefresh;
  $('#jellyfinInfo').textContent=result.configured?'Jellyfin API-Zugang konfiguriert: '+result.url:'Noch keine Jellyfin API-Verbindung konfiguriert.';
 }
 $('#jellyfinConnectForm').addEventListener('submit',async e=>{
  e.preventDefault();try{
-  const result=await api('/api/jellyfin',{method:'PUT',body:{url:$('#jellyfinConnectUrl').value,apiKey:$('#jellyfinConnectKey').value}});
+  const result=await api('/api/jellyfin',{method:'PUT',body:{url:$('#jellyfinConnectUrl').value,apiKey:$('#jellyfinConnectKey').value,autoRefresh:$('#jellyfinAutoRefresh').checked}});
   $('#jellyfinConnectKey').value='';
   notify('Jellyfin-Verbindung gespeichert. Jetzt testen.');
   $('#jellyfinInfo').textContent='Konfiguriert: '+result.url;
