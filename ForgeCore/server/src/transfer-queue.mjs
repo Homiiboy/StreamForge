@@ -1,6 +1,7 @@
 import {newId,utc,one,rows} from './db.mjs';
 import {downloadMedia} from './media-download.mjs';
 import {previewLibrary} from './library.mjs';
+import {loadSchedule,scheduleAllows,addNotification} from './phase3.mjs';
 
 const states=new Set(['failed','cancelled']);
 export class TransferQueue {
@@ -33,6 +34,7 @@ export class TransferQueue {
  async stop(){if(this.timer)clearInterval(this.timer);this.timer=null;for(const x of this.active.values())x.abort();if(this.inFlight)await this.inFlight;}
  async tick(){
   if(this.busy)return false;
+  if(!scheduleAllows(loadSchedule(this.db)))return false;
   const item=one(this.db,"SELECT * FROM transfer_jobs WHERE state='queued' ORDER BY created_at,id LIMIT 1");if(!item)return false;
   this.busy=true;const controller=new AbortController();this.active.set(item.id,controller);
   try{
@@ -48,9 +50,11 @@ export class TransferQueue {
     this.db.prepare("UPDATE transfer_jobs SET progress=?,downloaded_bytes=?,updated_at=? WHERE id=? AND state='running'").run(pct,bytes,utc(),item.id);
    }});
    this.db.prepare("UPDATE transfer_jobs SET state='complete',progress=100,result_json=?,updated_at=? WHERE id=?").run(JSON.stringify(result),utc(),item.id);
+   addNotification(this.db,{category:'download',message:'Download abgeschlossen: '+media.title+(episode?' S'+String(episode.season).padStart(2,'0')+'E'+String(episode.episode).padStart(2,'0'):''),refId:item.id});
    if(episode&&episode.status!=='ignored')this.db.prepare("UPDATE episodes SET status='available',updated_at=? WHERE id=?").run(utc(),episode.id);
   }catch(error){
    this.db.prepare("UPDATE transfer_jobs SET state=?,error=?,updated_at=? WHERE id=?").run(controller.signal.aborted?'cancelled':'failed',String(error?.message||error).slice(0,1000),utc(),item.id);
+   addNotification(this.db,{category:controller.signal.aborted?'cancel':'error',message:'Transfer '+(controller.signal.aborted?'abgebrochen':'fehlgeschlagen')+': '+String(error?.message||error).slice(0,240),refId:item.id});
   }finally{this.active.delete(item.id);this.busy=false;}
   return true;
  }
