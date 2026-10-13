@@ -39,6 +39,9 @@
 
 ## Phase 3 – Alltagstaugliche ZimaOS-App (v0.2.x)
 
+**Entwicklungsstand v0.2.9: Beta-Vorschau implementiert.** Film-/Serienassistent, Quellenranking (technische Heuristik), Download-Zeitfenster, Bandbreitenlimit, WebVTT→SRT-Export, Benachrichtigungen, Diagnose und Docker-Installer stehen im Code. Noch nicht fertig sind automatische periodische Quellenprüfungen, volle Audio-/Spurauswahl, natives ZimaOS-App-Store-Paket, Rollback-Automatik und reale Langzeit-/Lasttests. **Phase 3 ist deshalb noch nicht hardwareseitig abgeschlossen.**
+
+
 | Version | Schwerpunkt |
 | --- | --- |
 | **v0.2.0** | Durchgängiger Film-/Serienassistent: Titel → Quelle → Folgen → Download → Jellyfin |
@@ -71,4 +74,4 @@
 - Docker-Build geprüft; tatsächliche ZimaOS-Kompatibilität nur behaupten, wenn praktisch getestet
 - Version und Git-Tag nur nach bestandenem Release-Gate veröffentlicht
 
-**Nächster Entwicklungsschritt:** ZimaOS-Abnahme für v0.1.9 (Volumes, Netzwerk- und Speicherrechte, Login, Quellen- und Transferablauf) und Ausbau der unterstützten Quellformate. Danach Phase 3 v0.2.x.
+**Nächster Entwicklungsschritt:** ZimaOS-/SMB-Abnahme für v0.2.9 (Freigabe, Zeitplan, Download, FFmpeg, SRT, Datenmigration). Danach die offen genannten Phase-3-Komfortfunktionen vervollständigen und auf Grundlage realer Tests zur v1.0.0 stabilisieren.

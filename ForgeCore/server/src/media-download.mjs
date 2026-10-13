@@ -7,6 +7,7 @@ import {Readable} from 'node:stream';
 import {tmpdir} from 'node:os';
 import {join,dirname,resolve,relative,sep,extname} from 'node:path';
 import {spawn} from 'node:child_process';
+import {setTimeout as sleep} from 'node:timers/promises';
 import {randomUUID} from 'node:crypto';
 import {mediaRelative,mediaBaseName,ensureWithin} from './library.mjs';
 const MAX_SEGMENT=48*1024*1024;
@@ -26,16 +27,23 @@ export async function fetchManifest(url,fetcher=safeFetch,depth=0){
  }
  return {url:finalUrl,...hls};
 }
-async function writeParts(destination,parts,{fetcher=safeFetch,signal,onProgress=()=>{},budget=MAX_MEDIA}={}){
+async function writeParts(destination,parts,{fetcher=safeFetch,signal,onProgress=()=>{},budget=MAX_MEDIA,rateLimitBytesPerSecond=0}={}){
  if(!parts.length||parts.length>MAX_SEGMENTS+1)throw Error('Invalid segment count');
- let bytes=0;
+ let bytes=0;const startedAt=Date.now();
  const fd=await open(destination,'wx',0o600);
  try{
   for(let i=0;i<parts.length;i++){
    ensureNotAborted(signal);
    const maxBytes=parts.length===1?budget:MAX_SEGMENT;
    const write=async body=>{bytes+=body.length;if(bytes>budget)throw Error('Media exceeds configured size limit');
-     let cursor=0;while(cursor<body.length){const {bytesWritten}=await fd.write(body,cursor,body.length-cursor,null);if(bytesWritten<=0)throw Error('Incomplete segment write');cursor+=bytesWritten;}};
+     let cursor=0;while(cursor<body.length){const {bytesWritten}=await fd.write(body,cursor,body.length-cursor,null);if(bytesWritten<=0)throw Error('Incomplete segment write');cursor+=bytesWritten;}if(rateLimitBytesPerSecond>0){
+       // Pace network reads without buffering media in RAM. Clamp each sleep and recheck.
+       while(true){ensureNotAborted(signal);
+        const delayMs=Math.ceil(bytes/rateLimitBytesPerSecond*1000-(Date.now()-startedAt));
+        if(delayMs<=0)break;
+        await sleep(Math.min(delayMs,30000),undefined,{signal});
+       }
+     }};
    let segmentBytes=0;
    if(fetcher===safeFetch){
      await safeStream(parts[i],{maxBytes,signal,onChunk:async body=>{segmentBytes+=body.length;await write(body)}});
@@ -112,8 +120,9 @@ async function assertMp4Signature(filename){
   if(bytesRead<12||head.toString('ascii',4,8)!=='ftyp')throw Error('Invalid MP4 media signature; refusing HTML or unrelated content');
  }finally{await file.close()}
 }
-export async function downloadMedia({sourceUrl,media,episode=null,root,fetcher=safeFetch,signal,onProgress,ffmpeg='ffmpeg'}={}){
+export async function downloadMedia({sourceUrl,media,episode=null,root,fetcher=safeFetch,signal,onProgress,ffmpeg='ffmpeg',rateLimitBytesPerSecond=0}={}){
  if(!root)throw Error('Jellyfin media root is not configured');
+ if(!Number.isFinite(rateLimitBytesPerSecond)||rateLimitBytesPerSecond<0||rateLimitBytesPerSecond>52428800)throw Error('Invalid transfer bandwidth');
  const uri=parseWebUrl(sourceUrl);
  const staging=await mkdtemp(join(process.env.FORGECORE_STAGING_ROOT||tmpdir(),'forgecore-transfer-'));
  try{
@@ -122,14 +131,14 @@ export async function downloadMedia({sourceUrl,media,episode=null,root,fetcher=s
   if(kind.endsWith('.m3u8')||kind.endsWith('.mpd')){
    const manifest=await fetchManifest(sourceUrl,fetcher);
    if(manifest.kind==='hls'){
-    await writeParts(video,[...(manifest.init?[manifest.init]:[]),...manifest.segments],{fetcher,signal,onProgress});
+    await writeParts(video,[...(manifest.init?[manifest.init]:[]),...manifest.segments],{fetcher,signal,onProgress,rateLimitBytesPerSecond});
    }else if(manifest.kind==='dash'){
-    await writeParts(video,[manifest.video.init,...manifest.video.segments],{fetcher,signal,onProgress});
-    if(manifest.audio){audio=join(staging,'audio.data');await writeParts(audio,[manifest.audio.init,...manifest.audio.segments],{fetcher,signal,onProgress});}
+    await writeParts(video,[manifest.video.init,...manifest.video.segments],{fetcher,signal,onProgress,rateLimitBytesPerSecond});
+    if(manifest.audio){audio=join(staging,'audio.data');await writeParts(audio,[manifest.audio.init,...manifest.audio.segments],{fetcher,signal,onProgress,rateLimitBytesPerSecond});}
    }else throw Error('Unsupported media format');
    await ffmpegRemux(audio?[video,audio]:[video],output,{signal,ffmpeg});
   }else if(/\.(?:mp4|m4v)$/i.test(kind)){
-   await writeParts(video,[sourceUrl],{fetcher,signal,onProgress});
+   await writeParts(video,[sourceUrl],{fetcher,signal,onProgress,rateLimitBytesPerSecond});
    // Native MP4 is copied without re-encoding.
    output=video;
   }else throw Error('Only supported HLS, DASH, or direct MP4 URLs are accepted');

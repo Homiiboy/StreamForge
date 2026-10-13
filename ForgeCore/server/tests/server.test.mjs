@@ -27,9 +27,9 @@ async function harness(fn,options={}){
  }
  try{await fn({app,root,request,close:()=>app.close()});}finally{await app.close();await rm(root,{recursive:true,force:true});}
 }
-test('v0.1.9 setup, auth, CRUD, jobs, exports and secure API',async()=>harness(async({app,request,root})=>{
- assert.equal(APP_VERSION,'0.1.9');
- assert.equal((await request('/api/health')).data.version,'0.1.9');
+test('v0.2.9 setup, auth, CRUD, jobs, exports and secure API',async()=>harness(async({app,request,root})=>{
+ assert.equal(APP_VERSION,'0.2.9');
+ assert.equal((await request('/api/health')).data.version,'0.2.9');
  assert.equal((await request('/api/status')).data.capabilities.downloads,true);
  assert.equal((await request('/api/media')).status,401);
  assert.equal((await request('/api/setup','POST',{password:'short'})).status,400);
@@ -81,7 +81,7 @@ test('persisted media and queued jobs survive restart',async()=>{
   let db=openDatabase(dbPath);const q=new JobQueue(db,{mediaRoot:dir});
   const item=q.enqueue('library_scan');assert.equal(item.state,'queued');db.close();
   db=openDatabase(dbPath);assert.equal(db.prepare('SELECT state FROM jobs WHERE id=?').get(item.id).state,'queued');
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version,4);db.close();
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version,5);db.close();
  }finally{await rm(dir,{recursive:true,force:true});}
 });
 
@@ -163,9 +163,50 @@ test('0.0.9 database migrates in-place to 0.1.9 without losing existing media',a
   db.exec('DROP TABLE transfer_jobs; DROP TABLE source_items; DROP TABLE sources; PRAGMA user_version=3');
   db.close();
   db=openDatabase(file);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version,4);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version,5);
   assert.equal(db.prepare('SELECT title FROM media WHERE id=?').get(id).title,'Interstellar');
   assert.equal(db.prepare("SELECT name FROM sqlite_master WHERE name='transfer_jobs'").get().name,'transfer_jobs');
   db.close();
  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('Phase 3 API: schedule, ranking, planner, notifications and VTT subtitle',async()=>{
+ const subtitleFetch=async url=>({url,body:Buffer.from('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHallo\n')});
+ const sourceFetch=async url=>({url,body:Buffer.from('<a href="/Slugterra-S02E08.m3u8" title="Slugterra S02E08">Folge</a>')});
+ await harness(async({request,root,app})=>{
+  assert.equal((await request('/api/notifications')).status,401);
+  await request('/api/setup','POST',{password:'phase three test passphrase'});
+  await request('/api/auth/login','POST',{password:'phase three test passphrase'});
+  const result=await request('/api/automation/schedule','PUT',{enabled:true,startHour:8,endHour:19,days:[1,2,3,4,5],bandwidthKbps:512});
+  assert.equal(result.status,200);
+  assert.equal((await request('/api/automation/schedule')).data.schedule.bandwidthKbps,512);
+  assert.equal((await request('/api/automation/schedule','PUT',{enabled:true,startHour:22,endHour:4})).status,400);
+  const series=(await request('/api/media','POST',{kind:'series',title:'Slugterra'})).data.item;
+  const source=(await request('/api/media/'+series.id+'/sources','POST',{url:'https://example.org/slugterra.html'})).data.item;
+  await request('/api/sources/'+source.id+'/analyze','POST',{});
+  await request('/api/sources/'+source.id+'/import-episodes','POST',{});
+  const ranking=await request('/api/media/'+series.id+'/source-ranking');
+  assert.equal(ranking.status,200);assert.equal(ranking.data.items.length,1);
+  const plan=await request('/api/media/'+series.id+'/download-plan?sourceId='+source.id);
+  assert.equal(plan.data.missing,1);
+  const queued=await request('/api/transfers/batch','POST',{mediaId:series.id,sourceId:source.id});
+  assert.equal(queued.data.queued,1);
+  assert.equal((await request('/api/diagnostics')).data.transferCounts.queued,1);
+  const backup=(await request('/api/backup/export')).data;
+  assert.ok(backup.config.find(x=>x.key==='transfer_schedule'));
+  assert.equal((await request('/api/backup/import','POST',{...backup,confirm:'REPLACE'})).status,200);
+  assert.equal((await request('/api/automation/schedule')).data.schedule.bandwidthKbps,512);
+  const movie=(await request('/api/media','POST',{kind:'movie',title:'Interstellar',year:2014})).data.item;
+  const fileDir=join(root,'Movies','Interstellar (2014)');await mkdir(fileDir,{recursive:true});
+  await writeFile(join(fileDir,'Interstellar (2014).mp4'),Buffer.alloc(2048,9));
+  const subtitle=await request('/api/subtitles','POST',{mediaId:movie.id,url:'https://example.org/de.vtt',language:'de'});
+  assert.equal(subtitle.status,201);
+  assert.match(subtitle.data.result.path,/Interstellar.*de\.srt/);
+  assert.equal((await request('/api/subtitles','POST',{mediaId:movie.id,url:'https://example.org/de.vtt',language:'de'})).status,400);
+  const notices=await request('/api/notifications');
+  assert.equal(notices.status,200);assert.equal(notices.data.items.length,1);
+  const noticeId=notices.data.items[0].id;
+  assert.equal((await request('/api/notifications/'+noticeId+'/read','POST',{})).data.ok,true);
+  assert.equal((await request('/api/diagnostics')).data.unreadNotifications,0);
+ },{subtitleFetch,sourceFetch});
 });

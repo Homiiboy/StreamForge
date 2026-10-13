@@ -1,5 +1,22 @@
 # ForgeCore – Changelog
 
+## v0.2.9 – Phase-3-Beta-Vorschau
+
+Die Entwicklungsmeilensteine v0.2.0–v0.2.9 sind im gemeinsamen v0.2.9-Stand gebündelt. Es handelt sich **nicht** um zehn einzelne Releases oder um eine auf ZimaOS abgenommene Produktionsversion.
+
+- **v0.2.0:** Film-/Serienassistent mit Titel- und Quelleneingabe sowie Planungsübersicht.
+- **v0.2.1:** Heuristische technische Quellenbewertung nach Adaptertyp und Episodenabdeckung. Keine Qualitätsermittlung.
+- **v0.2.2:** Download-Zeitfenster, Wochentage und optionale Bandbreitenbegrenzung je Transfer.
+- **v0.2.3:** Unterstützter externer WebVTT-zu-SRT-Export mit Sprachcode für vorhandene Medien. Keine automatische Untertitel- oder Audiospurwahl.
+- **v0.2.4:** Persistente Download-/Untertitelbenachrichtigungen, Lesestatus und Diagnose.
+- **v0.2.5:** `install.sh` als Docker-/ZimaOS-Installationshilfe, Vorabprüfung des Medienpfades. Kein natives ZimaOS-App-Store-Paket.
+- **v0.2.6:** Ressourcenbewusste streamingbasierte Download-Drosselung ohne vollständiges Laden großer Dateien in RAM.
+- **v0.2.7:** Sicherheitsprüfung von Untertitelpfaden und URL-Validierung; Dokumentation von Plattformgrenzen.
+- **v0.2.8:** Serverseitige Episodenplan-Vorschau und kompaktere Übersicht im Assistenten; für große Bibliotheken weiterhin Praxistests nötig.
+- **v0.2.9:** SQLite-Migration, Testabdeckung, Docker-Release-Build und Beta-Dokumentation.
+
+**Offen:** automatische Webseiten-Intervalle, volle Audio-Track-Auswahl, native ZimaOS-App-Store-Bereitstellung, grafischer Rollback und echte SMB-/Langzeit-/Lasttests. Diese Punkte dürfen erst nach separater Implementierung und Praxistests als abgeschlossen gelten.
+
 Die Phase-2-Meilensteine v0.1.0–v0.1.9 sind im gemeinsamen **v0.1.9 Alpha-Stand** umgesetzt, nicht einzeln veröffentlicht. Reale ZimaOS-/SMB-Tests und unterschiedliche Quellseiten sind noch ausstehend.
 
 ## v0.1.9 – Phase-2-Alpha-Härtung
