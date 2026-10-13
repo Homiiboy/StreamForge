@@ -395,14 +395,14 @@ function parseHls(text, baseUrl = "") {
   return { variants: variants.length, variantOptions:variants, width: best.width || 0, height: best.height || 0, bandwidth: best.bandwidth || 0, codecs: best.codecs || "", encrypted, audioTracks:relevantAudio, allAudioTracks:audioTracks, subtitleTracks, playlistType: hlsPlaylistType(text) };
 }
 function parseDash(text) {
-  // Lightweight display-only parser: the offscreen DOM parser remains authoritative.
+  // Fast metadata preview. The DOM-backed parser in offscreen.js validates actual muxing.
   const videoOptions=[],audioOptions=[];
-  const adaptations=[...String(text).matchAll(/<AdaptationSet\\b([^>]*)>([\\s\\S]*?)<\\/AdaptationSet>/gi)];
-  const get=(attrs,name)=>(String(attrs).match(new RegExp('(?:^|\\\\s)'+name+'=["\\\']([^"\\\']+)["\\\']','i'))||[])[1]||'';
+  const adaptations=[...String(text).matchAll(/<AdaptationSet\b([^>]*)>([\s\S]*?)<\/AdaptationSet>/gi)];
+  const get=(attrs,name)=>(String(attrs).match(new RegExp('(?:^|\\s)'+name+'="([^"]+)"','i'))||[])[1]||'';
   for(const [,attrs,body] of adaptations) {
     const kind=get(attrs,'contentType')||get(attrs,'mimeType').split('/')[0];
     const language=get(attrs,'lang');
-    for(const [,rep] of body.matchAll(/<Representation\\b([^>]*?)(?:\\/?>)/gi)) {
+    for(const [,rep] of body.matchAll(/<Representation\b([^>]*?)\/?>/gi)) {
       const option={id:get(rep,'id'),height:Number(get(rep,'height')||0),width:Number(get(rep,'width')||0),
         bandwidth:Number(get(rep,'bandwidth')||0),codecs:get(rep,'codecs')||get(attrs,'codecs'),language};
       if(kind==='video'||option.height)videoOptions.push(option);
