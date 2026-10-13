@@ -314,7 +314,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
   }catch(err){response(res,Number(err?.status)||500,{error:Number(err?.status)?err.message:'Internal server error'});}
  };
  const server=http.createServer((req,res)=>{handler(req,res).catch(()=>{if(!res.headersSent)response(res,500,{error:'Internal server error'});else res.destroy();});});
- return {db,queue,transfers,server,close:async()=>{queue.stop();transfers.stop();await new Promise(resolve=>server.listening?server.close(resolve):resolve());db.close();}};
+ return {db,queue,transfers,server,close:async()=>{queue.stop();await transfers.stop();await new Promise(resolve=>server.listening?server.close(resolve):resolve());db.close();}};
 }
 export function createServer(){return createApp().server;}
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
