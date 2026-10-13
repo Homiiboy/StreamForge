@@ -92,7 +92,7 @@ Geschützte APIs benötigen einen Sessioncookie. Schreibaufrufe zusätzlich `X-F
 - Nur explizit vom Benutzer eingetragene, berechtigt zugängliche Quellen. Keine DRM-/Zugangsbeschränkungsumgehung, kein automatisches Account-Login.
 - Downloads verwenden öffentliche HTTP(S)-Ziele ohne mitgesendete Browser-Cookies. Schutz gegen private IPs, Redirects und gefährliche Port-Adressen.
 - Jellyfin-Adresse bleibt zunächst eine gespeicherte Konfiguration; es erfolgt **kein** automatischer Jellyfin-API-Refresh. Die Ablage neuer Dateien und lokaler Bibliotheks-Scan sind vorhanden.
-- DASH unterstützt nur die implementierte SegmentList-Teilmenge. Eine separate HLS-Audio-Playlist führt zu einer verständlichen Fehlermeldung.
+- DASH unterstützt explizite SegmentList sowie begrenzte SegmentTemplate-Profile mit Nummern- oder Timeline-Fragmenten. Eine separate HLS-Audio-Playlist führt zu einer verständlichen Fehlermeldung.
 - Eine ZimaOS-/SMB-Dateifreigabe muss für den ForgeCore-Docker-Benutzer schreibbar sein. Reale Heimnetz-Abnahme steht aus.
 - SQLite und temporäre Medienfiles liegen auf dem persistenten `forgecore-data`-Volume. Ausreichend freien Speicher einplanen.
 - Internetzugriff auf die App ist nicht vorgesehen; vor bewusster LAN-Freigabe sichere HTTPS-/Login-Konfiguration einrichten.
