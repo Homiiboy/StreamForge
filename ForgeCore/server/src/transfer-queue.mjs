@@ -49,7 +49,8 @@ export class TransferQueue {
    if(preview.exists)throw Error('Jellyfin file already exists: '+preview.files.join(','));
    this.db.prepare("UPDATE transfer_jobs SET state='running',attempts=attempts+1,updated_at=? WHERE id=?").run(utc(),item.id);
    event(this.db,item.id,'running','Transfer started (attempt '+(item.attempts+1)+')');
-   const result=await this.download({jobId:item.id,sourceUrl:item.url,media,episode,root:this.root,rateLimitBytesPerSecond:loadSchedule(this.db).bandwidthKbps*1024,signal:controller.signal,onProgress:({segments,total,bytes})=>{
+   const preferred=one(this.db,"SELECT value FROM config WHERE key='preferred_language'")?.value||'de';
+   const result=await this.download({jobId:item.id,language:preferred,sourceUrl:item.url,media,episode,root:this.root,rateLimitBytesPerSecond:loadSchedule(this.db).bandwidthKbps*1024,signal:controller.signal,onProgress:({segments,total,bytes})=>{
     const pct=Math.max(0,Math.min(99,Math.floor(segments/Math.max(1,total)*95)));
     this.db.prepare("UPDATE transfer_jobs SET progress=?,downloaded_bytes=?,updated_at=? WHERE id=? AND state='running'").run(pct,bytes,utc(),item.id);
    }});
