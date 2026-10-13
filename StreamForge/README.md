@@ -1,4 +1,4 @@
-# StreamForge Browser Connector 1.7.4
+# StreamForge Browser Connector 1.7.5
 
 ## Neu in 1.7.3: Download-Center
 

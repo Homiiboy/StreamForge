@@ -44,3 +44,5 @@
 .historyHeading{margin:17px 0 8px;font-size:13px;color:#dfe8f5}
 button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #ffae54;outline-offset:2px}
 @media(prefers-reduced-motion:reduce){.centerProgress div,.progressFill{transition:none}}
+
+.subtitleSrt[hidden]{display:none}.subtitleRow .subtitleSrt{font-size:10px;padding:6px 7px;white-space:nowrap}

@@ -191,10 +191,17 @@ function render(){
       subtitleSelect.value=(remembered&&tracks.some(t=>t.uri===remembered))?remembered:tracks.find(t=>t.isDefault)?.uri||tracks[0]?.uri||'';
       if(subtitleSelect.value)subtitleSelections.set(item.id,subtitleSelect.value);
       node.querySelector('.subtitleDownload').hidden=!/\.vtt(?:$|[?#])/i.test(subtitleSelect.value||'');
+      node.querySelector('.subtitleSrt').hidden=!/\.(?:m3u8|vtt)(?:$|[?#])/i.test(subtitleSelect.value||'');
     };
     refreshSubtitles();
     qualitySelect.addEventListener('change',refreshSubtitles);
     subtitleSelect.addEventListener('change',()=>subtitleSelections.set(item.id,subtitleSelect.value));
+    node.querySelector('.subtitleSrt').addEventListener('click',async e=>{
+      const checked=validateNaming(readNaming());
+      if(!checked.ok){alert('Bitte zuerst die Dateibenennung vervollständigen.');return;}
+      const r=await chrome.runtime.sendMessage({type:'sf_subtitle_srt',url:subtitleSelect.value,filename:buildMediaBasename(checked.value)});
+      if(!r?.ok)alert(r?.error||'SRT-Export fehlgeschlagen');
+    });
     node.querySelector('.subtitleDownload').addEventListener('click',async e=>{
       const url=subtitleSelect.value;
       if(!/\.vtt(?:$|[?#])/i.test(url))return;
