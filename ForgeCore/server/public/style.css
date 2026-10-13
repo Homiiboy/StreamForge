@@ -12,3 +12,5 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 #operationsErrors p{overflow-wrap:anywhere}
 @media(max-width:640px){nav{flex-wrap:wrap}.tab{flex:1 1 auto}.opsGrid{grid-template-columns:1fr}.panel{padding:14px}.top{align-items:start}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+.brand-icon{width:48px;height:48px;border-radius:12px;object-fit:contain;flex-shrink:0}
