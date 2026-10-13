@@ -375,11 +375,11 @@ function parseAttrs(line) {
 }
 function fmtMbps(bps) { return bps ? `${(bps / 1_000_000).toFixed(bps >= 10_000_000 ? 0 : 1)} Mbps` : ""; }
 function parseHls(text, baseUrl = "") {
-  const lines = text.split(/\r?\n/).map(x => x.trim()).filter(Boolean); const variants = []; const audioTracks=[];
+  const lines = text.split(/\r?\n/).map(x => x.trim()).filter(Boolean); const variants = []; const audioTracks=[]; const subtitleTracks=[];
   const absolute=(raw)=>{try{return new URL(String(raw||'').trim(),baseUrl).href}catch{return ''}};
   for (const line of lines) if (line.startsWith("#EXT-X-MEDIA:")) {
-    const a=parseAttrs(line); if(String(a.TYPE||'').toUpperCase()!=='AUDIO'||!a['GROUP-ID']) continue;
-    audioTracks.push({
+    const a=parseAttrs(line); const type=String(a.TYPE||'').toUpperCase(); if(!['AUDIO','SUBTITLES'].includes(type)||!a['GROUP-ID']) continue;
+    (type==='SUBTITLES'?subtitleTracks:audioTracks).push({
       key:[a['GROUP-ID']||'',a.LANGUAGE||'',a.NAME||'Audio'].join('|'), groupId:a['GROUP-ID']||'', language:a.LANGUAGE||'', name:a.NAME||'Audio', channels:a.CHANNELS||'', isDefault:String(a.DEFAULT||'').toUpperCase()==='YES', isAutoSelect:String(a.AUTOSELECT||'').toUpperCase()==='YES', uri:absolute(a.URI)
     });
   }
@@ -387,22 +387,35 @@ function parseHls(text, baseUrl = "") {
     const a = parseAttrs(lines[i]); const res = (a.RESOLUTION || "").match(/(\d+)x(\d+)/i); const bandwidth = Number(a["AVERAGE-BANDWIDTH"] || a.BANDWIDTH || 0);
     let uri=''; for(let j=i+1;j<lines.length;j++){if(!lines[j]||lines[j].startsWith('#'))continue;uri=absolute(lines[j]);break;}
     if(!uri)continue;
-    variants.push({ key:uri, uri, width: Number(res?.[1] || 0), height: Number(res?.[2] || 0), bandwidth, codecs: a.CODECS || "", frameRate:Number(a['FRAME-RATE']||0), audioGroup:a.AUDIO||"" });
+    variants.push({ key:uri, uri, width: Number(res?.[1] || 0), height: Number(res?.[2] || 0), bandwidth, codecs: a.CODECS || "", frameRate:Number(a['FRAME-RATE']||0), audioGroup:a.AUDIO||"",subtitleGroup:a.SUBTITLES||"" });
   }
   const encrypted = lines.some(l => l.startsWith("#EXT-X-KEY:") && !/METHOD=NONE/i.test(l));
   variants.sort((a,b) => (b.height - a.height) || (b.bandwidth - a.bandwidth)); const best = variants[0] || {};
   const relevantAudio=best.audioGroup?audioTracks.filter(x=>x.groupId===best.audioGroup):audioTracks;
-  return { variants: variants.length, variantOptions:variants, width: best.width || 0, height: best.height || 0, bandwidth: best.bandwidth || 0, codecs: best.codecs || "", encrypted, audioTracks:relevantAudio, allAudioTracks:audioTracks, playlistType: hlsPlaylistType(text) };
+  return { variants: variants.length, variantOptions:variants, width: best.width || 0, height: best.height || 0, bandwidth: best.bandwidth || 0, codecs: best.codecs || "", encrypted, audioTracks:relevantAudio, allAudioTracks:audioTracks, subtitleTracks, playlistType: hlsPlaylistType(text) };
 }
 function parseDash(text) {
-  const reps = []; const re = /<Representation\b([^>]*)>/gi; let m;
-  while ((m = re.exec(text))) {
-    const s = m[1]; const val = name => (s.match(new RegExp(`${name}=["']([^"']+)["']`, "i")) || [])[1] || "";
-    reps.push({ width: Number(val("width") || 0), height: Number(val("height") || 0), bandwidth: Number(val("bandwidth") || 0), codecs: val("codecs") });
+  // Fast metadata preview. The DOM-backed parser in offscreen.js validates actual muxing.
+  const videoOptions=[],audioOptions=[];
+  const adaptations=[...String(text).matchAll(/<AdaptationSet\b([^>]*)>([\s\S]*?)<\/AdaptationSet>/gi)];
+  const get=(attrs,name)=>(String(attrs).match(new RegExp('(?:^|\\s)'+name+'="([^"]+)"','i'))||[])[1]||'';
+  for(const [,attrs,body] of adaptations) {
+    const kind=get(attrs,'contentType')||get(attrs,'mimeType').split('/')[0];
+    const language=get(attrs,'lang');
+    for(const [,rep] of body.matchAll(/<Representation\b([^>]*?)\/?>/gi)) {
+      const option={id:get(rep,'id'),height:Number(get(rep,'height')||0),width:Number(get(rep,'width')||0),
+        bandwidth:Number(get(rep,'bandwidth')||0),codecs:get(rep,'codecs')||get(attrs,'codecs'),language};
+      if(kind==='video'||option.height)videoOptions.push(option);
+      else if(kind==='audio')audioOptions.push(option);
+    }
   }
-  reps.sort((a,b) => (b.height - a.height) || (b.bandwidth - a.bandwidth)); const best = reps[0] || {};
-  const drm = /ContentProtection/i.test(text) && /(widevine|playready|fairplay|cenc:default_KID)/i.test(text);
-  return { variants: reps.length, width: best.width || 0, height: best.height || 0, bandwidth: best.bandwidth || 0, codecs: best.codecs || "", encrypted: drm };
+  videoOptions.sort((a,b)=>(b.height-a.height)||(b.bandwidth-a.bandwidth));
+  audioOptions.sort((a,b)=>b.bandwidth-a.bandwidth);
+  const best=videoOptions[0]||{};
+  const drm=/ContentProtection/i.test(text)&&/(widevine|playready|fairplay|cenc:default_KID)/i.test(text);
+  return {variants:videoOptions.length,variantOptions:videoOptions,
+    audioTracks:audioOptions.map(a=>({...a,key:a.id,name:a.language||a.id})),
+    width:best.width||0,height:best.height||0,bandwidth:best.bandwidth||0,codecs:best.codecs||'',encrypted:drm};
 }
 async function probeManifestText(url, c, { mode = 'quick', label = 'Manifest' } = {}) {
   const attempts = mode === 'download' ? ROBUST_PROBE_ATTEMPTS : QUICK_PROBE_ATTEMPTS;
@@ -637,6 +650,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })().catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
     return true;
   }
+  if (message?.type === 'sf_subtitle_download' && message.url && message.candidate) {
+    (async()=>{
+      const url=new URL(String(message.url));
+      if(!['http:','https:'].includes(url.protocol) || !/\.vtt$/i.test(url.pathname))
+        throw new Error('Nur direkte WebVTT-Dateien können separat gespeichert werden.');
+      // Export subtitles separately; do not pass them through the video container validator.
+      const base=safeFilename(String(message.filename||'StreamForge').replace(/\.vtt$/i,''));
+      const id=await chrome.downloads.download({url:url.href,filename:`${base}.vtt`,saveAs:true});
+      if(!Number.isInteger(id) || id<0)throw new Error('Browser hat keinen Download gestartet.');
+      sendResponse({ok:true,downloadId:id});
+    })().catch(err=>sendResponse({ok:false,error:String(err?.message||err)}));
+    return true;
+  }
   if (message?.type === "sf_download" && message.candidate?.url) {
     const c = message.candidate;
     const profile = ['gentle','balanced','fast'].includes(message.performanceProfile) ? message.performanceProfile : 'balanced';
@@ -680,7 +706,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         await setDownloadStatus(message.tabId, c.id, { reset: true, state: "preparing", phase: "preparing", progress: 0, downloadProgress: 0, muxProgress: 0, speedBps: 0, etaSeconds: 0, etaPending: true, segmentDone: 0, segmentTotal: 0, muxSegmentDone: 0, muxSegmentTotal: 0, retries: 0, concurrency: 0, activeRequests: 0, queuedRequests: 0, bufferPairs: 0, bufferCapacity: 0, bottleneck: "", downloadedBytes: 0, outputBytes: 0, message: probeWarning ? `Analysewarnung: ${probeWarning} – Download versucht es erneut …` : "DASH wird vorbereitet …" });
         const accepted = await chrome.runtime.sendMessage({
           type: "sf_dash_start", target: "offscreen",
-          job: { jobId, tabId: message.tabId, candidateId: c.id, url: c.url, referer: c.referer || "", origin: c.origin || "", requestProfile: c.requestProfile || {}, frameId: Number.isInteger(c.frameId) ? c.frameId : -1, pageUrl: c.pageUrl || "", title: c.title || "StreamForge-Download", outputBaseName, naming:namingCheck.value, performanceProfile:profile, height: Number(probe?.height || 0), selectedAudio: String(c.selectedAudio || "") }
+          job: { jobId, tabId: message.tabId, candidateId: c.id, url: c.url, referer: c.referer || "", origin: c.origin || "", requestProfile: c.requestProfile || {}, frameId: Number.isInteger(c.frameId) ? c.frameId : -1, pageUrl: c.pageUrl || "", title: c.title || "StreamForge-Download", outputBaseName, naming:namingCheck.value, performanceProfile:profile, height: Number(probe?.height || 0), selectedVariant: String(c.selectedVariant || ""), selectedAudio: String(c.selectedAudio || "") }
         });
         if (!accepted?.ok) throw new Error(accepted?.error || 'Download wurde nicht in die Warteschlange aufgenommen.');
         sendResponse({ ok: true, mode: "browser-dash", jobId, queued: Boolean(accepted.queued), position: accepted.position });

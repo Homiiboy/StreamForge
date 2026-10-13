@@ -1,6 +1,15 @@
 # StreamForge Browser Connector – Changelog
 
-## 1.7.1 (in Entwicklung)
+## 1.7.2 (Medienauswahl)
+
+- HLS-Master-Playlists: Untertitelgruppen (SUBTITLES) mit Sprache, Name, Default und URL erkennen.
+- Auswahl verfügbarer Untertitel im Popup und Kopieren der Spur-URL. Direkte `.vtt`-WebVTT-Spuren können mit Jellyfin-Dateinamen separat gespeichert werden; eine HLS-Untertitelplaylist wird **nicht** als fertige VTT-Datei ausgegeben.
+- DASH: auswählbare Video- und Audio-Representations nach ID inklusive Audio-Sprachanzeige.
+- Die gewählten DASH-Representations werden beim eigentlichen MP4-Muxing verwendet.
+- Bestehende Jellyfin-konforme Film-/Serienbenennung bleibt erhalten.
+- **Nicht enthalten:** DRM-Umgehung, automatisches Untertitel-Remuxing oder Konvertieren segmentierter HLS-Untertitel in SRT.
+
+## 1.7.1 (veröffentlicht)
 
 - Gespeicherte HLS-/DASH-Aufträge werden beim Wiederherstellen dedupliziert.
 - Ungültige/stale Einträge werden aus dem persistenten Warteschlangen-Snapshot entfernt.

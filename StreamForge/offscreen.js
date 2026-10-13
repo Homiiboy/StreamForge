@@ -557,7 +557,7 @@ async function downloadHls(job){
 
 function dashTrackParts(track){ const parts=[];if(track.init?.url)parts.push(track.init);parts.push(...(track.segments||[]));return parts; }
 async function downloadDash(job){
-  await sendProgress(job,'preparing',0,'DASH-MPD wird analysiert …'); const text=await getText(job.url,job,{label:'DASH-Manifest'}); const dash=parseDashManifest(text,job.url);
+  await sendProgress(job,'preparing',0,'DASH-MPD wird analysiert …'); const text=await getText(job.url,job,{label:'DASH-Manifest'}); const dash=parseDashManifest(text,job.url,{videoId:job.selectedVariant,audioId:job.selectedAudio});
   if(/webm/i.test(dash.video.mimeType||'')||/webm/i.test(dash.audio.mimeType||''))throw new Error('DASH-WebM-Muxing ist derzeit noch nicht unterstützt; fMP4/MP4-DASH wird unterstützt.');
   const vp=dashTrackParts(dash.video),ap=dashTrackParts(dash.audio); if(!vp.length||!ap.length)throw new Error('DASH-Segmente konnten nicht aufgelöst werden.');
   const vn=`streamforge-${job.jobId}-dash-video.mp4`,an=`streamforge-${job.jobId}-dash-audio.mp4`,out=`streamforge-${job.jobId}-dash-muxed.mp4`;

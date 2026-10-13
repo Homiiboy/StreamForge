@@ -15,12 +15,15 @@ export function parseMasterPlaylist(text, baseUrl) {
   const lines = String(text || "").split(/\r?\n/).map(s => s.trim());
   const variants = [];
   const audioGroups = new Map();
+  const subtitleGroups = new Map();
 
   for (const line of lines) {
     if (!line.startsWith("#EXT-X-MEDIA:")) continue;
     const a = parseAttributeList(line);
-    if (String(a.TYPE || "").toUpperCase() !== "AUDIO" || !a["GROUP-ID"]) continue;
-    const arr = audioGroups.get(a["GROUP-ID"]) || [];
+    const kind=String(a.TYPE || "").toUpperCase();
+    if (!["AUDIO","SUBTITLES"].includes(kind) || !a["GROUP-ID"]) continue;
+    const target=kind==="SUBTITLES"?subtitleGroups:audioGroups;
+    const arr = target.get(a["GROUP-ID"]) || [];
     arr.push({
       groupId: a["GROUP-ID"],
       name: a.NAME || "Audio",
@@ -30,7 +33,7 @@ export function parseMasterPlaylist(text, baseUrl) {
       channels: a.CHANNELS || "",
       uri: absoluteUrl(a.URI, baseUrl)
     });
-    audioGroups.set(a["GROUP-ID"], arr);
+    target.set(a["GROUP-ID"], arr);
   }
 
   for (let i = 0; i < lines.length; i++) {
@@ -53,12 +56,13 @@ export function parseMasterPlaylist(text, baseUrl) {
       codecs: a.CODECS || "",
       frameRate: Number(a["FRAME-RATE"] || 0),
       audioGroup,
+      subtitleGroup: a.SUBTITLES || "",
       separateAudio: Boolean(audioGroup && (audioGroups.get(audioGroup) || []).some(x => x.uri))
     });
   }
 
   variants.sort((a, b) => (b.height - a.height) || (b.bandwidth - a.bandwidth));
-  return { variants, audioGroups };
+  return { variants, audioGroups, subtitleGroups };
 }
 
 function parseByteRange(raw, previousEnd = 0) {
