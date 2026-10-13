@@ -1,5 +1,18 @@
 # StreamForge Browser Connector – Changelog
 
+## 1.8.0 – Automatische Jellyfin-Ordnerverwaltung
+
+- Filme: Ordner `Movies/Titel (Jahr)` erzeugen oder vorhandenen Ordner wiederverwenden.
+- Serien: `Shows/Serienname/Season NN` anlegen und Episoden darin ablegen.
+- Einstellbarer Speicher-Modus: bisheriger Speicherdialog, automatisch innerhalb Downloads oder ein vom Benutzer gewählter beschreibbarer Medienordner.
+- Auswahl eines vorhandenen Serien- oder Staffelordners; nur die noch fehlenden Unterordner werden erstellt.
+- Finale HLS-/DASH-Datei wird bei vorhandener Schreibberechtigung stückweise und speicherschonend aus der validierten temporären Datei in den ausgewählten Ordner geschrieben.
+- Bereits vorhandene Dateien werden beim direkten Ordnerexport nicht überschrieben; Chrome-Downloads nutzen eine eindeutige Namensvariante.
+- Bei Berechtigungs-/Schreibfehlern bleibt die fertige OPFS-Mediendatei erhalten und ein regulärer Speicherdialog wird geöffnet.
+- Die Auswahl eines vorhandenen Medienordners wird als File-System-Handle im lokalen IndexedDB der Erweiterung gespeichert.
+- Direkte Mediendateien nutzen im Modus „Ausgewählter Ordner“ weiterhin den Browser-Speicherdialog.
+- **Einschränkungen:** Netzlaufwerk muss vom Browser aus les-/beschreibbar sein; kein erzwungener SMB-Zugriff. Reale ZimaOS- und Browser-Abnahme steht aus.
+
 ## 1.7.9 – Warteschlangen-Priorisierung und Abschluss der 1.7-Reihe
 
 - Im Download-Center können wartende HLS-/DASH-Aufträge mit ↑ Höher und ↓ Tiefer priorisiert werden.

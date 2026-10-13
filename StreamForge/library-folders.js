@@ -1,0 +1,39 @@
+import {validateNaming,buildMediaBasename,sanitizeBaseName} from './naming.js';
+export const LIBRARY_PREF_KEY='sf_library_v180';
+export function safeFolderPart(input){
+  const value=sanitizeBaseName(input,'').replace(/^\.+|\.+$/g,'').trim();
+  if(!value||value==='.'||value==='..'||value.includes('/')||value.includes('\\')) throw Error('Ungültiger Ordnername');
+  return value;
+}
+export function libraryParts(naming, extension='.mp4', placement='library'){
+  const checked=validateNaming(naming);
+  if(!checked.ok)throw Error(checked.error);
+  const n=checked.value;
+  if(!['.mp4','.ts','.webm','.mkv','.m4v','.mov','.avi','.mp3','.m4a','.aac','.ogg','.opus','.wav','.srt','.vtt'].includes(extension))throw Error('Dateityp nicht unterstützt');
+  const basename=safeFolderPart(buildMediaBasename(n));
+  const filename=basename+extension;
+  const container=n.type==='movie'?'Movies':'Shows';
+  const folders=n.type==='movie'
+    ?[safeFolderPart(basename)]
+    :[safeFolderPart(n.title), 'Season '+String(Number(n.season)).padStart(2,'0')];
+  if(placement==='series') {
+    if(n.type!=='series')throw Error('Serienordner nur für Serien');
+    return {folders:[folders[1]],filename};
+  }
+  if(placement==='season') {
+    if(n.type!=='series')throw Error('Staffelordner nur für Serien');
+    return {folders:[],filename};
+  }
+  if(placement==='category')return {folders,filename};
+  return {folders:[container,...folders],filename};
+}
+export function downloadsRelativePath(naming,extension='.mp4'){
+  const {folders,filename}=libraryParts(naming,extension,'library');
+  return [...folders,filename].join('/');
+}
+export function normalizeLibraryOptions(opts){
+  const mode=['ask','downloads','picked'].includes(opts?.mode)?opts.mode:'ask';
+  const placement=['library','category','series','season'].includes(opts?.placement)?opts.placement:'library';
+  const handleKey=typeof opts?.handleKey==='string' && /^job-[a-f0-9-]{36}$/i.test(opts.handleKey) ? opts.handleKey : '';
+  return handleKey?{mode,placement,handleKey}:{mode,placement};
+}

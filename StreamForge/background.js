@@ -1,3 +1,5 @@
+import {downloadsRelativePath,normalizeLibraryOptions} from './library-folders.js';
+import {extensionForMediaMime} from './export.js';
 import {subtitleSegments,mergeWebVttToSrt} from './subtitle-export.js';
 import {HistoryStore,TERMINAL_STATES,HISTORY_KEY} from './download-history.js';
 import { classifyCandidate, cleanUrl, displayName, makeCandidateKey, safeHostname, extensionFromUrl, safeFilename, hlsProbeContainsVariant } from "./media.js";
@@ -40,6 +42,8 @@ async function saveRetainedExport(meta) {
     jobId: String(meta.jobId), tabId: Number(meta.tabId), candidateId: String(meta.candidateId || ''),
     tempName: String(meta.tempName), tempNames: Array.isArray(meta.tempNames) && meta.tempNames.length ? meta.tempNames.map(String) : [String(meta.tempName)],
     filename: cleanFilename, bytes: Number(meta.bytes || 0), mime: cleanMime,
+    naming:validateNaming(meta.naming||{}).ok?validateNaming(meta.naming).value:null,
+    library:normalizeLibraryOptions(meta.library),
     createdAt: Number(meta.createdAt || Date.now()), updatedAt: Date.now()
   };
   await retainedExportStorage().set({ [exportStorageKey(clean.jobId)]: clean });
@@ -98,7 +102,13 @@ async function startFinalExport(meta, { blobUrl = '', retry = false } = {}) {
       bytes: meta.bytes, outputBytes: meta.bytes, exportBytes: meta.bytes, exportRetryAvailable: false, exportJobId: meta.jobId,
       exportFilename: meta.filename, message: `${retry ? 'Speichern wird erneut versucht' : 'Speicherort auswählen'} · ${humanBytes(meta.bytes)}`
     });
-    const id = await chrome.downloads.download({ url: prepared.blobUrl, filename: meta.filename, saveAs: true });
+    const folderName=!retry && meta.library?.mode==='downloads' && meta.naming
+      ? downloadsRelativePath(meta.naming,extensionForMediaMime(preparedMime))
+      : meta.filename;
+    const id = await chrome.downloads.download({
+      url: prepared.blobUrl, filename:folderName, saveAs:retry || meta.library?.mode!=='downloads',
+      conflictAction:'uniquify'
+    });
     if (!Number.isInteger(id) || id < 0) throw Object.assign(new Error('Chrome hat keine gültige Download-ID zurückgegeben.'), { code: 'EXPORT_DOWNLOAD_ID_MISSING' });
     const job = { jobId: meta.jobId, tabId: meta.tabId, candidateId: meta.candidateId, offscreen: true, tempNames: meta.tempNames };
     downloadJobs.set(id, job);
@@ -623,7 +633,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       // state. Otherwise a delayed 900 ms progress write could overwrite
       // `saving` with an old `downloading` state.
       await flushQueuedDownloadStatus(tabId, candidateId).catch(()=>{});
-      const meta = { jobId, tabId, candidateId, tempName: tempName || (Array.isArray(tempNames) ? tempNames[tempNames.length - 1] : ''), tempNames, filename: finalFilename, mime: finalMime, bytes: Number(bytes || 0), createdAt: Date.now() };
+      const meta = { jobId, tabId, candidateId, tempName: tempName || (Array.isArray(tempNames) ? tempNames[tempNames.length - 1] : ''), tempNames, filename: finalFilename, mime: finalMime, bytes: Number(bytes || 0), naming:message.naming, library:message.library, createdAt: Date.now() };
       const {id}=await startFinalExport(meta, { blobUrl });
       sendResponse({ ok: true, downloadId: id });
     })().catch(err => sendResponse({ ok: false, error: String(err?.message || err), code: err?.code || '' }));
@@ -733,7 +743,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const jobId = crypto.randomUUID();
         const job = { jobId, tabId: message.tabId, frameId: Number.isInteger(c.frameId) ? c.frameId : -1, pageUrl: c.pageUrl || "", referer: c.referer || "", origin: c.origin || "", requestProfile: c.requestProfile || {} };
         const bridge = await prepareRequestBridge(job, c.url);
-        const id = await chrome.downloads.download({ url: c.url, filename, saveAs: true });
+        const library=normalizeLibraryOptions(c.library);
+        let targetFilename=filename,autoFolders=false;
+        if(library.mode==='downloads' && ext){
+          try{targetFilename=downloadsRelativePath(namingCheck.value,ext);autoFolders=true;}catch{}
+        }
+        const id = await chrome.downloads.download({
+          url:c.url,filename:targetFilename,saveAs:!autoFolders,conflictAction:'uniquify'
+        });
         downloadJobs.set(id, { jobId, tabId: message.tabId, candidateId: c.id, offscreen: false });
         await chrome.storage.session.set({ [`sf_dl_${id}`]: { jobId, tabId: message.tabId, candidateId: c.id, offscreen: false } });
         if (bridge?.flags?.length) await setDownloadStatus(message.tabId, c.id, { state: "saving", progress: 100, message: `Browser-Kontext aktiv: ${bridge.flags.join(" · ")}` });
@@ -750,7 +767,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         await setDownloadStatus(message.tabId, c.id, { reset: true, state: "preparing", phase: "preparing", progress: 0, downloadProgress: 0, muxProgress: 0, speedBps: 0, etaSeconds: 0, etaPending: true, segmentDone: 0, segmentTotal: 0, muxSegmentDone: 0, muxSegmentTotal: 0, retries: 0, concurrency: 0, activeRequests: 0, queuedRequests: 0, bufferPairs: 0, bufferCapacity: 0, bottleneck: "", downloadedBytes: 0, outputBytes: 0, message: probeWarning ? `Analysewarnung: ${probeWarning} – Download versucht es erneut …` : "HLS wird vorbereitet …" });
         const accepted = await chrome.runtime.sendMessage({
           type: "sf_hls_start", target: "offscreen",
-          job: (()=>{ const selected=(probe?.variantOptions||[]).find(v=>v.uri===String(c.selectedVariant||''))||null; return { jobId, tabId: message.tabId, candidateId: c.id, url: c.url, referer: c.referer || "", origin: c.origin || "", requestProfile: c.requestProfile || {}, frameId: Number.isInteger(c.frameId) ? c.frameId : -1, pageUrl: c.pageUrl || "", title: c.title || "StreamForge-Download", outputBaseName, naming:namingCheck.value, performanceProfile:profile, height: Number(selected?.height || probe?.height || 0), selectedHeight: Number(selected?.height || 0), selectedBandwidth: Number(selected?.bandwidth || 0), selectedVariant: String(c.selectedVariant || ""), selectedAudio: String(c.selectedAudio || "") }; })()
+          job: (()=>{ const selected=(probe?.variantOptions||[]).find(v=>v.uri===String(c.selectedVariant||''))||null; return { jobId, tabId: message.tabId, candidateId: c.id, url: c.url, referer: c.referer || "", origin: c.origin || "", requestProfile: c.requestProfile || {}, frameId: Number.isInteger(c.frameId) ? c.frameId : -1, pageUrl: c.pageUrl || "", title: c.title || "StreamForge-Download", outputBaseName, naming:namingCheck.value, library:normalizeLibraryOptions(c.library), performanceProfile:profile, height: Number(selected?.height || probe?.height || 0), selectedHeight: Number(selected?.height || 0), selectedBandwidth: Number(selected?.bandwidth || 0), selectedVariant: String(c.selectedVariant || ""), selectedAudio: String(c.selectedAudio || "") }; })()
         });
         if (!accepted?.ok) throw new Error(accepted?.error || 'Download wurde nicht in die Warteschlange aufgenommen.');
         sendResponse({ ok: true, mode: "browser-hls", jobId, queued: Boolean(accepted.queued), position: accepted.position });

@@ -1,7 +1,51 @@
+import {directoryHandleStore} from './directory-handle-store.js';
+import {normalizeLibraryOptions,LIBRARY_PREF_KEY} from './library-folders.js';
 import {jellyfinRelativePath} from './jellyfin-path.js';
 import { buildMediaBasename, suggestNaming, validateNaming } from "./naming.js";
 import { RenderGate, isNamingEditor } from "./ui-refresh.js";
 import { shouldProbeNow } from "./probe-utils.js";
+const libraryStore=directoryHandleStore();
+const libraryMode=document.querySelector('#libraryMode');
+const libraryPlacement=document.querySelector('#libraryPlacement');
+const libraryPick=document.querySelector('#libraryPick');
+const libraryTarget=document.querySelector('#libraryTarget');
+let librarySelection={mode:'ask',placement:'library'};
+async function updateLibrarySettings(){
+  const data=await chrome.storage.local.get(LIBRARY_PREF_KEY);
+  librarySelection=normalizeLibraryOptions(data?.[LIBRARY_PREF_KEY]);
+  libraryMode.value=librarySelection.mode;
+  libraryPlacement.value=librarySelection.placement;
+  const selected=await libraryStore.get().catch(()=>null);
+  libraryTarget.textContent=selected?.name?`Ausgewählt: ${selected.name}`:'Kein Ordner ausgewählt';
+}
+async function saveLibrarySelection(){
+  librarySelection=normalizeLibraryOptions({mode:libraryMode.value,placement:libraryPlacement.value});
+  await chrome.storage.local.set({[LIBRARY_PREF_KEY]:librarySelection});
+}
+libraryMode.addEventListener('change',()=>saveLibrarySelection().catch(error=>alert(String(error?.message||error))));
+libraryPlacement.addEventListener('change',()=>saveLibrarySelection().catch(error=>alert(String(error?.message||error))));
+libraryPick.addEventListener('click',async()=>{
+  if(typeof showDirectoryPicker!=='function'){alert('Der Browser unterstützt keine direkte Ordnerauswahl. Bitte die Downloads-Ordnerautomatik verwenden.');return;}
+  try{
+    // User gesture is required to obtain write permission.
+    const handle=await showDirectoryPicker({mode:'readwrite',id:'streamforge-media-library'});
+    await libraryStore.put(handle);
+    libraryMode.value='picked';
+    await saveLibrarySelection();
+    libraryTarget.textContent=`Ausgewählt: ${handle.name}`;
+  }catch(error){
+    if(error?.name!=='AbortError')alert('Ordnerauswahl fehlgeschlagen: '+String(error?.message||error));
+  }
+});
+document.querySelector('#libraryForget').addEventListener('click',async()=>{
+  try {
+    await libraryStore.clear();
+    libraryMode.value='ask';
+    await saveLibrarySelection();
+    libraryTarget.textContent='Kein Ordner ausgewählt';
+  }catch(error){alert('Ordnerauswahl konnte nicht entfernt werden: '+String(error?.message||error));}
+});
+updateLibrarySettings().catch(()=>{});
 let tabId = null, items = [];
 let currentView='media';
 let historyEntries=[];
@@ -312,8 +356,26 @@ function render(){
       }
       const naming=readNaming(); const namingCheck=validateNaming(naming); if(!namingCheck.ok){alert(`Dateiname unvollständig:\n${namingCheck.error}`);return;} persistNaming(item.id,namingCheck.value);
       b.disabled=true;b.textContent=item.kind==='media'?'Speichern …':item.kind==='hls'?'HLS startet …':item.kind==='dash'?'DASH startet …':'Prüfe …';
-      const candidateForDownload={...item,naming:namingCheck.value,selectedVariant:qualitySelections.get(item.id)||'',selectedAudio:audioSelections.get(item.id)||''};
-      const r=await chrome.runtime.sendMessage({type:'sf_download',tabId,candidate:candidateForDownload,performanceProfile:selectedProfile});
+      if(librarySelection.mode==='picked' && item.kind!=='media' && !(await libraryStore.get().catch(()=>null))){
+        alert('Bitte zuerst über „Medienordner auswählen“ ein Zielverzeichnis festlegen.');b.disabled=false;b.textContent=old;return;
+      }
+      let handleKey='';
+      try{
+        if(librarySelection.mode==='picked'&&item.kind!=='media'){
+          const handle=await libraryStore.get();
+          if(!handle)throw Error('Bitte Medienordner erneut auswählen.');
+          handleKey='job-'+crypto.randomUUID();
+          await libraryStore.put(handle,handleKey);
+        }
+      }catch(error){
+        alert('Ordnerauswahl konnte nicht gespeichert werden: '+String(error?.message||error));
+        b.disabled=false;b.textContent=old;return;
+      }
+      const candidateForDownload={...item,naming:namingCheck.value,library:{...librarySelection,handleKey},selectedVariant:qualitySelections.get(item.id)||'',selectedAudio:audioSelections.get(item.id)||''};
+      let r;
+      try{r=await chrome.runtime.sendMessage({type:'sf_download',tabId,candidate:candidateForDownload,performanceProfile:selectedProfile});}
+      catch(error){r={ok:false,error:String(error?.message||error)};}
+      if(!r?.ok&&handleKey)await libraryStore.clear(handleKey).catch(()=>{});
       if(!r?.ok){ alert(`Download konnte nicht gestartet werden:\n${r?.error||'Unbekannter Fehler'}`); b.disabled=false;b.textContent=old; }
       else if(r.mode==='browser-hls'||r.mode==='browser-dash'){ b.textContent='Lädt 0%'; setTimeout(load,250); }
       else { b.textContent='Gestartet'; setTimeout(()=>{b.disabled=false;b.textContent=old},1600); }

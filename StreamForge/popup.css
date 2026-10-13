@@ -50,3 +50,10 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .jellyfinCopy{margin-top:8px;font-size:10px;padding:7px 9px;width:100%;text-align:center}
 
 .queueItemControls{display:flex;gap:7px;margin-top:9px}.queueItemControls button{font-size:11px;flex:1;padding:6px 8px}.queueItemControls button:focus-visible{outline:2px solid #ffae54;outline-offset:2px}
+
+/* 1.8.0 Jellyfin library destination */
+.librarySettings{display:grid;grid-template-columns:1fr;gap:6px;padding:10px 12px;border-bottom:1px solid #303944;background:#151b24}
+.librarySettings label{font-size:11px;font-weight:700;color:#bdcadb}
+.librarySettings select{width:100%;font-size:11px;padding:7px 9px}
+.librarySettings button{font-size:11px;padding:8px}
+.libraryTarget{font-size:11px;color:#8fb1d6;overflow-wrap:anywhere}

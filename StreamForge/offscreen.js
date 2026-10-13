@@ -1,3 +1,6 @@
+import {directoryHandleStore} from './directory-handle-store.js';
+import {writeIntoLibrary} from './library-writer.js';
+import {extensionForMediaMime} from './export.js';
 import {inspectMediaSample} from './media-integrity.js';
 import {bufferAwareConcurrency,performanceSignal} from './performance-engine.js';
 import {validateSegmentPayload,validateDownloadProgress} from './download-reliability.js';
@@ -19,10 +22,16 @@ const downloadQueue = new PersistentDownloadQueue({
   storage: chrome.storage.local,
   execute: async record => (record.type === 'sf_hls_start' ? downloadHls : downloadDash)(record.job),
   onQueued: async (record, position) => sendProgress(record.job, 'queued', 0, `Warteschlange · Position ${position}`),
-  onInterrupted: async record => sendProgress(record.job, 'error', 0,
-    'Browser-Neustart während der Verarbeitung. Der laufende Auftrag wurde aus Sicherheitsgründen nicht automatisch neu gestartet.',
-    { diagnostic: { code: 'QUEUE_INTERRUPTED', title: 'Download unterbrochen', text: 'Bitte den Download manuell erneut starten.' } }),
-  onError: async (record, error) => sendProgress(record.job, 'error', 0, String(error?.message || error))
+  onInterrupted: async record => {
+    if(record.job.library?.handleKey)await directoryHandleStore().clear(record.job.library.handleKey).catch(()=>{});
+    await sendProgress(record.job, 'error', 0,
+      'Browser-Neustart während der Verarbeitung. Der laufende Auftrag wurde aus Sicherheitsgründen nicht automatisch neu gestartet.',
+      { diagnostic: { code: 'QUEUE_INTERRUPTED', title: 'Download unterbrochen', text: 'Bitte den Download manuell erneut starten.' } });
+  },
+  onError: async (record, error) => {
+    if(record.job.library?.handleKey)await directoryHandleStore().clear(record.job.library.handleKey).catch(()=>{});
+    await sendProgress(record.job, 'error', 0, String(error?.message || error));
+  }
 });
 function formatBytes(bytes){const n=Number(bytes||0);if(n>=1073741824)return `${(n/1073741824).toFixed(2)} GB`;if(n>=1048576)return `${(n/1048576).toFixed(1)} MB`;if(n>=1024)return `${(n/1024).toFixed(1)} KB`;return `${n} B`;}
 function safeName(raw,fallback='StreamForge-Download'){ const text=String(raw||fallback).replace(/[<>:"/\\|?*\x00-\x1f]/g,' ').replace(/\s+/g,' ').trim(); return (text||fallback).slice(0,140); }
@@ -394,8 +403,37 @@ async function publishFile(job,tempName,filename,tempNames){
     throw e;
   }
   const metrics=metricsState(job);metrics.addOutput(prepared.bytes);
+  if(job.library?.mode==='picked'){
+    try{
+      const rootHandle=await directoryHandleStore().get(job.library?.handleKey||'destination');
+      if(!rootHandle)throw Error('Kein Zielordner ausgewählt.');
+      const entry=activeUrls.get(String(job.jobId));
+      const file=entry?.typedBlob;
+      const extension=extensionForMediaMime(prepared.mime);
+      if(!extension)throw Error('Dateiformat für direkten Ordnerexport nicht unterstützt.');
+      await sendProgress(job,'saving',99,'Jellyfin-Ordner wird angelegt bzw. wiederverwendet …');
+      const saved=await writeIntoLibrary(rootHandle,file,job.naming,extension,job.library.placement,
+        async(written,total)=>sendProgress(job,'saving',99,
+          'Im Jellyfin-Ordner speichern: '+Math.round(written/total*100)+'%'));
+      await sendProgress(job,'complete',100,'Abgeschlossen: '+saved.relativePath,{
+        bytes:saved.bytes,outputBytes:saved.bytes,phase:'complete',downloadProgress:100,muxProgress:100
+      });
+      await releaseExport(job.jobId);
+      await removeTemps(tempNames||[tempName]);
+      if(job.library?.handleKey)await directoryHandleStore().clear(job.library.handleKey).catch(()=>{});
+      return;
+    }catch(error){
+      if(job.library?.handleKey)await directoryHandleStore().clear(job.library.handleKey).catch(()=>{});
+      // Keep the validated OPFS file and fall back to Chrome's save dialog.
+      // Never silently overwrite an existing movie/episode.
+      await sendProgress(job,'saving',99,
+        'Direkter Ordnerexport nicht möglich ('+String(error?.message||error)+'). Browser-Speicherdialog wird geöffnet.',
+        {diagnostic:{code:'LIBRARY_WRITE_FALLBACK',title:'Ordnerexport nicht möglich',
+          text:String(error?.message||error),suggestion:'Wähle im Speicherdialog einen beschreibbaren Ordner.'}});
+    }
+  }
   await sendProgress(job,'ready',99,`Fertig (${prepared.mime}) · ${formatBytes(prepared.bytes)} – Speicherort wird geöffnet …`,{bytes:prepared.bytes,...metrics.snapshot({phase:'ready',downloadProgress:100,muxProgress:job._hadMux?100:0,etaSeconds:0,bottleneck:''})});
-  await chrome.runtime.sendMessage({type:'sf_blob_ready',target:'background',jobId:job.jobId,tabId:job.tabId,candidateId:job.candidateId,...prepared});
+  await chrome.runtime.sendMessage({type:'sf_blob_ready',target:'background',jobId:job.jobId,tabId:job.tabId,candidateId:job.candidateId,naming:job.naming,library:job.library?.mode==='picked'?{mode:'ask'}:job.library,...prepared});
 }
 
 async function muxTemps(job,videoName,audioName,outputName){
@@ -606,8 +644,13 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
     return true;
   }
   if(message.type==='sf_queue_cancel'){
+    const pendingRecord=downloadQueue.pending.find(x=>x.id===`${message.tabId}:${message.candidateId}`);
     downloadQueue.cancel(`${message.tabId}:${message.candidateId}`)
-      .then(ok=>sendResponse({ok}))
+      .then(async ok=>{
+        if(ok&&pendingRecord?.job?.library?.handleKey)
+          await directoryHandleStore().clear(pendingRecord.job.library.handleKey).catch(()=>{});
+        sendResponse({ok});
+      })
       .catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
     return true;
   }
