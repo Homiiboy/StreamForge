@@ -13,12 +13,14 @@ import {JobQueue} from './queue.mjs';
 import {TransferQueue} from './transfer-queue.mjs';
 import {SourceAutomation} from './source-automation.mjs';
 import {parseWebUrl} from './source-security.mjs';
-import {analyzeSource,SOURCE_ADAPTERS} from './source-adapters.mjs';
+import {analyzeSource,SOURCE_ADAPTERS,selectSourceAdapter} from './source-adapters.mjs';
+import {saveJellyfin,getJellyfinStatus,jellyfinTest,jellyfinRefresh} from './jellyfin.mjs';
+import {jellyfinInventory,reconcilePreview,applyReconciliation,recentJellyfinSync} from './jellyfin-sync.mjs';
 import {loadSchedule,setSchedule,sourceRanking,missingEpisodePlan,addNotification,listNotifications,markNotificationRead,diagnostics} from './phase3.mjs';
 import {downloadSubtitle,normalizeLanguage} from './subtitles.mjs';
 
 export const APP_NAME='ForgeCore';
-export const APP_VERSION='0.4.9';
+export const APP_VERSION='0.5.9';
 const staticDir=resolve(dirname(fileURLToPath(import.meta.url)),'../public');
 const MAX_BODY=64*1024;
 const limitText=(v,max=150)=>typeof v==='string'?v.trim().slice(0,max):'';
@@ -48,8 +50,8 @@ function response(res,status,data,headers={}){
  res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','x-frame-options':'DENY',...headers});
  res.end(JSON.stringify(data));
 }
-function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'alpha-foundation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,sourceAutomation:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
-export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,download,subtitleFetch,automationInterval=60000}={}){
+function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'alpha-foundation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,sourceAutomation:true,jellyfinApi:true,sourceAdapterSelection:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
+export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,download,subtitleFetch,jellyfinFetch,automationInterval=60000}={}){
  const db=openDatabase(dbPath);
  const queue=new JobQueue(db,{mediaRoot});
  const transfers=new TransferQueue(db,{mediaRoot,...(download?{download}:{})});
@@ -211,6 +213,30 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     if(op==='check'&&method==='POST')return response(res,200,await automation.check(id,{manual:true}));
    }
 
+
+   // Phase 6: local Jellyfin integration – all endpoints require admin login.
+   if(path==='/api/jellyfin'){
+    if(method==='GET')return response(res,200,getJellyfinStatus(db));
+    if(method==='PUT')return response(res,200,saveJellyfin(db,await readJson(req)));
+   }
+   if(path==='/api/jellyfin/test'&&method==='POST')
+    return response(res,200,await jellyfinTest(db,jellyfinFetch?{fetcher:jellyfinFetch}:{}));
+   if(path==='/api/jellyfin/refresh'&&method==='POST')
+    return response(res,200,await jellyfinRefresh(db,jellyfinFetch?{fetcher:jellyfinFetch}:{}));
+   if(path==='/api/jellyfin/sync/history'&&method==='GET')
+    return response(res,200,{items:recentJellyfinSync(db)});
+   if(path==='/api/jellyfin/sync/preview'&&method==='POST'){
+    const items=await jellyfinInventory(db,jellyfinFetch?{fetcher:jellyfinFetch}:{});
+    const preview=reconcilePreview(db,items);
+    return response(res,200,{matched:preview.matched,unmatched:preview.unmatched,availableToMark:preview.availableToMark,matches:preview.matches.slice(0,100)});
+   }
+   if(path==='/api/jellyfin/sync/apply'&&method==='POST'){
+    const body=await readJson(req);
+    if(body.confirm!=='MARK_AVAILABLE')fail('Explicit confirmation required');
+    const items=await jellyfinInventory(db,jellyfinFetch?{fetcher:jellyfinFetch}:{});
+    return response(res,200,applyReconciliation(db,reconcilePreview(db,items)));
+   }
+
    if(path==='/api/source-adapters'&&method==='GET')
     return response(res,200,{items:SOURCE_ADAPTERS});
 
@@ -238,7 +264,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     if(op==='items'&&method==='GET')
      return response(res,200,{items:rows(db,'SELECT * FROM source_items WHERE source_id=? ORDER BY season,episode,title LIMIT 500',id)});
     if(op==='analyze'&&method==='POST'){
-     const analysis=await analyzeSource(source.url,sourceFetch?{fetcher:sourceFetch}:{});
+     const analysis=await analyzeSource(source.url,{...(sourceFetch?{fetcher:sourceFetch}:{}),adapter:source.adapter_id||'auto'});
      if(analysis.items?.length){
       transaction(db,()=>{
        db.prepare('DELETE FROM source_items WHERE source_id=?').run(id);
@@ -268,8 +294,9 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     if(!op&&method==='PATCH'){
      const b=await readJson(req);
      const label=limitText(b.label===undefined?source.label:b.label,140);
+     const adapter=selectSourceAdapter(b.adapterId===undefined?source.adapter_id:b.adapterId);
      const enabled=b.enabled===undefined?source.enabled:(b.enabled?1:0);
-     db.prepare('UPDATE sources SET label=?,enabled=?,updated_at=? WHERE id=?').run(label,enabled,utc(),id);
+     db.prepare('UPDATE sources SET label=?,enabled=?,adapter_id=?,updated_at=? WHERE id=?').run(label,enabled,adapter,utc(),id);
      return response(res,200,{item:one(db,'SELECT * FROM sources WHERE id=?',id)});
     }
    }
@@ -308,7 +335,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
    }
 
    if(path==='/api/config'&&method==='GET'){
-    return response(res,200,{items:rows(db,'SELECT key,value FROM config ORDER BY key'),mediaRoot:await checkMediaRoot(mediaRoot)});
+    return response(res,200,{items:rows(db,"SELECT key,value FROM config WHERE key!='jellyfin_api_key' ORDER BY key"),mediaRoot:await checkMediaRoot(mediaRoot)});
    }
    if(path==='/api/config'&&method==='PUT'){
     const body=await readJson(req);const allowed=['jellyfin_url','library_label','preferred_language'];
@@ -356,7 +383,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
      for(const src of backup.sources||[]){
       idCheck(src.id);idCheck(src.media_id);
       const urlValue=String(src.url||'');try{parseWebUrl(urlValue);}catch{fail('Invalid source URL in backup');}
-      db.prepare('INSERT INTO sources(id,media_id,url,label,enabled,created_at,updated_at) VALUES(?,?,?,?,?,?,?)').run(src.id,src.media_id,urlValue,limitText(src.label,140),src.enabled?1:0,utc(),utc());
+      db.prepare('INSERT INTO sources(id,media_id,url,label,enabled,adapter_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').run(src.id,src.media_id,urlValue,limitText(src.label,140),src.enabled?1:0,selectSourceAdapter(src.adapter_id||'auto'),utc(),utc());
      }
      for(const item of backup.source_items||[]){
       idCheck(item.id);idCheck(item.source_id);
@@ -393,7 +420,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     return response(res,200,{items:rows(db,'SELECT id,category,description,created_at FROM transfer_events WHERE transfer_id=? ORDER BY id DESC LIMIT 150',job)});
    }
    if(path==='/api/backup/export'&&method==='GET'){
-    const data={format:'forgecore-export-v1',version:APP_VERSION,createdAt:utc(),media:rows(db,'SELECT * FROM media'),episodes:rows(db,'SELECT * FROM episodes'),config:rows(db,'SELECT * FROM config'),sources:rows(db,'SELECT * FROM sources'),source_items:rows(db,'SELECT * FROM source_items'),source_automation:rows(db,'SELECT * FROM source_automation')};
+    const data={format:'forgecore-export-v1',version:APP_VERSION,createdAt:utc(),media:rows(db,'SELECT * FROM media'),episodes:rows(db,'SELECT * FROM episodes'),config:rows(db,"SELECT * FROM config WHERE key!='jellyfin_api_key'"),sources:rows(db,'SELECT * FROM sources'),source_items:rows(db,'SELECT * FROM source_items'),source_automation:rows(db,'SELECT * FROM source_automation')};
     return response(res,200,data,{'content-disposition':'attachment; filename="forgecore-backup.json"'});
    }
    if(path.startsWith('/api/'))fail('Unknown endpoint',404);
