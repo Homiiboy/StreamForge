@@ -14,7 +14,7 @@ export function validateJellyfinConfig(input){
 export function getJellyfinStatus(db){
  const url=db.prepare("SELECT value FROM config WHERE key='jellyfin_url'").get()?.value||'';
  const key=db.prepare("SELECT value FROM config WHERE key='jellyfin_api_key'").get()?.value||'';
- return {configured:!!url&&!!key,url:url||null,apiKeyConfigured:!!key};
+ return {configured:!!url&&!!key,url:url||null,apiKeyConfigured:!!key,autoRefresh:db.prepare("SELECT value FROM config WHERE key='jellyfin_auto_refresh'").get()?.value==='1'};
 }
 export function credentials(db){
  const url=db.prepare("SELECT value FROM config WHERE key='jellyfin_url'").get()?.value||'';
@@ -25,7 +25,7 @@ export function credentials(db){
 export function saveJellyfin(db,input){
  const {url,apiKey}=validateJellyfinConfig(input);
  const query=db.prepare('INSERT INTO config(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
- query.run('jellyfin_url',url);query.run('jellyfin_api_key',apiKey);
+ query.run('jellyfin_url',url);query.run('jellyfin_api_key',apiKey);query.run('jellyfin_auto_refresh',input.autoRefresh===true?'1':'0');
  return getJellyfinStatus(db);
 }
 export async function jellyfinRequest({url,apiKey},path,{method='GET',fetcher,timeout=8000}={}){
