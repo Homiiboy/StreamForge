@@ -567,9 +567,17 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
     const fn=message.type==='sf_hls_start'?downloadHls:downloadDash;
     const position=downloadQueue.waiting+(downloadQueue.busy?1:0);
     if(position>0) sendProgress(message.job,'queued',0,`Warteschlange · Position ${position}`).catch(()=>{});
-    const queued=downloadQueue.enqueue(()=>fn(message.job));
-    queued.promise.catch(async e=>{await sendProgress(message.job,'error',0,String(e?.message||e));});
+    const key=`${message.job.tabId}:${message.job.candidateId}`;
+    const queued=downloadQueue.enqueue(()=>fn(message.job),key);
+    queued.promise.catch(async e=>{
+      if(e?.code!=='QUEUE_CANCELLED') await sendProgress(message.job,'error',0,String(e?.message||e));
+    });
     sendResponse({ok:true,queued:position>0,position});
+    return false;
+  }
+  if(message.type==='sf_queue_cancel'){
+    const key=`${message.tabId}:${message.candidateId}`;
+    sendResponse({ok:downloadQueue.cancel(key)});
     return false;
   }
   if(message.type==='sf_export_prepare'){prepareExportBlob(message.export||{}).then(x=>sendResponse({ok:true,...x})).catch(e=>sendResponse({ok:false,error:String(e?.message||e),code:e?.code||'EXPORT_PREPARE_FAILED'}));return true;}
