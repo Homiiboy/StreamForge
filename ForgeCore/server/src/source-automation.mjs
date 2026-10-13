@@ -77,7 +77,10 @@ export class SourceAutomation{
    });
    const latest=one(this.db,'SELECT enabled,auto_queue,max_per_check FROM source_automation WHERE source_id=?',id);
    const mayQueue=manual?!!latest?.auto_queue:!!latest?.enabled&&!!latest?.auto_queue;
-   if(mayQueue)for(const x of eligible.slice(0,latest?.max_per_check||p.maxPerCheck)){
+   if(mayQueue)for(const x of eligible){
+    if(queued>=(latest?.max_per_check||p.maxPerCheck))break;
+    const pending=one(this.db,"SELECT id FROM transfer_jobs WHERE episode_id=? AND state IN ('queued','running') LIMIT 1",x.episodeId);
+    if(pending){skipped++;continue}
     try{this.transfers.enqueue({mediaId:source.media_id,episodeId:x.episodeId,sourceId:id,itemId:x.itemId});queued++}catch{skipped++}
    }
    this.db.prepare('UPDATE source_check_events SET queued=? WHERE id=(SELECT MAX(id) FROM source_check_events WHERE source_id=?)').run(queued,id);
