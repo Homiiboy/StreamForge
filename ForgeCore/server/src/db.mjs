@@ -32,7 +32,11 @@ CREATE TABLE IF NOT EXISTS transfer_jobs (
  attempts INTEGER NOT NULL DEFAULT 0,result_json TEXT,error TEXT,
  created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_transfer_state ON transfer_jobs(state,created_at);
-CREATE INDEX IF NOT EXISTS idx_source_items_source ON source_items(source_id);`
+CREATE INDEX IF NOT EXISTS idx_source_items_source ON source_items(source_id);`,
+`CREATE TABLE IF NOT EXISTS notifications(id TEXT PRIMARY KEY,category TEXT NOT NULL,message TEXT NOT NULL,ref_id TEXT,created_at TEXT NOT NULL,read_at TEXT);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read_at,created_at);
+CREATE TABLE IF NOT EXISTS subtitle_jobs(id TEXT PRIMARY KEY,media_id TEXT NOT NULL REFERENCES media(id) ON DELETE CASCADE,episode_id TEXT REFERENCES episodes(id) ON DELETE SET NULL,url TEXT NOT NULL,language TEXT NOT NULL,state TEXT NOT NULL CHECK(state IN ('queued','running','complete','failed','cancelled')),result TEXT,error TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_subtitle_state ON subtitle_jobs(state,created_at);`
 ];
 export const utc=()=>new Date().toISOString();
 export function openDatabase(path=':memory:'){
@@ -48,6 +52,7 @@ export function openDatabase(path=':memory:'){
  }
  db.prepare("UPDATE jobs SET state='queued',updated_at=? WHERE state='running'").run(utc());
  db.prepare("UPDATE transfer_jobs SET state='queued',updated_at=? WHERE state='running'").run(utc());
+ db.prepare("UPDATE subtitle_jobs SET state='queued',updated_at=? WHERE state='running'").run(utc());
  return db;
 }
 export function newId(){return randomUUID();}
