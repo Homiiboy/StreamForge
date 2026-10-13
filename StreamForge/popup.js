@@ -1,3 +1,4 @@
+import {discoverSeasons} from './season-discovery.js';
 import {directoryHandleStore} from './directory-handle-store.js';
 import {normalizeLibraryOptions,LIBRARY_PREF_KEY} from './library-folders.js';
 import {jellyfinRelativePath} from './jellyfin-path.js';
@@ -292,9 +293,62 @@ function render(){
     const initialNaming={...(namingSelections.get(item.id)||item.naming||suggestNaming({mediaMeta:item.mediaMeta||{},title:item.title||''}))};
     namingSelections.set(item.id,initialNaming);
     mediaType.value=initialNaming.type==='series'?'series':'movie'; nameTitle.value=initialNaming.title||''; nameYear.value=initialNaming.year||''; nameSeason.value=initialNaming.season??''; nameEpisode.value=initialNaming.episode??'';
+    const seasonBox=node.querySelector('.seasonDiscovery');
+    const scanSeasons=node.querySelector('.seasonScan');
+    const foundSeasons=node.querySelector('.seasonFound');
+    const seasonHint=node.querySelector('.seasonHint');
+    let selectedSeasonFolder='';
     const readNaming=()=>({type:mediaType.value==='series'?'series':'movie',title:nameTitle.value.trim(),year:nameYear.value.trim(),season:nameSeason.value,episode:nameEpisode.value});
+    const updateSeasonVisibility=()=>{
+      seasonBox.hidden=mediaType.value!=='series';
+      scanSeasons.disabled=librarySelection.mode!=='picked';
+      scanSeasons.title=scanSeasons.disabled?'Bitte oben „Ausgewählten Medienordner verwenden“ einstellen.':'Vorhandene Staffelordner lesen';
+    };
+    updateSeasonVisibility();
+    scanSeasons.addEventListener('click',async()=>{
+      scanSeasons.disabled=true;
+      seasonHint.textContent='Suche vorhandene Staffelordner …';
+      try{
+        const root=await libraryStore.get();
+        if(!root)throw Error('Bitte zuerst einen Medienordner auswählen.');
+        const seasons=await discoverSeasons(root,{placement:librarySelection.placement,title:nameTitle.value.trim()});
+        foundSeasons.textContent='';
+        const placeholder=document.createElement('option');
+        placeholder.value='';placeholder.textContent='Staffel auswählen …';foundSeasons.appendChild(placeholder);
+        for(const season of seasons){
+          const opt=document.createElement('option');
+          opt.value=season.name;
+          opt.dataset.season=String(season.number);
+          opt.textContent=season.name+' (Staffel '+season.number+')';
+          foundSeasons.appendChild(opt);
+        }
+        foundSeasons.hidden=!seasons.length;
+        seasonHint.textContent=seasons.length
+          ?seasons.length+' vorhandene Staffelordner gefunden. Staffel auswählen oder Nummer selbst eingeben.'
+          :'Keine Staffelordner gefunden. Eine neue Staffelnummer kann oben eingegeben werden.';
+      }catch(error){
+        foundSeasons.hidden=true;
+        seasonHint.textContent=String(error?.message||error);
+      }finally{updateSeasonVisibility();}
+    });
+    foundSeasons.addEventListener('change',()=>{
+      const option=foundSeasons.selectedOptions[0];
+      if(!option?.value)return;
+      selectedSeasonFolder=option.value;
+      nameSeason.value=option.dataset.season;
+      refreshNaming();
+    });
+    nameSeason.addEventListener('input',()=>{
+      selectedSeasonFolder='';
+      foundSeasons.value='';
+    });
+    nameTitle.addEventListener('input',()=>{
+      selectedSeasonFolder='';
+      foundSeasons.hidden=true;
+      foundSeasons.textContent='';
+    });
     const refreshNaming=({save=true}={})=>{
-      const naming=readNaming(); const isSeries=naming.type==='series'; movieNaming.hidden=isSeries; seriesNaming.hidden=!isSeries;
+      const naming=readNaming(); const isSeries=naming.type==='series'; movieNaming.hidden=isSeries; seriesNaming.hidden=!isSeries; updateSeasonVisibility();
       const checked=validateNaming(naming); filenamePreview.dataset.valid=checked.ok?'true':'false'; filenamePreview.textContent=checked.ok?`Dateiname: ${buildMediaBasename(checked.value)}`:`Dateiname: ${filenamePreviewText(naming)}`;
       if(save)persistNaming(item.id,naming); else namingSelections.set(item.id,naming);
     };
@@ -371,7 +425,7 @@ function render(){
         alert('Ordnerauswahl konnte nicht gespeichert werden: '+String(error?.message||error));
         b.disabled=false;b.textContent=old;return;
       }
-      const candidateForDownload={...item,naming:namingCheck.value,library:{...librarySelection,handleKey},selectedVariant:qualitySelections.get(item.id)||'',selectedAudio:audioSelections.get(item.id)||''};
+      const candidateForDownload={...item,naming:namingCheck.value,library:{...librarySelection,handleKey,seasonFolder:selectedSeasonFolder},selectedVariant:qualitySelections.get(item.id)||'',selectedAudio:audioSelections.get(item.id)||''};
       let r;
       try{r=await chrome.runtime.sendMessage({type:'sf_download',tabId,candidate:candidateForDownload,performanceProfile:selectedProfile});}
       catch(error){r={ok:false,error:String(error?.message||error)};}
