@@ -1,6 +1,6 @@
 # StreamForge Browser Connector – Changelog
 
-## 1.7.0 (in Entwicklung)
+## 1.7.0 (Release-Kandidat, noch nicht freigegeben)
 
 - Erste Download-Warteschlange für HLS-/DASH-Aufträge im Offscreen-Dokument: Aufträge werden nacheinander ausgeführt, um paralleles speicherintensives Muxing zu vermeiden.
 - Popup zeigt wartende Aufträge mit ihrer Queue-Position und verhindert doppeltes Starten während des Wartens.
@@ -11,7 +11,10 @@
 - Wartende HLS-/DASH-Aufträge werden in `chrome.storage.local` gespeichert und beim nächsten Start des Offscreen-Dokuments wieder in die Queue geladen.
 - Zuvor laufende Aufträge werden bei einer Wiederherstellung aus Sicherheitsgründen als unterbrochen gemeldet und **nicht** automatisch nochmals ausgeführt.
 - Regressionstest für Neustart, Wiederherstellung, Duplikate und Stornierung ergänzt.
-- **Einschränkung:** Wiederherstellung wird beim nächsten Start des Offscreen-Dokuments aktiv; eine eigenständige sofortige Wiederaufnahme direkt nach dem Browserstart existiert noch nicht. Laufende Medienübertragungen werden nicht bytegenau fortgesetzt.
+- Die Warteschlange wird beim Browserstart automatisch über das Offscreen-Dokument wiederhergestellt, sofern gespeicherte Aufträge vorhanden sind. Laufende Medienübertragungen werden weiterhin nicht bytegenau fortgesetzt.
+- Drei adaptive Leistungsprofile für Segmentdownloads: Schonend (max. 4), Ausgewogen (max. 8) und Schnell (max. 12 parallele Requests), mit bestehendem RAM-Budget und automatischer Drosselung bei Netzwerkfehlern.
+- Persistente Wahl des Leistungsprofils und eine Warteschlangen-Zusammenfassung im Popup.
+- GitHub Actions validiert Manifest-Assets und JavaScript-Syntax und erstellt ein installierbares Extension-ZIP-Artefakt.
 - **Noch offen:** Pause/Fortsetzen laufender Transfers, native Direktdownloads, reale Browser-End-to-End-Tests und weitere 1.7.0-Funktionen.
 
 ## 1.6.5
