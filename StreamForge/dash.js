@@ -56,15 +56,20 @@ function buildTrack(r,mpd){
   if(r.base&&/\.(?:mp4|m4a|m4v|webm)(?:$|[?#])/i.test(r.base)) return {...r,init:null,segments:[{url:r.base,range:null}],wholeFile:true};
   throw new Error(`DASH-${r.kind||'Track'} ${r.id||''}: SegmentTemplate/SegmentList wird nicht unterstützt.`);
 }
-export function parseDashDocument(doc, manifestUrl){
+export function parseDashDocument(doc, manifestUrl, selection={}){
   const mpd=doc?.documentElement; if(!mpd||String(mpd.localName||mpd.tagName).split(':').pop()!=='MPD')throw new Error('Ungültiges DASH-MPD.'); if(drmPresent(mpd))throw new Error('Verschlüsseltes/DRM-geschütztes DASH wird nicht verarbeitet.');
   const rootBase=baseFrom(mpd,manifestUrl); const periods=children(mpd,'Period');
   for(const p of periods){
     const reps=[]; for(const a of children(p,'AdaptationSet')) for(const r of children(a,'Representation')) reps.push(representation(p,a,r,rootBase));
     const videos=reps.filter(x=>x.kind==='video'&&/mp4|iso|video/i.test(x.mimeType||'video/mp4')).sort((a,b)=>(b.height-a.height)||(b.bandwidth-a.bandwidth));
     const audios=reps.filter(x=>x.kind==='audio'&&/mp4|iso|audio/i.test(x.mimeType||'audio/mp4')).sort((a,b)=>b.bandwidth-a.bandwidth);
-    if(videos.length&&audios.length){ const video=buildTrack(videos[0],mpd),audio=buildTrack(audios[0],mpd); return {video,audio,duration:periodDuration(p,mpd),videoOptions:videos.length,audioOptions:audios.length}; }
+    if(videos.length&&audios.length){ const videoOptions=videos.map(v=>({id:v.id,height:v.height,width:v.width,bandwidth:v.bandwidth,codecs:v.codecs}));
+      const audioOptions=audios.map(a=>({id:a.id,language:a.lang,bandwidth:a.bandwidth,codecs:a.codecs}));
+      const chosenVideo=videos.find(v=>v.id&&v.id===selection.videoId)||videos[0];
+      const chosenAudio=audios.find(a=>a.id&&a.id===selection.audioId)||audios[0];
+      const video=buildTrack(chosenVideo,mpd),audio=buildTrack(chosenAudio,mpd);
+      return {video,audio,duration:periodDuration(p,mpd),videoOptionsCount:videos.length,audioOptionsCount:audios.length,videoOptions,audioOptions}; }
   }
   throw new Error('Keine gemeinsame unterstützte fMP4-DASH-Video-/Audioperiode gefunden.');
 }
-export function parseDashManifest(text,manifestUrl){ const doc=new DOMParser().parseFromString(String(text||''),'application/xml'); if(doc.querySelector?.('parsererror'))throw new Error('DASH-MPD konnte nicht gelesen werden.'); return parseDashDocument(doc,manifestUrl); }
+export function parseDashManifest(text,manifestUrl,selection={}){ const doc=new DOMParser().parseFromString(String(text||''),'application/xml'); if(doc.querySelector?.('parsererror'))throw new Error('DASH-MPD konnte nicht gelesen werden.'); return parseDashDocument(doc,manifestUrl,selection); }
