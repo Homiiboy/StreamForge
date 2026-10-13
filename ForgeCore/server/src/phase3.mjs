@@ -1,14 +1,15 @@
 import {one,rows,utc,newId} from './db.mjs';
 
-export const defaults=Object.freeze({enabled:false,startHour:0,endHour:24,days:[0,1,2,3,4,5,6],maxRetries:3});
+export const defaults=Object.freeze({enabled:false,startHour:0,endHour:24,days:[0,1,2,3,4,5,6],maxRetries:3,bandwidthKbps:0});
 export function validateSchedule(value){
  if(!value||typeof value!=='object'||Array.isArray(value))throw Object.assign(Error('Invalid schedule'),{status:400});
  const enabled=value.enabled===true;
  const startHour=Number(value.startHour??0),endHour=Number(value.endHour??24);
  const days=value.days??[0,1,2,3,4,5,6];
  const maxRetries=Number(value.maxRetries??3);
- if(!Number.isInteger(startHour)||startHour<0||startHour>23||!Number.isInteger(endHour)||endHour<1||endHour>24||startHour>=endHour||!Array.isArray(days)||days.length<1||days.length>7||!days.every(x=>Number.isInteger(x)&&x>=0&&x<=6)||new Set(days).size!==days.length||!Number.isInteger(maxRetries)||maxRetries<0||maxRetries>10)throw Object.assign(Error('Invalid schedule hours, days or retry count'),{status:400});
- return {enabled,startHour,endHour,days:[...days].sort(),maxRetries};
+ const bandwidthKbps=Number(value.bandwidthKbps??0);
+ if(!Number.isInteger(startHour)||startHour<0||startHour>23||!Number.isInteger(endHour)||endHour<1||endHour>24||startHour>=endHour||!Array.isArray(days)||days.length<1||days.length>7||!days.every(x=>Number.isInteger(x)&&x>=0&&x<=6)||new Set(days).size!==days.length||!Number.isInteger(maxRetries)||maxRetries<0||maxRetries>10||!Number.isInteger(bandwidthKbps)||bandwidthKbps<0||bandwidthKbps>51200)throw Object.assign(Error('Invalid schedule hours, days or retry count'),{status:400});
+ return {enabled,startHour,endHour,days:[...days].sort(),maxRetries,bandwidthKbps};
 }
 export function loadSchedule(db){
  const raw=one(db,"SELECT value FROM config WHERE key='transfer_schedule'")?.value;
