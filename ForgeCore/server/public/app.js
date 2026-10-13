@@ -13,7 +13,7 @@ async function api(path,{method='GET',body}={}){
 }
 function node(tag,text='',klass=''){const element=document.createElement(tag);element.textContent=text;if(klass)element.className=klass;return element;}
 function action(text,fn,klass='outline'){const b=node('button',text,klass);b.type='button';b.addEventListener('click',async()=>{b.disabled=true;try{await fn();}catch(error){notify(error.message,true);}finally{b.disabled=false;}});return b;}
-function showView(view){for(const v of ['library','tasks','settings'])$('#'+v+'View').hidden=v!==view;document.querySelectorAll('nav .tab').forEach(t=>t.classList.toggle('selected',t.dataset.view===view));if(view==='tasks')refreshJobs().catch(e=>notify(e.message,true));if(view==='settings')refreshSettings().catch(e=>notify(e.message,true));}
+function showView(view){for(const v of ['library','tasks','settings'])$('#'+v+'View').hidden=v!==view;document.querySelectorAll('nav .tab').forEach(t=>t.classList.toggle('selected',t.dataset.view===view));if(view==='tasks'){refreshJobs().catch(e=>notify(e.message,true));refreshTransfers().catch(e=>notify(e.message,true));}if(view==='settings')refreshSettings().catch(e=>notify(e.message,true));}
 async function startup(){
  try{const me=await api('/api/me');csrf=me.csrf||'';$('#connection').textContent='Verbunden';
   $('#setup').hidden=me.configured;$('#login').hidden=!me.configured||me.authenticated;$('#app').hidden=!me.authenticated;
@@ -35,12 +35,84 @@ async function refreshLibrary(){const data=await api('/api/media');const root=$(
    for(const ep of eps.items){const row=node('div','','episode');row.append(node('strong',`S${String(ep.season).padStart(2,'0')}E${String(ep.episode).padStart(2,'0')}`));row.append(node('span',`${ep.title||'Unbenannt'} · ${ep.status}`,'muted'));row.append(action('Status',async()=>{const next=ep.status==='missing'?'available':ep.status==='available'?'ignored':'missing';await api(`/api/episodes/${ep.id}`,{method:'PATCH',body:{status:next}});await refreshLibrary();}));row.append(action('×',async()=>{if(!confirm('Episode entfernen?'))return;await api(`/api/episodes/${ep.id}`,{method:'DELETE'});await refreshLibrary();},'danger'));list.append(row);}section.append(list);
    const form=node('form','','episodeform');const season=node('label','Staffel'),episode=node('label','Episode'),title=node('label','Titel (optional)','title-field');const sn=node('input'),en=node('input'),tn=node('input');sn.type='number';sn.min='0';sn.max='999';sn.required=true;en.type='number';en.min='0';en.max='9999';en.required=true;tn.maxLength=140;season.append(sn);episode.append(en);title.append(tn);const submit=node('button','Episode hinzufügen');form.append(season,episode,title,submit);form.addEventListener('submit',async e=>{e.preventDefault();try{await api(`/api/media/${item.id}/episodes`,{method:'POST',body:{season:Number(sn.value),episode:Number(en.value),title:tn.value}});await refreshLibrary();}catch(err){notify(err.message,true);}});section.append(form);article.append(section);
   }
+  const sourcesBox=node('section','','sourceManagement');
+  sourcesBox.append(node('h3','Quellen & Stream-Downloads'));
+  const sourceForm=node('form','','sourceForm');
+  const urlInput=node('input');urlInput.type='url';urlInput.required=true;urlInput.placeholder='https://example.org/serie.m3u8 oder Episodenliste';urlInput.maxLength=2048;urlInput.setAttribute('aria-label','Quell-URL');
+  const sourceLabel=node('input');sourceLabel.placeholder='Quellenname (optional)';sourceLabel.maxLength=140;sourceLabel.setAttribute('aria-label','Quellenname');
+  const sourceSubmit=node('button','Quelle hinzufügen');
+  sourceForm.append(urlInput,sourceLabel,sourceSubmit);
+  sourceForm.addEventListener('submit',async e=>{e.preventDefault();try{
+    await api('/api/media/'+item.id+'/sources',{method:'POST',body:{url:urlInput.value,label:sourceLabel.value}});
+    await refreshLibrary();notify('Quelle gespeichert.');
+  }catch(err){notify(err.message,true);}});
+  sourcesBox.append(sourceForm);
+  const sourceData=await api('/api/media/'+item.id+'/sources');
+  const episodesForChoice=item.kind==='series'?(await api('/api/media/'+item.id+'/episodes')).items:[];
+  for(const source of sourceData.items){
+    const row=node('div','','sourceEntry');
+    row.append(node('strong',source.label||'Quelle'));
+    row.append(node('small',source.url,'muted'));
+    const controls=node('div','','sourceControls');
+    const itemSelect=node('select');itemSelect.setAttribute('aria-label','Entdeckten Stream auswählen');
+    itemSelect.append(node('option','Direkte Quell-URL'));itemSelect.options[0].value='';
+    const episodesSelect=node('select');episodesSelect.setAttribute('aria-label','Episode auswählen');
+    if(item.kind==='series'){
+      const p=node('option','Episode auswählen');p.value='';episodesSelect.append(p);
+      for(const ep of episodesForChoice){
+        const o=node('option','S'+String(ep.season).padStart(2,'0')+'E'+String(ep.episode).padStart(2,'0')+' '+(ep.title||''));o.value=ep.id;episodesSelect.append(o);
+      }
+    }
+    const populateItems=async()=>{
+      const d=await api('/api/sources/'+source.id+'/items');
+      itemSelect.replaceChildren();const p=node('option','Direkte Quell-URL');p.value='';itemSelect.append(p);
+      for(const discovered of d.items){const o=node('option',(discovered.title||discovered.url)+(discovered.season!==null?' · S'+discovered.season+'E'+discovered.episode:''));o.value=discovered.id;itemSelect.append(o);}
+      const direct=/\.(m3u8|mpd|mp4|m4v)(?:[?#]|$)/i.test(new URL(source.url).pathname);
+      if(!direct&&d.items.length)itemSelect.selectedIndex=1;
+    };
+    controls.append(action('Analysieren',async()=>{
+      const result=await api('/api/sources/'+source.id+'/analyze',{method:'POST'});
+      await populateItems();notify('Quelle analysiert: '+result.adapter+' · '+result.kind);
+    }));
+    controls.append(action('Entdeckte Episoden übernehmen',async()=>{
+      const res=await api('/api/sources/'+source.id+'/import-episodes',{method:'POST'});
+      notify(res.added+' neue Episoden angelegt.');await refreshLibrary();
+    }));
+    controls.append(action('Quelle entfernen',async()=>{
+      if(!confirm('Quelle entfernen?'))return;
+      await api('/api/sources/'+source.id,{method:'DELETE'});await refreshLibrary();
+    },'danger'));
+    controls.append(itemSelect);
+    if(item.kind==='series')controls.append(episodesSelect);
+    controls.append(action('Download planen',async()=>{
+      const b={mediaId:item.id,sourceId:source.id,itemId:itemSelect.value||null,episodeId:item.kind==='series'?episodesSelect.value:null};
+      if(item.kind==='series'&&!b.episodeId)throw Error('Bitte zuerst eine Episode wählen.');
+      await api('/api/transfers',{method:'POST',body:b});notify('Download in Warteschlange aufgenommen.');
+    }));
+    row.append(controls);sourcesBox.append(row);
+    populateItems().catch(()=>{});
+  }
+  article.append(sourcesBox);
   root.append(article);
  }
 }
 $('#scanLibrary').addEventListener('click',async()=>{try{await api('/api/jobs',{method:'POST',body:{type:'library_scan'}});await refreshJobs();notify('Bibliotheksprüfung vorgemerkt.');}catch(e){notify(e.message,true);}});
 $('#reloadJobs').addEventListener('click',()=>refreshJobs().catch(e=>notify(e.message,true)));
 async function refreshJobs(){const data=await api('/api/jobs');const root=$('#jobsList');root.replaceChildren();if(!data.items.length){root.append(node('p','Keine Aufgaben vorhanden.'));return;}for(const job of data.items){const article=node('article','','entry');article.append(node('strong',`${job.type} · ${job.state}`));article.append(node('p',job.error||job.result||job.created_at,'muted'));const actions=node('div','','actionrow');if(job.state==='queued')actions.append(action('Abbrechen',async()=>{await api(`/api/jobs/${job.id}/cancel`,{method:'POST'});await refreshJobs();}));if(['failed','cancelled'].includes(job.state))actions.append(action('Erneut versuchen',async()=>{await api(`/api/jobs/${job.id}/retry`,{method:'POST'});await refreshJobs();}));article.append(actions);root.append(article);}}
+async function refreshTransfers(){
+ const root=$('#transferList');if(!root)return;
+ const data=await api('/api/transfers');root.replaceChildren();
+ if(!data.items.length){root.append(node('p','Noch keine Stream-Downloads angelegt.'));return;}
+ for(const item of data.items){
+  const box=node('article','','entry');
+  box.append(node('strong',item.state+' · '+item.url.split('/').pop()));
+  box.append(node('p',(item.progress||0)+'% · '+(item.downloaded_bytes||0)+' Bytes · '+(item.error||item.result_json||''),'muted'));
+  if(['queued','running'].includes(item.state))box.append(action('Abbrechen',async()=>{await api('/api/transfers/'+item.id+'/cancel',{method:'POST'});await refreshTransfers();}));
+  if(['failed','cancelled'].includes(item.state))box.append(action('Erneut versuchen',async()=>{await api('/api/transfers/'+item.id+'/retry',{method:'POST'});await refreshTransfers();}));
+  root.append(box);
+ }
+}
+$('#reloadTransfers')?.addEventListener('click',()=>refreshTransfers().catch(e=>notify(e.message,true)));
 async function refreshSettings(){const c=await api('/api/config');const entries=Object.fromEntries(c.items.map(x=>[x.key,x.value]));$('#jellyfinUrl').value=entries.jellyfin_url||'';$('#libraryLabel').value=entries.library_label||'';$('#preferredLanguage').value=entries.preferred_language||'';$('#volumeStatus').textContent=c.mediaRoot.configured?`Medienvolume: ${c.mediaRoot.readable?'lesbar':'nicht lesbar'} · Schreibrecht: ${c.mediaRoot.writeable?'vorhanden':'nicht vorhanden'}`:'Kein Medienvolume eingebunden';}
 $('#settingsForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/config',{method:'PUT',body:{jellyfin_url:$('#jellyfinUrl').value,library_label:$('#libraryLabel').value,preferred_language:$('#preferredLanguage').value}});notify('Einstellungen gespeichert.');}catch(err){notify(err.message,true);}});
 $('#backupDownload').addEventListener('click',async()=>{try{const data=await api('/api/backup/export');const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),link=node('a');link.href=url;link.download='forgecore-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);}catch(err){notify(err.message,true);}});
