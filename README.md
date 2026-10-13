@@ -45,6 +45,12 @@ Bei Serien in einem freigegebenen Medienordner kann StreamForge bestehende `Seas
 | 1.7.8 | Stichprobenartige MPEG-TS-Integritätsprüfung |
 | 1.7.9 | Priorisierung wartender Downloads |
 
+## Neues ZimaOS-Projekt: ForgeCore
+
+Die künftige Server-App heißt **[ForgeCore](./ForgeCore/)**. Unter `ForgeCore/browser-extension/` liegt eine vollständige Kopie der aktiven Browser-Erweiterung aus dem **Git-Release v1.8.0** (ohne das nicht aktive Upload-Archiv). Der neue `ForgeCore/server/`-Bereich enthält das eigenständige Docker-/ZimaOS-Grundgerüst.
+
+**StreamForge selbst bleibt unverändert:** Die ursprüngliche Erweiterung unter `StreamForge/` entwickelt sich getrennt weiter. ForgeCore ist aktuell ein Architektur- und Servicefundament, noch kein automatisierter Downloader.
+
 ## Installation
 
 1. Das [ZIP von StreamForge 1.8.1](https://github.com/Homiiboy/StreamForge/releases/download/v1.8.1/StreamForge-v1.8.1.zip) herunterladen und entpacken.
