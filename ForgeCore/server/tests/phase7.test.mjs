@@ -73,7 +73,7 @@ test('mock Docker lifecycle exercises update backup and manual rollback with no 
  'if [ "$1" = run ]; then',
  ' for arg in "$@";do',
  '  case "$arg" in *":/backup")',
- '   dir="$(printf "%s" "$arg" | sed "s@:/backup$@@")";mkdir -p "$dir";printf "snapshot" > "$dir/data.tar.gz";;',
+ '   dir="$(printf "%s" "$arg" | cut -d: -f1)";mkdir -p "$dir";printf "snapshot" > "$dir/data.tar.gz";;',
  '  esac',
  ' done',
  'fi',
