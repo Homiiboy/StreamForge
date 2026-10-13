@@ -208,7 +208,7 @@ $('#reloadDiagnostics').addEventListener('click',()=>refreshDiagnostics().catch(
 $('#scheduleForm').addEventListener('submit',async e=>{
  e.preventDefault();try{
   const days=$('#scheduleDays').value.split(',').map(x=>Number(x.trim()));
-  const payload={enabled:$('#scheduleEnabled').checked,startHour:Number($('#scheduleStart').value),endHour:Number($('#scheduleEnd').value),days};
+  const payload={enabled:$('#scheduleEnabled').checked,startHour:Number($('#scheduleStart').value),endHour:Number($('#scheduleEnd').value),bandwidthKbps:Number($('#scheduleBandwidth').value),days};
   await api('/api/automation/schedule',{method:'PUT',body:payload});notify('Zeitplan gespeichert.');await refreshSchedule();
  }catch(err){notify(err.message,true);}
 });
@@ -216,7 +216,7 @@ async function refreshSchedule(){
  const r=await api('/api/automation/schedule');
  $('#scheduleEnabled').checked=r.schedule.enabled;
  $('#scheduleStart').value=r.schedule.startHour;$('#scheduleEnd').value=r.schedule.endHour;
- $('#scheduleDays').value=r.schedule.days.join(',');
+ $('#scheduleDays').value=r.schedule.days.join(',');$('#scheduleBandwidth').value=r.schedule.bandwidthKbps||0;
  $('#scheduleTimezone').textContent='Server-Zeitzone: '+r.timezone+' (0 = Sonntag, 1 = Montag, …, 6 = Samstag)';
 }
 async function refreshSettings(){const c=await api('/api/config');const entries=Object.fromEntries(c.items.map(x=>[x.key,x.value]));$('#jellyfinUrl').value=entries.jellyfin_url||'';$('#libraryLabel').value=entries.library_label||'';$('#preferredLanguage').value=entries.preferred_language||'';$('#volumeStatus').textContent=c.mediaRoot.configured?`Medienvolume: ${c.mediaRoot.readable?'lesbar':'nicht lesbar'} · Schreibrecht: ${c.mediaRoot.writeable?'vorhanden':'nicht vorhanden'}`:'Kein Medienvolume eingebunden';}
