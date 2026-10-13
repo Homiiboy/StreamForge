@@ -67,4 +67,41 @@ await pausedQueue.setPaused(false);
 await waitUntil(()=>pausedStarted.length===1);
 assert.deepEqual(pausedStarted,['paused-job']);
 assert.equal(pausedDb.get('sf_queue_v170').paused,false);
+// A stale storage snapshot may contain duplicate rows or malformed jobs.
+const malformedDb=new Map([['sf_queue_v170',{version:1,paused:true,active:null,pending:[
+  job('once'), job('once'), {bad:true}, job('twice')
+]}]]);
+const malformedStorage={
+  async get(k){return {[k]:structuredClone(malformedDb.get(k))};},
+  async set(obj){for(const [k,v] of Object.entries(obj))malformedDb.set(k,structuredClone(v));}
+};
+const sanitized=new PersistentDownloadQueue({storage:malformedStorage,execute:async()=>{}});
+await sanitized.ready;
+assert.deepEqual(sanitized.pending.map(x=>x.id),['once','twice']);
+assert.deepEqual(malformedDb.get('sf_queue_v170').pending.map(x=>x.id),['once','twice']);
+// Concurrent enqueue operations must not create stale snapshots that replay finished work.
+const raceSnapshots=[];
+let unlockWrite;
+const slowWrite=new Promise(resolve=>unlockWrite=resolve);
+let writeCount=0;
+const raceStorage={
+  async get(){return {};},
+  async set(value) {
+    if(++writeCount===1) await slowWrite;
+    raceSnapshots.push(structuredClone(value.sf_queue_v170));
+  }
+};
+const raced=[];
+const raceQueue=new PersistentDownloadQueue({storage:raceStorage,execute:async entry=>raced.push(entry.id)});
+await raceQueue.ready;
+const raceOne=raceQueue.enqueue(job('race-1'));
+const raceTwo=raceQueue.enqueue(job('race-2'));
+unlockWrite();
+assert.equal((await raceOne).ok,true);
+assert.equal((await raceTwo).ok,true);
+await waitUntil(()=>raced.length===2 && raceQueue.active===null);
+await raceQueue.lock;
+assert.deepEqual(raced,['race-1','race-2']);
+assert.equal(raceSnapshots.at(-1).active,null);
+assert.deepEqual(raceSnapshots.at(-1).pending,[]);
 console.log('Persistent queue restore and cancellation tests passed');
