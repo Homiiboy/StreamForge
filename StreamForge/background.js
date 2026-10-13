@@ -395,14 +395,27 @@ function parseHls(text, baseUrl = "") {
   return { variants: variants.length, variantOptions:variants, width: best.width || 0, height: best.height || 0, bandwidth: best.bandwidth || 0, codecs: best.codecs || "", encrypted, audioTracks:relevantAudio, allAudioTracks:audioTracks, subtitleTracks, playlistType: hlsPlaylistType(text) };
 }
 function parseDash(text) {
-  const reps = []; const re = /<Representation\b([^>]*)>/gi; let m;
-  while ((m = re.exec(text))) {
-    const s = m[1]; const val = name => (s.match(new RegExp(`${name}=["']([^"']+)["']`, "i")) || [])[1] || "";
-    reps.push({ width: Number(val("width") || 0), height: Number(val("height") || 0), bandwidth: Number(val("bandwidth") || 0), codecs: val("codecs") });
+  // Lightweight display-only parser: the offscreen DOM parser remains authoritative.
+  const videoOptions=[],audioOptions=[];
+  const adaptations=[...String(text).matchAll(/<AdaptationSet\\b([^>]*)>([\\s\\S]*?)<\\/AdaptationSet>/gi)];
+  const get=(attrs,name)=>(String(attrs).match(new RegExp('(?:^|\\\\s)'+name+'=["\\\']([^"\\\']+)["\\\']','i'))||[])[1]||'';
+  for(const [,attrs,body] of adaptations) {
+    const kind=get(attrs,'contentType')||get(attrs,'mimeType').split('/')[0];
+    const language=get(attrs,'lang');
+    for(const [,rep] of body.matchAll(/<Representation\\b([^>]*?)(?:\\/?>)/gi)) {
+      const option={id:get(rep,'id'),height:Number(get(rep,'height')||0),width:Number(get(rep,'width')||0),
+        bandwidth:Number(get(rep,'bandwidth')||0),codecs:get(rep,'codecs')||get(attrs,'codecs'),language};
+      if(kind==='video'||option.height)videoOptions.push(option);
+      else if(kind==='audio')audioOptions.push(option);
+    }
   }
-  reps.sort((a,b) => (b.height - a.height) || (b.bandwidth - a.bandwidth)); const best = reps[0] || {};
-  const drm = /ContentProtection/i.test(text) && /(widevine|playready|fairplay|cenc:default_KID)/i.test(text);
-  return { variants: reps.length, width: best.width || 0, height: best.height || 0, bandwidth: best.bandwidth || 0, codecs: best.codecs || "", encrypted: drm };
+  videoOptions.sort((a,b)=>(b.height-a.height)||(b.bandwidth-a.bandwidth));
+  audioOptions.sort((a,b)=>b.bandwidth-a.bandwidth);
+  const best=videoOptions[0]||{};
+  const drm=/ContentProtection/i.test(text)&&/(widevine|playready|fairplay|cenc:default_KID)/i.test(text);
+  return {variants:videoOptions.length,variantOptions:videoOptions,
+    audioTracks:audioOptions.map(a=>({...a,key:a.id,name:a.language||a.id})),
+    width:best.width||0,height:best.height||0,bandwidth:best.bandwidth||0,codecs:best.codecs||'',encrypted:drm};
 }
 async function probeManifestText(url, c, { mode = 'quick', label = 'Manifest' } = {}) {
   const attempts = mode === 'download' ? ROBUST_PROBE_ATTEMPTS : QUICK_PROBE_ATTEMPTS;
