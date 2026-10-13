@@ -13,7 +13,7 @@ async function api(path,{method='GET',body}={}){
 }
 function node(tag,text='',klass=''){const element=document.createElement(tag);element.textContent=text;if(klass)element.className=klass;return element;}
 function action(text,fn,klass='outline'){const b=node('button',text,klass);b.type='button';b.addEventListener('click',async()=>{b.disabled=true;try{await fn();}catch(error){notify(error.message,true);}finally{b.disabled=false;}});return b;}
-function showView(view){for(const v of ['library','tasks','settings'])$('#'+v+'View').hidden=v!==view;document.querySelectorAll('nav .tab').forEach(t=>t.classList.toggle('selected',t.dataset.view===view));if(view==='tasks'){refreshJobs().catch(e=>notify(e.message,true));refreshTransfers().catch(e=>notify(e.message,true));}if(view==='settings')refreshSettings().catch(e=>notify(e.message,true));}
+function showView(view){for(const v of ['library','tasks','settings'])$('#'+v+'View').hidden=v!==view;document.querySelectorAll('nav .tab').forEach(t=>t.classList.toggle('selected',t.dataset.view===view));if(view==='tasks'){refreshJobs().catch(e=>notify(e.message,true));refreshTransfers().catch(e=>notify(e.message,true));refreshNotices().catch(e=>notify(e.message,true));refreshDiagnostics().catch(e=>notify(e.message,true));}if(view==='settings'){refreshSettings().catch(e=>notify(e.message,true));refreshSchedule().catch(e=>notify(e.message,true));}}
 async function startup(){
  try{const me=await api('/api/me');csrf=me.csrf||'';$('#connection').textContent='Verbunden';
   $('#setup').hidden=me.configured;$('#login').hidden=!me.configured||me.authenticated;$('#app').hidden=!me.authenticated;
@@ -113,6 +113,90 @@ async function refreshTransfers(){
  }
 }
 $('#reloadTransfers')?.addEventListener('click',()=>refreshTransfers().catch(e=>notify(e.message,true)));
+
+let wizardCurrent=null;
+$('#wizardForm').addEventListener('submit',async event=>{
+ event.preventDefault();const submit=$('#wizardForm button[type="submit"]');submit.disabled=true;wizardCurrent=null;
+ const display=$('#wizardResult');display.replaceChildren();
+ try{
+  const kind=$('#wizKind').value,title=$('#wizTitle').value.trim(),year=$('#wizYear').value||null,sourceUrl=$('#wizUrl').value.trim();
+  if(!title||!sourceUrl)throw Error('Bitte Titel und Quellen-URL eingeben.');
+  display.append(node('p','Medienprojekt wird angelegt …','muted'));
+  const existing=(await api('/api/media')).items.find(x=>x.kind===kind&&x.title.toLowerCase()===title.toLowerCase()&&String(x.year||'')===String(year||''));
+  const media=existing||(await api('/api/media',{method:'POST',body:{kind,title,year}})).item;
+  const sources=(await api('/api/media/'+media.id+'/sources')).items;
+  const source=sources.find(x=>x.url===sourceUrl)||(await api('/api/media/'+media.id+'/sources',{method:'POST',body:{url:sourceUrl,label:'Medienassistent'}})).item;
+  const analysis=await api('/api/sources/'+source.id+'/analyze',{method:'POST'});
+  let imports={added:0};
+  if(kind==='series')imports=await api('/api/sources/'+source.id+'/import-episodes',{method:'POST'});
+  wizardCurrent={mediaId:media.id,sourceId:source.id,kind};
+  await refreshLibrary();
+  await showWizardPlan();
+  notify('Quelle analysiert: '+analysis.adapter+'; '+imports.added+' neue Episoden.');
+ }catch(err){display.replaceChildren(node('p','Analyse fehlgeschlagen: '+err.message,'muted'));notify(err.message,true);}
+ finally{submit.disabled=false;}
+});
+async function showWizardPlan(){
+ const display=$('#wizardResult');display.replaceChildren();
+ if(!wizardCurrent)return;
+ const {mediaId,sourceId,kind}=wizardCurrent;
+ const ranking=await api('/api/media/'+mediaId+'/source-ranking');
+ if(ranking.items.length){
+  const line=node('p','Quellenvorschläge: '+ranking.items.map(x=>x.label+' ('+x.format+', '+x.numbered+' erkannte Episoden)').join(' · '),'muted');
+  display.append(line);
+ }
+ if(kind==='movie'){
+  display.append(node('p','Film hinzugefügt. Wähle anschließend in der Bibliothek eine unterstützte direkte HLS-/DASH-/MP4-Datei zum Download.','muted'));return;
+ }
+ const plan=await api('/api/media/'+mediaId+'/download-plan?sourceId='+sourceId);
+ display.append(node('h3','Episodenplan: '+plan.missing+' fehlende von '+plan.total+' erkannten Folgen'));
+ const list=node('div','','wizardEpisodes');
+ for(const item of plan.items.slice(0,30)){
+  const reason=item.reason==='missing'?'fehlt':item.reason==='available'?'vorhanden':item.reason==='ignored'?'ignoriert':item.reason==='already_queued'?'bereits geplant':'nicht zugeordnet';
+  list.append(node('p','S'+String(item.season).padStart(2,'0')+'E'+String(item.episode).padStart(2,'0')+' · '+reason,'muted'));
+ }
+ display.append(list);
+ if(plan.total>30)display.append(node('p','Weitere Folgen sind in der Bibliothek verfügbar.','muted'));
+ if(plan.missing)display.append(action('Fehlende Folgen zur Warteschlange hinzufügen',async()=>{
+  const result=await api('/api/transfers/batch',{method:'POST',body:{mediaId,sourceId}});
+  notify(result.queued+' Downloads vorgemerkt. '+result.skipped.length+' übersprungen.');
+  await showWizardPlan();
+ }));
+}
+async function refreshNotices(){
+ const list=$('#notificationList');if(!list)return;
+ const result=await api('/api/notifications');list.replaceChildren();
+ if(!result.items.length){list.append(node('p','Keine Benachrichtigungen vorhanden.','muted'));return;}
+ for(const item of result.items){
+  const row=node('article','','entry');row.append(node('strong',item.category+' · '+(item.read_at?'gelesen':'neu')));
+  row.append(node('p',item.message,'muted'));
+  if(!item.read_at)row.append(action('Als gelesen markieren',async()=>{
+   await api('/api/notifications/'+item.id+'/read',{method:'POST'});await refreshNotices();
+  }));
+  list.append(row);
+ }
+}
+$('#reloadNotices').addEventListener('click',()=>refreshNotices().catch(e=>notify(e.message,true)));
+async function refreshDiagnostics(){
+ const e=$('#diagnosticInfo');if(!e)return;
+ const d=await api('/api/diagnostics');
+ e.textContent='Medien: '+d.mediaCount+' · Quellen: '+d.sourceCount+' · ungelesen: '+d.unreadNotifications+' · Downloads: '+JSON.stringify(d.transferCounts);
+}
+$('#reloadDiagnostics').addEventListener('click',()=>refreshDiagnostics().catch(e=>notify(e.message,true)));
+$('#scheduleForm').addEventListener('submit',async e=>{
+ e.preventDefault();try{
+  const days=$('#scheduleDays').value.split(',').map(x=>Number(x.trim()));
+  const payload={enabled:$('#scheduleEnabled').checked,startHour:Number($('#scheduleStart').value),endHour:Number($('#scheduleEnd').value),days};
+  await api('/api/automation/schedule',{method:'PUT',body:payload});notify('Zeitplan gespeichert.');await refreshSchedule();
+ }catch(err){notify(err.message,true);}
+});
+async function refreshSchedule(){
+ const r=await api('/api/automation/schedule');
+ $('#scheduleEnabled').checked=r.schedule.enabled;
+ $('#scheduleStart').value=r.schedule.startHour;$('#scheduleEnd').value=r.schedule.endHour;
+ $('#scheduleDays').value=r.schedule.days.join(',');
+ $('#scheduleTimezone').textContent='Server-Zeitzone: '+r.timezone+' (0 = Sonntag, 1 = Montag, …, 6 = Samstag)';
+}
 async function refreshSettings(){const c=await api('/api/config');const entries=Object.fromEntries(c.items.map(x=>[x.key,x.value]));$('#jellyfinUrl').value=entries.jellyfin_url||'';$('#libraryLabel').value=entries.library_label||'';$('#preferredLanguage').value=entries.preferred_language||'';$('#volumeStatus').textContent=c.mediaRoot.configured?`Medienvolume: ${c.mediaRoot.readable?'lesbar':'nicht lesbar'} · Schreibrecht: ${c.mediaRoot.writeable?'vorhanden':'nicht vorhanden'}`:'Kein Medienvolume eingebunden';}
 $('#settingsForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/config',{method:'PUT',body:{jellyfin_url:$('#jellyfinUrl').value,library_label:$('#libraryLabel').value,preferred_language:$('#preferredLanguage').value}});notify('Einstellungen gespeichert.');}catch(err){notify(err.message,true);}});
 $('#backupDownload').addEventListener('click',async()=>{try{const data=await api('/api/backup/export');const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),link=node('a');link.href=url;link.download='forgecore-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);}catch(err){notify(err.message,true);}});
