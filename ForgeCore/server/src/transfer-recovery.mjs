@@ -110,3 +110,22 @@ export async function cacheSegments({staging,track,urls,fetcher=safeFetch,signal
  return {filename:destination,bytes,segments:done};
 }
 export async function cleanupTransferStaging(root,jobId){await rm(join(resolve(root),'forgecore-job-'+safeId(jobId)),{recursive:true,force:true})}
+
+export async function cleanOldStaging(root,db,{maxAgeMs=7*24*60*60*1000}={}){
+ if(!root)return 0;
+ const base=resolve(root);let names;
+ try{names=await readdir(base);}catch(e){if(e.code==='ENOENT')return 0;throw e}
+ let removed=0;
+ for(const name of names){
+  if(!/^forgecore-job-[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(name))continue;
+  const path=join(base,name);
+  const meta=await lstat(path).catch(()=>null);
+  if(!meta||!meta.isDirectory()||meta.isSymbolicLink())continue;
+  if(Date.now()-meta.mtimeMs<maxAgeMs)continue;
+  const id=name.slice('forgecore-job-'.length);
+  const job=db.prepare("SELECT state FROM transfer_jobs WHERE id=?").get(id);
+  if(job&&['queued','running'].includes(job.state))continue;
+  await rm(path,{recursive:true,force:true});removed++;
+ }
+ return removed;
+}
