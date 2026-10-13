@@ -45,7 +45,7 @@ export class TransferQueue {
    const preview=await previewLibrary(this.root,media,episode);
    if(preview.exists)throw Error('Jellyfin file already exists: '+preview.files.join(','));
    this.db.prepare("UPDATE transfer_jobs SET state='running',attempts=attempts+1,updated_at=? WHERE id=?").run(utc(),item.id);
-   const result=await this.download({sourceUrl:item.url,media,episode,root:this.root,signal:controller.signal,onProgress:({segments,total,bytes})=>{
+   const result=await this.download({sourceUrl:item.url,media,episode,root:this.root,rateLimitBytesPerSecond:loadSchedule(this.db).bandwidthKbps*1024,signal:controller.signal,onProgress:({segments,total,bytes})=>{
     const pct=Math.max(0,Math.min(99,Math.floor(segments/Math.max(1,total)*95)));
     this.db.prepare("UPDATE transfer_jobs SET progress=?,downloaded_bytes=?,updated_at=? WHERE id=? AND state='running'").run(pct,bytes,utc(),item.id);
    }});
