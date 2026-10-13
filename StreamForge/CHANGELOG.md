@@ -1,6 +1,6 @@
 # StreamForge Browser Connector – Changelog
 
-## 1.7.0 (Release-Kandidat, noch nicht freigegeben)
+## 1.7.0 (Beta / Release-Kandidat – Browserabnahme ausstehend)
 
 - Erste Download-Warteschlange für HLS-/DASH-Aufträge im Offscreen-Dokument: Aufträge werden nacheinander ausgeführt, um paralleles speicherintensives Muxing zu vermeiden.
 - Popup zeigt wartende Aufträge mit ihrer Queue-Position und verhindert doppeltes Starten während des Wartens.
@@ -15,7 +15,10 @@
 - Drei adaptive Leistungsprofile für Segmentdownloads: Schonend (max. 4), Ausgewogen (max. 8) und Schnell (max. 12 parallele Requests), mit bestehendem RAM-Budget und automatischer Drosselung bei Netzwerkfehlern.
 - Persistente Wahl des Leistungsprofils und eine Warteschlangen-Zusammenfassung im Popup.
 - GitHub Actions validiert Manifest-Assets und JavaScript-Syntax und erstellt ein installierbares Extension-ZIP-Artefakt.
-- **Noch offen:** Pause/Fortsetzen laufender Transfers, native Direktdownloads, reale Browser-End-to-End-Tests und weitere 1.7.0-Funktionen.
+- Wartende Aufträge lassen sich pausieren und fortsetzen, einschließlich Speicherung des Pause-Zustands über Neustarts. Ein laufender Transfer wird nicht mitten im Muxing gestoppt.
+- Queue-Wiederherstellung zeigt wartende Aufträge erneut an; Benachrichtigungsfehler blockieren die Wiederherstellung nicht.
+- **Nicht Teil dieses Release-Kandidaten:** Bytegenaues Fortsetzen bereits laufender HLS-/DASH-Transfers, Pause innerhalb eines Segments, automatische Untertitel-Muxing-Unterstützung. Diese Funktionen benötigen separate Pipeline- und Formatentwicklung.
+- **Freigabe-Blocker:** echte Browser-End-to-End-Tests mit HLS/DASH, Abbruch/Neustart, längeren Streams sowie Speicherung auf dem ZimaOS-Netzlaufwerk.
 
 ## 1.6.5
 
