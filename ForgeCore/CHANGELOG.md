@@ -1,5 +1,21 @@
 # ForgeCore – Changelog
 
+## v0.4.9 – Phase 5: Automatische Serien- und Quellenprüfungen (Alpha)
+
+Die Meilensteine v0.4.0–v0.4.9 werden im gemeinsamen 0.4.9-Stand gebündelt und nicht als einzelne Releases ausgeliefert.
+
+- **v0.4.0–v0.4.1:** Opt-in-Regeln pro Serienquelle und migrierbare SQLite-Datenhaltung, konservative Standardwerte.
+- **v0.4.2:** Wiederkehrende Quellenprüfungen im Docker-Dienst, ohne offenen Browser.
+- **v0.4.3:** Episoden aus unterstützten HTML-Medienlinks erkennen, registrieren und vor Duplikaten schützen.
+- **v0.4.4:** Optionales, separat freizugebendes Einreihen fehlender Folgen, maximal 1–50 Aufträge je Prüfung.
+- **v0.4.5:** Prüfverlauf, Fehlerprotokoll und Benachrichtigungen über neue Episoden oder Fehler.
+- **v0.4.6:** Fehler-Backoff und Schutz vor destruktiven Updates bei leeren/quellenbedingt fehlerhaften Antworten.
+- **v0.4.7:** Deutsche Weboberfläche für Konfiguration, manuelle Prüfungen und Verlauf.
+- **v0.4.8:** JSON-Backup von Regeln, beim Import bewusst deaktivierte Automatisierung.
+- **v0.4.9:** Integrationstests, Docker-CI, Dokumentation und eigenständiges Release.
+
+**Noch offen:** JavaScript-gerenderte Webseiten, Anbieter-spezifische Adapter, stabile Serienüberwachung über verschiedene Websites, echte ZimaOS-/SMB-Abnahme, Netzwerk-Langzeittests und native Jellyfin-API-Benachrichtigungen. Keine DRM-/Zugriffskontrollumgehung.
+
 ## v0.3.9 – Phase-4-Alpha: Recovery und Medienintegrität
 
 Die Meilensteine v0.3.0–v0.3.9 sind in einem gemeinsamen 0.3.9-Entwicklungsstand zusammengefasst, nicht als zehn separate Releases veröffentlicht.
