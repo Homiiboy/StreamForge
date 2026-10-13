@@ -1,3 +1,6 @@
+import {directoryHandleStore} from './directory-handle-store.js';
+import {writeIntoLibrary} from './library-writer.js';
+import {extensionForMediaMime} from './export.js';
 import {inspectMediaSample} from './media-integrity.js';
 import {bufferAwareConcurrency,performanceSignal} from './performance-engine.js';
 import {validateSegmentPayload,validateDownloadProgress} from './download-reliability.js';
@@ -394,8 +397,35 @@ async function publishFile(job,tempName,filename,tempNames){
     throw e;
   }
   const metrics=metricsState(job);metrics.addOutput(prepared.bytes);
+  if(job.library?.mode==='picked'){
+    try{
+      const rootHandle=await directoryHandleStore().get();
+      if(!rootHandle)throw Error('Kein Zielordner ausgewählt.');
+      const entry=activeUrls.get(String(job.jobId));
+      const file=entry?.typedBlob;
+      const extension=extensionForMediaMime(prepared.mime);
+      if(!extension)throw Error('Dateiformat für direkten Ordnerexport nicht unterstützt.');
+      await sendProgress(job,'saving',99,'Jellyfin-Ordner wird angelegt bzw. wiederverwendet …');
+      const saved=await writeIntoLibrary(rootHandle,file,job.naming,extension,job.library.placement,
+        async(written,total)=>sendProgress(job,'saving',99,
+          'Im Jellyfin-Ordner speichern: '+Math.round(written/total*100)+'%'));
+      await sendProgress(job,'complete',100,'Abgeschlossen: '+saved.relativePath,{
+        bytes:saved.bytes,outputBytes:saved.bytes,phase:'complete',downloadProgress:100,muxProgress:100
+      });
+      await releaseExport(job.jobId);
+      await removeTemps(tempNames||[tempName]);
+      return;
+    }catch(error){
+      // Keep the validated OPFS file and fall back to Chrome's save dialog.
+      // Never silently overwrite an existing movie/episode.
+      await sendProgress(job,'saving',99,
+        'Direkter Ordnerexport nicht möglich ('+String(error?.message||error)+'). Browser-Speicherdialog wird geöffnet.',
+        {diagnostic:{code:'LIBRARY_WRITE_FALLBACK',title:'Ordnerexport nicht möglich',
+          text:String(error?.message||error),suggestion:'Wähle im Speicherdialog einen beschreibbaren Ordner.'}});
+    }
+  }
   await sendProgress(job,'ready',99,`Fertig (${prepared.mime}) · ${formatBytes(prepared.bytes)} – Speicherort wird geöffnet …`,{bytes:prepared.bytes,...metrics.snapshot({phase:'ready',downloadProgress:100,muxProgress:job._hadMux?100:0,etaSeconds:0,bottleneck:''})});
-  await chrome.runtime.sendMessage({type:'sf_blob_ready',target:'background',jobId:job.jobId,tabId:job.tabId,candidateId:job.candidateId,...prepared});
+  await chrome.runtime.sendMessage({type:'sf_blob_ready',target:'background',jobId:job.jobId,tabId:job.tabId,candidateId:job.candidateId,naming:job.naming,library:job.library?.mode==='picked'?{mode:'ask'}:job.library,...prepared});
 }
 
 async function muxTemps(job,videoName,audioName,outputName){
