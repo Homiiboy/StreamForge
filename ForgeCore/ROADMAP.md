@@ -4,21 +4,21 @@
 
 **Produktziel:** Eine auf ZimaOS/Docker laufende, lokal verwaltete Medien-App, die Filme und Serien als Projekte organisiert, autorisierte Quellen nach freigegebenen Medien untersucht, unterstützte HLS-/DASH-Downloads koordiniert und fertig geprüfte Dateien Jellyfin-konform ablegt.
 
-> **Planung, keine Fertigmeldung:** Die unten genannten Versionen ab v0.0.2 sind geplante Arbeitspakete, nicht implementiert. Eine höhere Versionsnummer wird erst vergeben, wenn die genannten Abnahmekriterien erreicht sind.
+> **Phase 1 implementiert:** Die Entwicklungsmeilensteine v0.0.1–v0.0.9 sind im gemeinsamen **ForgeCore v0.0.9 Alpha-Code-Stand** umgesetzt; die Zwischenstände sind im Changelog dokumentiert, nicht als separate Releases veröffentlicht. Phase 2 und spätere Versionen sind weiterhin geplant. **Echte ZimaOS-/SMB-Abnahme steht noch aus.**
 
 ## Phase 1 – Technisches Fundament (v0.0.x)
 
 | Version | Schwerpunkt | Fertig, wenn … | Status |
 | --- | --- | --- | --- |
-| **v0.0.1** | **ForgeCore-Grundgerüst** | Getrennter Server und StreamForge-1.8.1-Snapshot im Repo; Docker Compose und `/api/health`/`/api/status`; Server- und Buildtests grün | **Grundlage vorhanden; Version auf v0.0.1 festgelegt** |
-| **v0.0.2** | Persistente Datenbank | SQLite-Schema, Migrationen, Film-/Serien-/Episodenmodelle, Datenvolume, Backup-/Restore-Tests | Geplant |
-| **v0.0.3** | Sichere Konfiguration | Konfigurationsschema, Umgebungsvariablen, Admin-Zugang, lokale Anmeldung, Sessions und API-Berechtigungen | Geplant |
-| **v0.0.4** | Weboberfläche | Responsive Dashboard, Systemstatus, Setup-Assistent, Speicherort- und Jellyfin-Grundeinstellungen | Geplant |
-| **v0.0.5** | Bibliotheksverwaltung | Filme/Serien manuell anlegen, Staffel-/Episodenstatus erfassen, Duplikate vermeiden | Geplant |
-| **v0.0.6** | Jellyfin-/ZimaOS-Volumes | Medienpfade erkennen, Schreibrechte testen, Ordner/Staffeln verwenden; sichere Dry-Run-Vorschau | Geplant |
-| **v0.0.7** | Hintergrundaufgaben | Persistente Jobs, Stop/Retry, Crash-Recovery, Priorität, klare Statusmeldungen und Logs | Geplant |
-| **v0.0.8** | Metadaten | Optionale Metadaten-Anbieter, eindeutige Titelzuordnung, Staffel-/Episodennummern und manuelle Korrektur | Geplant |
-| **v0.0.9** | Alpha-Härtung | Datenbankmigrationen, Fehlerbehandlung, ressourcenarme ZimaOS-Tests, Monitoring und Dokumentation | Geplant |
+| **v0.0.1** | **ForgeCore-Grundgerüst** | Eigenständiger Node-/Docker-Server, Gesundheitsstatus und eingefrorene StreamForge-1.8.1-Basis | **Implementiert** |
+| **v0.0.2** | Persistente Datenbank | SQLite, Migrationen, Datenvolume und bestätigter JSON-Backup/Restore | **Implementiert** |
+| **v0.0.3** | Sichere Konfiguration | Administrator-Setup, Passwort-Hash, Sessions, CSRF-Schutz, lokale Standardbindung | **Implementiert** |
+| **v0.0.4** | Weboberfläche | Responsives Dashboard, Setup, Bibliothek, Jobs und Einstellungen | **Implementiert** |
+| **v0.0.5** | Bibliotheksverwaltung | CRUD für Filme/Serien/Episoden, Status, Duplikatschutz | **Implementiert** |
+| **v0.0.6** | Jellyfin-/ZimaOS-Volumes | Read-only Volumescans, Pfadvorschau, `Season NN`/`Staffel N` Erkennung | **Implementiert; SMB-Praxistest ausstehend** |
+| **v0.0.7** | Hintergrundaufgaben | Persistente Jobliste, FIFO, Abbruch wartender Jobs, Retry, Recovery | **Implementiert; manuelle Priorisierung später** |
+| **v0.0.8** | Metadaten | Manuelle Metadatenfelder und Offline-Validierung | **Implementiert; externe Anbieter später** |
+| **v0.0.9** | Alpha-Härtung | Integrationstests, Container-Ressourcenlimits, Fehlerbehandlung, Doku, CI | **Automatisiert geprüft; Langzeittest auf ZimaOS ausstehend** |
 
 ## Phase 2 – Quellen- und Stream-Engine (v0.1.x)
 
@@ -69,4 +69,4 @@
 - Docker-Build geprüft; tatsächliche ZimaOS-Kompatibilität nur behaupten, wenn praktisch getestet
 - Version und Git-Tag nur nach bestandenem Release-Gate veröffentlicht
 
-**Nächster sinnvoller Entwicklungsschritt:** v0.0.2 mit SQLite, migrationsfähiger Datenhaltung und Film-/Serien-Modellen. Vorher kann das bestehende v0.0.1-Fundament mit einem eigenen Tag versehen werden.
+**Nächster Entwicklungsschritt:** Gemeinsame ZimaOS-Abnahme des v0.0.9-Fundaments (Volume-Rechte, Start, Login, DB-Persistenz, Backups). Danach Phase 2 mit ForgeCore v0.1.0 (Quellenverwaltung).
