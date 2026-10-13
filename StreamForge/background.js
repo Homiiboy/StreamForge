@@ -618,6 +618,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })().catch(err => sendResponse({ ok: false, error: String(err?.message || err), code: err?.code || '' }));
     return true;
   }
+  if (message?.type === 'sf_queue_cancel' && Number.isInteger(message.tabId) && message.candidateId) {
+    (async()=>{
+      await ensureOffscreen();
+      const response=await chrome.runtime.sendMessage({type:'sf_queue_cancel',target:'offscreen',tabId:message.tabId,candidateId:message.candidateId});
+      if(!response?.ok){sendResponse({ok:false,error:'Auftrag wird bereits ausgeführt oder ist nicht mehr in der Warteschlange.'});return;}
+      await flushQueuedDownloadStatus(message.tabId,message.candidateId);
+      await setDownloadStatus(message.tabId,message.candidateId,{state:'cancelled',phase:'queued',progress:0,message:'Wartender Download abgebrochen'});
+      sendResponse({ok:true});
+    })().catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
+    return true;
+  }
   if (message?.type === "sf_download" && message.candidate?.url) {
     const c = message.candidate;
     if (c.kind === "media") {
