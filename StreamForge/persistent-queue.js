@@ -55,6 +55,23 @@ export class PersistentDownloadQueue {
     if (!this.paused) this.drain().catch(() => {});
     return { ok: true, position };
   }
+  async movePending(id,direction) {
+    await this.ready;
+    if(!['up','down'].includes(direction))throw Error('Ungültige Warteschlangen-Richtung');
+    const index=this.pending.findIndex(job=>job.id===id);
+    const target=index+(direction==='up'?-1:1);
+    if(index<0||target<0||target>=this.pending.length)return false;
+    [this.pending[index],this.pending[target]]=[this.pending[target],this.pending[index]];
+    try { await this.persist(); }
+    catch(error) {
+      [this.pending[index],this.pending[target]]=[this.pending[target],this.pending[index]];
+      throw error;
+    }
+    for(let i=0;i<this.pending.length;i++){
+      try { await this.onQueued(this.pending[i],i+1); }catch{}
+    }
+    return true;
+  }
   async setPaused(value) {
     await this.ready;
     const previous = this.paused;
