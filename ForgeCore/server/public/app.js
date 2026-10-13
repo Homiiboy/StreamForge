@@ -49,6 +49,28 @@ async function refreshLibrary(){const data=await api('/api/media');const root=$(
   sourcesBox.append(sourceForm);
   const sourceData=await api('/api/media/'+item.id+'/sources');
   const episodesForChoice=item.kind==='series'?(await api('/api/media/'+item.id+'/episodes')).items:[];
+  const subtitleForm=node('form','','sourceForm');
+  const subtitleUrl=node('input');subtitleUrl.type='url';subtitleUrl.required=true;subtitleUrl.placeholder='WebVTT-Untertitel-URL (.vtt)';subtitleUrl.setAttribute('aria-label','WebVTT-Untertiteladresse');
+  const subtitleLang=node('input');subtitleLang.value='de';subtitleLang.maxLength=15;subtitleLang.placeholder='Sprache z. B. de';subtitleLang.setAttribute('aria-label','Untertitelsprache');
+  const subtitleSelect=node('select');subtitleSelect.setAttribute('aria-label','Episode für Untertitel');
+  if(item.kind==='series'){
+   const opt=node('option','Episode wählen');opt.value='';subtitleSelect.append(opt);
+   for(const ep of episodesForChoice){const op=node('option','S'+String(ep.season).padStart(2,'0')+'E'+String(ep.episode).padStart(2,'0'));op.value=ep.id;subtitleSelect.append(op);}
+  }
+  subtitleForm.append(subtitleUrl,subtitleLang);
+  if(item.kind==='series')subtitleForm.append(subtitleSelect);
+  const subtitleSubmit=node('button','SRT-Untertitel herunterladen');subtitleSubmit.type='submit';subtitleForm.append(subtitleSubmit);
+  subtitleForm.addEventListener('submit',async e=>{
+   e.preventDefault();subtitleSubmit.disabled=true;
+   try{
+    const result=await api('/api/subtitles',{method:'POST',body:{mediaId:item.id,url:subtitleUrl.value,language:subtitleLang.value,episodeId:item.kind==='series'?subtitleSelect.value||null:null}});
+    notify('Untertitel gespeichert: '+result.result.path);subtitleUrl.value='';
+   }catch(error){notify(error.message,true);}
+   finally{subtitleSubmit.disabled=false;}
+  });
+  sourcesBox.append(node('h4','Externe WebVTT-Untertitel zur vorhandenen Mediendatei'));
+  sourcesBox.append(subtitleForm);
+
   for(const source of sourceData.items){
     const row=node('div','','sourceEntry');
     row.append(node('strong',source.label||'Quelle'));
