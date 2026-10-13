@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "StreamForge Connector",
   "short_name": "StreamForge",
-  "version": "1.7.7",
+  "version": "1.7.8",
   "description": "Erkennt und lädt direkte Medien sowie unverschlüsselte HLS-/DASH-Streams; mit robuster Pipeline, Film-/Serien-Benennung, validiertem Container-Export und wiederholbarem Dateiexport.",
   "permissions": [
     "activeTab",
