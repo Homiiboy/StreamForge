@@ -650,6 +650,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })().catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
     return true;
   }
+  if (message?.type === 'sf_subtitle_download' && message.url && message.candidate) {
+    (async()=>{
+      const url=new URL(String(message.url));
+      if(!['http:','https:'].includes(url.protocol) || !/\.vtt$/i.test(url.pathname))
+        throw new Error('Nur direkte WebVTT-Dateien können separat gespeichert werden.');
+      // Export subtitles separately; do not pass them through the video container validator.
+      const base=safeFilename(String(message.filename||'StreamForge').replace(/\.vtt$/i,''));
+      const id=await chrome.downloads.download({url:url.href,filename:`${base}.vtt`,saveAs:true});
+      if(!Number.isInteger(id) || id<0)throw new Error('Browser hat keinen Download gestartet.');
+      sendResponse({ok:true,downloadId:id});
+    })().catch(err=>sendResponse({ok:false,error:String(err?.message||err)}));
+    return true;
+  }
   if (message?.type === "sf_download" && message.candidate?.url) {
     const c = message.candidate;
     const profile = ['gentle','balanced','fast'].includes(message.performanceProfile) ? message.performanceProfile : 'balanced';
