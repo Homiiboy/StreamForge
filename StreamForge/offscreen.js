@@ -1,3 +1,4 @@
+import {inspectMediaSample} from './media-integrity.js';
 import {bufferAwareConcurrency,performanceSignal} from './performance-engine.js';
 import {validateSegmentPayload,validateDownloadProgress} from './download-reliability.js';
 import { PersistentDownloadQueue } from './persistent-queue.js';
@@ -359,6 +360,16 @@ async function prepareExportBlob(record){
   if(!inspection.ok){const e=new Error(inspection.code);e.code=inspection.code;e.detectedMime=inspection.detectedMime||'';throw e;}
 
   const mime=canonicalMediaMime(inspection.detectedMime||requestedMime);
+  if(mime==='video/mp2t'){
+    const tailStart=Math.max(0,file.size-64*1024);
+    const tailBytes=new Uint8Array(await file.slice(tailStart,file.size).arrayBuffer());
+    const validity=inspectMediaSample(headBytes,tailBytes,mime);
+    if(!validity.ok){
+      const err=new Error(validity.code+' ('+(validity.where||'unknown')+')');
+      err.code=validity.code;
+      throw err;
+    }
+  }
   const filename=normalizeMediaFilename(String(record?.filename||tempName),mime);
   // A Blob containing a File references the File's data; it does not build a
   // multi-gigabyte Uint8Array in JavaScript. The explicit MIME type is vital:
