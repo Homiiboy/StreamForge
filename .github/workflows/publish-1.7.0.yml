@@ -1,0 +1,35 @@
+name: Publish StreamForge 1.7.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-1.7.0.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate release version and run tests
+        working-directory: StreamForge
+        run: |
+          node --input-type=module -e "import fs from 'node:fs';const m=JSON.parse(fs.readFileSync('manifest.json','utf8'));if(m.version!=='1.7.0')throw Error('Version mismatch: '+m.version);"
+          npm test
+      - name: Create distributable zip
+        run: |
+          mkdir -p dist/StreamForge
+          cp -a StreamForge/*.js StreamForge/*.html StreamForge/popup.css StreamForge/manifest.json StreamForge/icons dist/StreamForge/
+          cd dist && zip -qr StreamForge-v1.7.0.zip StreamForge
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v1.7.0 dist/StreamForge-v1.7.0.zip --title 'StreamForge 1.7.0' --target "$GITHUB_SHA" --notes 'StreamForge 1.7.0: persistente HLS/DASH-Warteschlange, wartende Aufträge pausieren/fortsetzen/abbrechen, Leistungsprofile und Wiederherstellung beim Browserstart. Laufende Segmente lassen sich nicht bytegenau fortsetzen; Browser-/ZimaOS-Abnahme steht noch aus.'
