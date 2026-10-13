@@ -37,7 +37,7 @@ jobs:
 
       - name: Smoke test Docker HTTP service
         run: |
-          docker run --detach --name forgecore-ci --read-only --tmpfs /tmp -p 127.0.0.1:18787:8787 forgecore:test
+          docker run --detach --name forgecore-ci --read-only --tmpfs /tmp --tmpfs /data:rw,uid=1000,gid=1000 -p 127.0.0.1:18787:8787 forgecore:test
           trap 'docker rm -f forgecore-ci || true' EXIT
           for i in $(seq 1 20); do
             if curl -fsS http://127.0.0.1:18787/api/health >/tmp/forgecore-health.json; then break; fi
