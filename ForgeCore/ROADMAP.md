@@ -4,7 +4,7 @@
 
 **Produktziel:** Eine auf ZimaOS/Docker laufende, lokal verwaltete Medien-App, die Filme und Serien als Projekte organisiert, autorisierte Quellen nach freigegebenen Medien untersucht, unterstützte HLS-/DASH-Downloads koordiniert und fertig geprüfte Dateien Jellyfin-konform ablegt.
 
-> **Phase 1 implementiert:** Die Entwicklungsmeilensteine v0.0.1–v0.0.9 sind im gemeinsamen **ForgeCore v0.0.9 Alpha-Code-Stand** umgesetzt; die Zwischenstände sind im Changelog dokumentiert, nicht als separate Releases veröffentlicht. Phase 2 und spätere Versionen sind weiterhin geplant. **Echte ZimaOS-/SMB-Abnahme steht noch aus.**
+> **Phase 1 und Phase-2-Alpha implementiert:** Die Entwicklungsmeilensteine v0.0.1–v0.0.9 sind im gemeinsamen **ForgeCore v0.0.9 Alpha-Code-Stand** umgesetzt; die Zwischenstände sind im Changelog dokumentiert, nicht als separate Releases veröffentlicht. Phase 3 und spätere Versionen sind weiterhin geplant; für Phase 2 existiert eine bewusst begrenzte HLS-/DASH-Implementation (Details im Changelog). **Echte ZimaOS-/SMB-Abnahme steht noch aus.**
 
 ## Phase 1 – Technisches Fundament (v0.0.x)
 
@@ -21,6 +21,8 @@
 | **v0.0.9** | Alpha-Härtung | Integrationstests, Container-Ressourcenlimits, Fehlerbehandlung, Doku, CI | **Automatisiert geprüft; Langzeittest auf ZimaOS ausstehend** |
 
 ## Phase 2 – Quellen- und Stream-Engine (v0.1.x)
+
+**Implementierter gemeinsamer Alpha-Stand: v0.1.9.** Die folgenden Meilensteine haben funktionsfähige Grundimplementierungen, aber nicht alle ursprünglich angedachten Erweiterungen. Grenzen: nur eingebauter Adapter-Satz (kein Drittanbieter-SDK), HTML-Links statt vollständigem Website-Crawler, HLS VOD ohne separate Audio-Playlist, DASH nur SegmentList, keine bytegenaue Wiederaufnahme und keine externe Jellyfin-Refresh-API. Echte ZimaOS/SMB-Abnahme ausstehend.
 
 | Version | Schwerpunkt | Fertig, wenn … |
 | --- | --- | --- |
@@ -69,4 +71,4 @@
 - Docker-Build geprüft; tatsächliche ZimaOS-Kompatibilität nur behaupten, wenn praktisch getestet
 - Version und Git-Tag nur nach bestandenem Release-Gate veröffentlicht
 
-**Nächster Entwicklungsschritt:** Gemeinsame ZimaOS-Abnahme des v0.0.9-Fundaments (Volume-Rechte, Start, Login, DB-Persistenz, Backups). Danach Phase 2 mit ForgeCore v0.1.0 (Quellenverwaltung).
+**Nächster Entwicklungsschritt:** ZimaOS-Abnahme für v0.1.9 (Volumes, Netzwerk- und Speicherrechte, Login, Quellen- und Transferablauf) und Ausbau der unterstützten Quellformate. Danach Phase 3 v0.2.x.
