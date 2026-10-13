@@ -1,0 +1,41 @@
+name: Publish ForgeCore Releases
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ForgeCore/server/package.json'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify ForgeCore package and automated tests
+        working-directory: ForgeCore/server
+        run: |
+          npm test
+          npm run check
+      - name: Build ForgeCore Docker image
+        run: docker build -t forgecore:release ForgeCore/server
+      - name: Publish isolated ForgeCore version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(node -p "require('./ForgeCore/server/package.json').version")
+          TAG="forgecore-v${VERSION}"
+          test "$VERSION" = "0.0.9"
+          mkdir -p dist
+          zip -qr "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
+            ForgeCore/server ForgeCore/compose.yaml ForgeCore/.env.example \
+            ForgeCore/README.md ForgeCore/ROADMAP.md ForgeCore/CHANGELOG.md
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
+              --title "ForgeCore ${VERSION} – ZimaOS Phase 1 Alpha" \
+              --target "$GITHUB_SHA" \
+              --notes "Eigenständige ForgeCore-ZimaOS-Alpha-App. SQLite, Admin-Login, Weboberfläche, Medienbibliothek, read-only Jellyfin-Scan, Hintergrundaufgaben und Backups. Automatisierte CI bestanden. Kein automatischer Stream-Downloader; reale ZimaOS-/SMB-Abnahme steht aus."
+          fi
