@@ -61,7 +61,10 @@
 **v0.4.9 als Alpha implementiert:** Opt-in-Regeln pro unterstützter Serienquelle, regelmäßige HTML-Link-Discovery, neue Episoden, separat aktivierbare Downloads fehlender Folgen, Prüfverlauf, Backoff und Konfiguration in der Weboberfläche. Nicht universell für alle Websites und ohne ZimaOS-Hardwareabnahme.
 
 ## Weitere Vorschlagsphasen (noch nicht implementiert)
-- **Phase 6 / v0.5.x:** Quellenadapter-Schnittstellen ausbauen, Jellyfin-API-Refresh, Quellen- und Medienabgleich.
+## Phase 6 – Quellenadapter und Jellyfin-API (v0.5.x)
+
+**ForgeCore v0.5.9 als Alpha implementiert:** Auswahl integrierter HTML/HLS/DASH-Adapter je Quelle, ergänzender HTML-Attribut-Adapter, Jellyfin-API-Anmeldung, Verbindungstest, manuelle und optional automatische Bibliotheksaktualisierung sowie nicht-destruktive Vorschau und bestätigter Episodenabgleich. Kein ausführbarer Plugin-Marktplatz; noch keine Abnahme auf realem ZimaOS/Jellyfin.
+
 - **Phase 7 / v0.6.x–v0.9.x:** Verbesserte ZimaOS-Installation, Updates/Rollback, Bedienung, Langzeit- und Sicherheitsabnahme auf echter Hardware.
 
 ## Stable Release – v1.0.0
@@ -86,4 +89,4 @@
 - Docker-Build geprüft; tatsächliche ZimaOS-Kompatibilität nur behaupten, wenn praktisch getestet
 - Version und Git-Tag nur nach bestandenem Release-Gate veröffentlicht
 
-**Nächster Entwicklungsschritt:** ZimaOS-/SMB-Abnahme für v0.4.9 (Freigabe, Zeitplan, Download, FFmpeg, SRT, Datenmigration). Danach die offen genannten Phase-3-Komfortfunktionen vervollständigen und auf Grundlage realer Tests zur v1.0.0 stabilisieren.
+**Nächster Entwicklungsschritt:** ZimaOS-/SMB-/Jellyfin-Abnahme für v0.5.9 (Freigabe, Zeitplan, Download, FFmpeg, SRT, Datenmigration). Danach die offen genannten Phase-3-Komfortfunktionen vervollständigen und auf Grundlage realer Tests zur v1.0.0 stabilisieren.

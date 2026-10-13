@@ -2,6 +2,7 @@ import {newId,utc,one,rows} from './db.mjs';
 import {downloadMedia} from './media-download.mjs';
 import {previewLibrary} from './library.mjs';
 import {loadSchedule,scheduleAllows,addNotification} from './phase3.mjs';
+import {jellyfinRefresh} from './jellyfin.mjs';
 
 const RECOVERABLE=/(?:ETIMEDOUT|ECONNRESET|EAI_AGAIN|HTTP\s+(?:408|429|500|502|503|504)|timeout|temporarily unavailable|socket hang up|network reset|fetch failed)/i;
 function event(db,id,category,description){db.prepare('INSERT INTO transfer_events(transfer_id,category,description,created_at) VALUES(?,?,?,?)').run(id,category,String(description).slice(0,500),utc());}
@@ -58,6 +59,10 @@ export class TransferQueue {
    event(this.db,item.id,'complete',result.path||'Download finished');
    addNotification(this.db,{category:'download',message:'Download abgeschlossen: '+media.title+(episode?' S'+String(episode.season).padStart(2,'0')+'E'+String(episode.episode).padStart(2,'0'):''),refId:item.id});
    if(episode&&episode.status!=='ignored')this.db.prepare("UPDATE episodes SET status='available',updated_at=? WHERE id=?").run(utc(),episode.id);
+   if(one(this.db,"SELECT value FROM config WHERE key='jellyfin_auto_refresh'")?.value==='1'){
+    try{await jellyfinRefresh(this.db);event(this.db,item.id,'jellyfin','Jellyfin library refresh requested');}
+    catch(error){event(this.db,item.id,'jellyfin-warning','Refresh failed: '+String(error.message||error).slice(0,200));}
+   }
   }catch(error){
    const explanation=String(error?.message||error).slice(0,1000);
    const retries=loadSchedule(this.db).maxRetries;

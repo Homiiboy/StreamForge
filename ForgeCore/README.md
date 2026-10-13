@@ -1,8 +1,33 @@
 # ForgeCore
 
-**ForgeCore v0.4.9 – Phase 5 Alpha (Quellen- und Episodenautomatisierung).** Eigenständiger Docker-/ZimaOS-Server. Die beigefügte Browser-Erweiterung in `browser-extension/` bleibt unverändert auf **StreamForge 1.8.1**.
+**ForgeCore v0.5.9 – Phase 6 Alpha (Quellenadapter und Jellyfin-API).** Eigenständiger Docker-/ZimaOS-Server. Die beigefügte Browser-Erweiterung in `browser-extension/` bleibt unverändert auf **StreamForge 1.8.1**.
 
 > **Abnahmestand:** Automatisierte Node-/HTTP-/Docker-Tests und lokaler HLS/FFmpeg-Medientest sind durchgeführt. **Reale Websites, lange Serienläufe, ZimaOS-Mounts und SMB-Speicherpfade sind noch nicht auf deiner Hardware getestet.** Die App unterstützt ausdrücklich nur ausgewählte unverschlüsselte Formate, nicht jede Streaming-Website.
+
+## Phase 6 – v0.5.9 (automatisiert getestete Alpha)
+
+- **Jellyfin direkt verbinden:** Unter Einstellungen → Jellyfin eine Jellyfin-Serverbasis (z. B. `http://192.168.1.10:8096/`) und einen vom Jellyfin-Administrator erstellten API-Schlüssel eintragen.
+- **Verbindungstest:** Der Test liest `/System/Info` und zeigt Jellyfin-Servername und Version. Ohne hinterlegte Zugangsdaten bleibt die Integration deaktiviert.
+- **Bibliotheksaktualisierung:** Ein Button fordert Jellyfin über `POST /Library/Refresh` zur Bibliotheksaktualisierung auf. Optional lässt sich dies nach erfolgreich abgelegten Medien automatisch auslösen; Fehler beim Refresh lassen erfolgreiche Downloads nicht scheitern.
+- **Nicht-destruktiver Episodenabgleich:** Ein manuell angestoßener Inventarvergleich liest höchstens 1.000 Jellyfin-Episoden (paginierte API). Titel und Staffel-/Episodennummer werden konservativ mit ForgeCore-Projekten abgeglichen. Zunächst nur Vorschau; erst nach ausdrücklicher Bestätigung werden passende ForgeCore-Episoden von `missing` auf `available` gesetzt. Keine Dateien werden gelöscht, `ignored` wird nicht verändert und nicht gefundene Episoden bleiben unverändert.
+- **Quellenadapter:** Für jede hinzugefügte Quelle steht die Wahl zwischen `auto`, den eingebauten HLS-/DASH-/HTML-Link-Adaptern und dem neuen **HTML-data-season/data-episode-Adapter** zur Verfügung. Ein Adapter wird manuell ausgewählt; periodische Quellenprüfungen berücksichtigen die Auswahl. Externen ausführbaren Plugin-Code laden wir bewusst nicht automatisch.
+- **Schutz sensibler Daten:** Der Jellyfin-API-Schlüssel wird nur für authentifizierte Serveraufrufe gespeichert. Er erscheint weder in `/api/jellyfin` noch im Konfigurationsabruf oder JSON-Backup. Das vollständige SQLite-Backup **enthält** den Schlüssel und ist vertraulich aufzubewahren.
+- **Schema-Migration:** SQLite-Version 8 ergänzt Quellenadapter-Einstellungen und Jellyfin-Synchronisierungshistorie. Ein Downgrade auf v0.4.9 mit aktualisiertem Datenvolume wird nicht unterstützt.
+
+### Phase-6-API-Endpunkte
+
+| Endpoint | Funktion |
+| --- | --- |
+| `GET/PUT /api/jellyfin` | Status (ohne Schlüssel) bzw. API-Verbindung konfigurieren |
+| `POST /api/jellyfin/test` | Verbindung prüfen |
+| `POST /api/jellyfin/refresh` | Jellyfin-Bibliothek aktualisieren |
+| `POST /api/jellyfin/sync/preview` | Fehlende/vorhandene Episoden ohne Änderung vergleichen |
+| `POST /api/jellyfin/sync/apply` | Mit `{"confirm":"MARK_AVAILABLE"}` konservative Statusänderungen übernehmen |
+| `GET /api/jellyfin/sync/history` | Die letzten 20 Abgleiche |
+| `GET /api/source-adapters` | Verfügbare vertrauenswürdige integrierte Adapter |
+| `PATCH /api/sources/:id` | Mit `{"adapterId":"html-episode-data"}` Quelladapter festlegen |
+
+**Abnahmegrenzen:** Die direkte API muss später an deiner konkreten Jellyfin-Version und Bibliothek praktisch getestet werden. Der Abgleich verwendet verfügbare `SeriesName`-, `ParentIndexNumber`- und `IndexNumber`-Felder und kann bei abweichenden Jellyfin-Metadaten Treffer übersehen. Eine automatische bidirektionale Jellyfin-Synchronisierung oder dynamisch gerenderte Webseiten werden nicht behauptet. Nur eigene rechtmäßig zugängliche, ungeschützte Medienquellen verwenden.
 
 ## Phase 5 – v0.4.9 (automatisiert getestete Alpha)
 
@@ -149,7 +174,7 @@ Geschützte APIs benötigen einen Sessioncookie. Schreibaufrufe zusätzlich `X-F
 
 ## Versions- und Releasepolitik
 
-- **ForgeCore:** eigene Versionsnummer ab `v0.0.1`. Der aktuelle Phase-5-Alpha-Stand ist `v0.4.9`.
+- **ForgeCore:** eigene Versionsnummer ab `v0.0.1`. Der aktuelle Phase-6-Alpha-Stand ist `v0.5.9`.
 - **Browser-Snapshot:** `ForgeCore/browser-extension/` bleibt auf **StreamForge v1.8.1**; Änderungen erfolgen ausschließlich bewusst und separat.
 - Release-Tags für ForgeCore tragen den Präfix `forgecore-vX.Y.Z`, um mit der bestehenden Browser-Erweiterung keine Tags zu kollidieren.
 - Die detaillierten Meilensteine stehen in [ROADMAP.md](./ROADMAP.md), die konkreten Änderungen in [CHANGELOG.md](./CHANGELOG.md).

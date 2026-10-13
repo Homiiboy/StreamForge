@@ -1,6 +1,6 @@
 import {safeFetch,parseWebUrl} from './source-security.mjs';
 
-export const SOURCE_ADAPTERS=Object.freeze([{id:'hls',label:'HLS VOD'},{id:'dash',label:'DASH VOD (SegmentList / SegmentTemplate)'},{id:'html-links',label:'Webseite (Links zu Medien/Playlisten)'}]);
+export const SOURCE_ADAPTERS=Object.freeze([{id:'hls',label:'HLS VOD'},{id:'dash',label:'DASH VOD (SegmentList / SegmentTemplate)'},{id:'html-links',label:'Webseite (Links zu Medien/Playlisten)'},{id:'html-episode-data',label:'HTML mit data-season/data-episode'}]);
 function attr(tag,key){return (tag.match(new RegExp('\\b'+key+'\\s*=\\s*["\']([^"\']*)["\']','i'))||[])[1]||''}
 export function parseHls(text,base){
  if(!text.startsWith('#EXTM3U'))throw Error('Not an HLS playlist');
@@ -113,7 +113,30 @@ export function parseHtmlLinks(html,base){
  }
  return [...found.values()].slice(0,500);
 }
-export async function analyzeSource(url,{fetcher=safeFetch}={}){
+
+export function parseHtmlDataEpisodes(html,base){
+ const found=new Map();
+ for(const tag of html.matchAll(/<(?:a|video|source)\b([^>]*)>/gi)){
+  const attrs=tag[1];
+  const rawSeason=attr(attrs,'data-season'),rawEpisode=attr(attrs,'data-episode');
+  if(rawSeason===''||rawEpisode==='')continue;
+  const season=Number(rawSeason),episode=Number(rawEpisode);
+  if(!Number.isInteger(season)||season<0||season>999||!Number.isInteger(episode)||episode<0||episode>9999)continue;
+  const raw=attr(attrs,'href')||attr(attrs,'src');if(!raw)continue;
+  let uri;try{uri=new URL(raw.replaceAll('&amp;','&'),base)}catch{continue}
+  if(!['http:','https:'].includes(uri.protocol)||!/\.(?:m3u8|mpd|mp4)$/i.test(uri.pathname))continue;
+  found.set(uri.href,{url:uri.href,title:(attr(attrs,'title')||'S'+String(season).padStart(2,'0')+'E'+String(episode).padStart(2,'0')).slice(0,140),season,episode});
+ }
+ return [...found.values()].slice(0,500);
+}
+export function selectSourceAdapter(adapter){
+ const id=String(adapter||'auto');
+ if(!['auto',...SOURCE_ADAPTERS.map(a=>a.id)].includes(id))throw Object.assign(Error('Unsupported source adapter'),{status:400});
+ return id;
+}
+
+export async function analyzeSource(url,{fetcher=safeFetch,adapter='auto'}={}){
+ adapter=selectSourceAdapter(adapter);
  parseWebUrl(url);
  const response=await fetcher(url,{maxBytes:2*1024*1024});
  const body=response.body.toString('utf8');const finalUrl=response.url;
@@ -126,5 +149,6 @@ export async function analyzeSource(url,{fetcher=safeFetch}={}){
   const dash=parseDash(body,finalUrl);
   return {adapter:'dash',kind:'dash',tracks:{video:dash.video.segments.length,audio:dash.audio?.segments.length||0},items:[]};
  }
- return {adapter:'html-links',kind:'html',items:parseHtmlLinks(body,finalUrl)};
+ if(adapter==='hls'||adapter==='dash')throw Error('Declared adapter does not match source type');
+ return {adapter:adapter==='html-episode-data'?'html-episode-data':'html-links',kind:'html',items:adapter==='html-episode-data'?parseHtmlDataEpisodes(body,finalUrl):parseHtmlLinks(body,finalUrl)};
 }

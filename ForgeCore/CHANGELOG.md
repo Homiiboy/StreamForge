@@ -1,5 +1,18 @@
 # ForgeCore – Changelog
 
+## v0.5.9 – Phase 6: Quellenadapter & Jellyfin API (Alpha)
+
+Alle Meilensteine v0.5.0–v0.5.9 sind im gemeinsamen 0.5.9-Entwicklungsstand gebündelt; keine separaten Zwischenreleases.
+
+- **v0.5.0–v0.5.2:** Explizite integrierte Adapterauswahl je Quelle, neues HTML-`data-season`/`data-episode`-Profil und Übernahme dieser Auswahl in geplante Quellenchecks.
+- **v0.5.3:** Jellyfin-API-Einstellungen und Verbindungstest über `/System/Info`.
+- **v0.5.4:** Manueller Bibliotheks-Refresh mit optionalem, separat aktivierbarem Refresh nach erfolgreichen Transfers.
+- **v0.5.5–v0.5.6:** Nicht-destruktive Vorschau und bestätigter Episodenabgleich auf Grundlage von Seriennamen und Staffel-/Folgenummern; historische Abgleiche.
+- **v0.5.7:** Geschützter API-Schlüssel: keine Ausgabe im JSON-Backup, allgemeinen Konfigurationsabruf oder Jellyfin-Status.
+- **v0.5.8–v0.5.9:** SQLite-Schema 8, deutschsprachige Einstellungen, API- und Adaptertests, Docker-CI und Release.
+  
+**Grenzen:** Kein Third-Party-Code-Loader, keine dynamischen JavaScript-Player, keine automatische beidseitige Synchronisierung oder zuverlässige Metadatenzuordnung bei abweichenden Jellyfin-Titeln. Echtes ZimaOS-/SMB-/Jellyfin-Testing bleibt offen.
+
 ## v0.4.9 – Phase 5: Automatische Serien- und Quellenprüfungen (Alpha)
 
 Die Meilensteine v0.4.0–v0.4.9 werden im gemeinsamen 0.4.9-Stand gebündelt und nicht als einzelne Releases ausgeliefert.
