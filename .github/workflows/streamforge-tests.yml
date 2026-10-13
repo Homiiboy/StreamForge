@@ -1,0 +1,36 @@
+name: StreamForge Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'StreamForge/**'
+      - '.github/workflows/streamforge-tests.yml'
+  pull_request:
+    paths:
+      - 'StreamForge/**'
+      - '.github/workflows/streamforge-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Node.js 22 test suite
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: StreamForge
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check manifest version
+        run: |
+          node --input-type=module -e "import fs from 'node:fs';const m=JSON.parse(fs.readFileSync('manifest.json','utf8'));if(m.version!=='1.6.5')throw Error('Unexpected version: '+m.version);"
+      - name: Run StreamForge tests
+        run: npm test
