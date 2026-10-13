@@ -25,7 +25,10 @@ const downloadQueue = new PersistentDownloadQueue({
   onInterrupted: async record => sendProgress(record.job, 'error', 0,
     'Browser-Neustart während der Verarbeitung. Der laufende Auftrag wurde aus Sicherheitsgründen nicht automatisch neu gestartet.',
     { diagnostic: { code: 'QUEUE_INTERRUPTED', title: 'Download unterbrochen', text: 'Bitte den Download manuell erneut starten.' } }),
-  onError: async (record, error) => sendProgress(record.job, 'error', 0, String(error?.message || error))
+  onError: async (record, error) => {
+    if(record.job.library?.handleKey)await directoryHandleStore().clear(record.job.library.handleKey).catch(()=>{});
+    await sendProgress(record.job, 'error', 0, String(error?.message || error));
+  }
 });
 function formatBytes(bytes){const n=Number(bytes||0);if(n>=1073741824)return `${(n/1073741824).toFixed(2)} GB`;if(n>=1048576)return `${(n/1048576).toFixed(1)} MB`;if(n>=1024)return `${(n/1024).toFixed(1)} KB`;return `${n} B`;}
 function safeName(raw,fallback='StreamForge-Download'){ const text=String(raw||fallback).replace(/[<>:"/\\|?*\x00-\x1f]/g,' ').replace(/\s+/g,' ').trim(); return (text||fallback).slice(0,140); }
@@ -399,7 +402,7 @@ async function publishFile(job,tempName,filename,tempNames){
   const metrics=metricsState(job);metrics.addOutput(prepared.bytes);
   if(job.library?.mode==='picked'){
     try{
-      const rootHandle=await directoryHandleStore().get();
+      const rootHandle=await directoryHandleStore().get(job.library?.handleKey||'destination');
       if(!rootHandle)throw Error('Kein Zielordner ausgewählt.');
       const entry=activeUrls.get(String(job.jobId));
       const file=entry?.typedBlob;
@@ -414,8 +417,10 @@ async function publishFile(job,tempName,filename,tempNames){
       });
       await releaseExport(job.jobId);
       await removeTemps(tempNames||[tempName]);
+      if(job.library?.handleKey)await directoryHandleStore().clear(job.library.handleKey).catch(()=>{});
       return;
     }catch(error){
+      if(job.library?.handleKey)await directoryHandleStore().clear(job.library.handleKey).catch(()=>{});
       // Keep the validated OPFS file and fall back to Chrome's save dialog.
       // Never silently overwrite an existing movie/episode.
       await sendProgress(job,'saving',99,
