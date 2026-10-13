@@ -1,5 +1,12 @@
 # StreamForge Browser Connector – Changelog
 
+## 1.7.7 – Performance Engine 2.0
+
+- Netzwerkparallelität wird bei stark gefülltem Segmentpuffer dynamisch begrenzt, um Speicherpeaks zu reduzieren.
+- Zusatzdiagnose unterscheidet Netzwerkwartezeiten von Muxing-/Speicherengpässen.
+- Regressionstests prüfen abgestufte Drosselung und minimale Parallelität.
+- Keine unbelegte Geschwindigkeitserhöhung versprochen; Wirksamkeit hängt vom Stream und System ab.
+
 ## 1.7.6 – Jellyfin-Dateistruktur
 
 - Überprüfte relative Jellyfin-Ordner-/Dateivorschläge für Filme und Episoden.
