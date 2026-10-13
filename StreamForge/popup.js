@@ -1,3 +1,4 @@
+import {jellyfinRelativePath} from './jellyfin-path.js';
 import { buildMediaBasename, suggestNaming, validateNaming } from "./naming.js";
 import { RenderGate, isNamingEditor } from "./ui-refresh.js";
 import { shouldProbeNow } from "./probe-utils.js";
@@ -228,6 +229,13 @@ function render(){
     };
     for(const el of [mediaType,nameTitle,nameYear,nameSeason,nameEpisode]){el.addEventListener(el===mediaType?'change':'input',()=>refreshNaming());}
     refreshNaming({save:false});
+    node.querySelector('.jellyfinCopy').addEventListener('click',async e=>{
+      const check=validateNaming(readNaming());
+      if(!check.ok){alert(check.error);return;}
+      await navigator.clipboard.writeText(jellyfinRelativePath(check.value));
+      const button=e.currentTarget;button.textContent='Kopiert';
+      setTimeout(()=>button.textContent='Jellyfin-Pfad kopieren',1400);
+    });
     const status=node.querySelector('.downloadStatus'), fill=node.querySelector('.progressFill'), progressText=node.querySelector('.progressText');
     const transferStats=node.querySelector('.transferStats'), networkStat=node.querySelector('.networkStat'), muxStat=node.querySelector('.muxStat');
     const entries=diagnosticEntries(item); const details=node.querySelector('.detailsToggle'), diagBox=node.querySelector('.diagnostics');
