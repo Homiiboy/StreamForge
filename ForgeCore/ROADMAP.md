@@ -56,9 +56,11 @@
 
 **ForgeCore v0.3.9 als Alpha umgesetzt:** SHA-256-geprüfter Cache abgeschlossener HLS-/DASH-Segmente; Resume dieser Segmente nach Neustart/Fehler; automatische begrenzte Backoff-Retries; FFprobe-Dateiprüfung; teilweise HLS-Mehrsprach-Audiogruppen; vollständiges SQLite-Backup und Download-Ereignisprotokoll. **Noch offen:** bytegenauer HTTP-Range-Resume, komplexe mehrspurige Formate, ZimaOS-/SMB- und Langzeitabnahme.
 
-## Weitere Vorschlagsphasen (noch nicht implementiert)
+## Phase 5 – Quellen- und Episodenautomatisierung (v0.4.x)
 
-- **Phase 5 / v0.4.x:** Regelmäßige Prüfungen unterstützter Quellen, fehlende/neue Episoden vorschlagen, konfigurierbare Automatisierungsregeln.
+**v0.4.9 als Alpha implementiert:** Opt-in-Regeln pro unterstützter Serienquelle, regelmäßige HTML-Link-Discovery, neue Episoden, separat aktivierbare Downloads fehlender Folgen, Prüfverlauf, Backoff und Konfiguration in der Weboberfläche. Nicht universell für alle Websites und ohne ZimaOS-Hardwareabnahme.
+
+## Weitere Vorschlagsphasen (noch nicht implementiert)
 - **Phase 6 / v0.5.x:** Quellenadapter-Schnittstellen ausbauen, Jellyfin-API-Refresh, Quellen- und Medienabgleich.
 - **Phase 7 / v0.6.x–v0.9.x:** Verbesserte ZimaOS-Installation, Updates/Rollback, Bedienung, Langzeit- und Sicherheitsabnahme auf echter Hardware.
 
@@ -84,4 +86,4 @@
 - Docker-Build geprüft; tatsächliche ZimaOS-Kompatibilität nur behaupten, wenn praktisch getestet
 - Version und Git-Tag nur nach bestandenem Release-Gate veröffentlicht
 
-**Nächster Entwicklungsschritt:** ZimaOS-/SMB-Abnahme für v0.3.9 (Freigabe, Zeitplan, Download, FFmpeg, SRT, Datenmigration). Danach die offen genannten Phase-3-Komfortfunktionen vervollständigen und auf Grundlage realer Tests zur v1.0.0 stabilisieren.
+**Nächster Entwicklungsschritt:** ZimaOS-/SMB-Abnahme für v0.4.9 (Freigabe, Zeitplan, Download, FFmpeg, SRT, Datenmigration). Danach die offen genannten Phase-3-Komfortfunktionen vervollständigen und auf Grundlage realer Tests zur v1.0.0 stabilisieren.
