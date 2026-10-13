@@ -46,7 +46,8 @@ test('release operations and diagnostics stay authenticated and redact credentia
   assert.equal(backup.status,200);
   assert.equal(backup.data.media.length,1);
   assert.equal((await request('/api/media','POST',{kind:'movie',title:'Blocked'})).status,201);
-  assert.equal((await request('/api/backup/import','POST',{...backup,confirm:'REPLACE'})).status,200);
+  const restored=await request('/api/backup/import','POST',{...backup.data,confirm:'REPLACE'});
+  assert.equal(restored.status,200,JSON.stringify(restored.data));
   assert.equal((await request('/api/media')).data.items.length,1);
   assert.equal((await request('/api/auth/logout','POST')).status,200);
   assert.equal((await request('/api/operations')).status,401);
