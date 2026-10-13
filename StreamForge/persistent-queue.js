@@ -5,14 +5,14 @@ export class PersistentDownloadQueue {
     if (!storage || typeof execute !== 'function') throw new TypeError('storage and execute required');
     this.storage = storage; this.key = key; this.execute = execute;
     this.onQueued = onQueued; this.onInterrupted = onInterrupted; this.onError = onError;
-    this.pending = []; this.active = null; this.draining = false;
+    this.pending = []; this.active = null; this.draining = false; this.paused = false;
     this.lock = Promise.resolve();
     this.ready = this.restore();
   }
   get waiting() { return this.pending.length; }
   get busy() { return this.active !== null; }
   serialize() {
-    return { version: 1, active: this.active, pending: this.pending.slice() };
+    return { version: 1, paused: this.paused, active: this.active, pending: this.pending.slice() };
   }
   async persist() {
     const snapshot = this.serialize();
@@ -23,6 +23,7 @@ export class PersistentDownloadQueue {
   async restore() {
     const record = (await this.storage.get(this.key))?.[this.key];
     if (record?.version === 1) {
+      this.paused = record.paused === true;
       this.pending = (Array.isArray(record.pending) ? record.pending : []).filter(validJob);
       if (validJob(record.active)) await this.onInterrupted(record.active);
       this.active = null;
@@ -40,8 +41,17 @@ export class PersistentDownloadQueue {
     catch (error) { this.pending = this.pending.filter(j => j.id !== job.id); throw error; }
     const position = this.pending.findIndex(j => j.id === job.id) + (this.active ? 1 : 0);
     if (position > 0) await this.onQueued(job, position);
-    this.drain().catch(() => {});
+    if (!this.paused) this.drain().catch(() => {});
     return { ok: true, position };
+  }
+  async setPaused(value) {
+    await this.ready;
+    const previous = this.paused;
+    this.paused = Boolean(value);
+    try { await this.persist(); }
+    catch (error) { this.paused = previous; throw error; }
+    if (!this.paused) this.drain().catch(() => {});
+    return this.serialize();
   }
   async cancel(id) {
     await this.ready;
@@ -56,7 +66,7 @@ export class PersistentDownloadQueue {
     if (this.draining) return;
     this.draining = true;
     try {
-      while (this.pending.length) {
+      while (this.pending.length && !this.paused) {
         const job = this.pending.shift();
         this.active = job;
         try { await this.persist(); }
