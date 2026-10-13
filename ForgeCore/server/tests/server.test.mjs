@@ -9,7 +9,7 @@ test('health, status and unknown paths',async()=>{
     const url='http://127.0.0.1:'+server.address().port;
     const health=await fetch(url+'/api/health');
     assert.equal(health.status,200);
-    assert.deepEqual(await health.json(),{ok:true,service:'ForgeCore',version:'0.1.0'});
+    assert.deepEqual(await health.json(),{ok:true,service:'ForgeCore',version:'0.0.1'});
     assert.equal(health.headers.get('cache-control'),'no-store');
     const status=await fetch(url+'/api/status');
     assert.equal(status.status,200);
