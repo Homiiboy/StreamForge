@@ -1,8 +1,26 @@
 # ForgeCore
 
-**ForgeCore v0.2.9 – Phase 3 Beta-Vorschau (Medienassistent & Automatisierung).** Eigenständiger Docker-/ZimaOS-Server. Die beigefügte Browser-Erweiterung in `browser-extension/` bleibt unverändert auf **StreamForge 1.8.1**.
+**ForgeCore v0.3.9 – Phase 4 Alpha (Medienintegrität und Wiederherstellung).** Eigenständiger Docker-/ZimaOS-Server. Die beigefügte Browser-Erweiterung in `browser-extension/` bleibt unverändert auf **StreamForge 1.8.1**.
 
 > **Abnahmestand:** Automatisierte Node-/HTTP-/Docker-Tests und lokaler HLS/FFmpeg-Medientest sind durchgeführt. **Reale Websites, lange Serienläufe, ZimaOS-Mounts und SMB-Speicherpfade sind noch nicht auf deiner Hardware getestet.** Die App unterstützt ausdrücklich nur ausgewählte unverschlüsselte Formate, nicht jede Streaming-Website.
+
+## Phase 4 – v0.3.9 (automatisiert getestete Alpha)
+
+- **Segment-Recovery:** HLS-/DASH-Abschnitte werden auf dem persistenten `/data`-Volume als vollständige, SHA-256-geprüfte Segmente gespeichert. Bei Wiederholung derselben Quelle/Segmentliste werden geprüfte vollständige Segmente wiederverwendet; defekte oder halbfertige Segmente werden neu geladen. Die Datei wird vor der Medienablage neu zusammengesetzt.
+- **Begrenzte automatische Retries:** Vorübergehende Netzwerkfehler bekommen exponentielle Wartezeiten und höchstens die in den Zeitplaneinstellungen festgelegte Anzahl Wiederholungen (Standard 3). Berechtigungs-, Format- und Codecfehler werden nicht blind wiederholt.
+- **Muxing- und Ausgabeprüfung:** FFmpeg remuxt unterstützte Videospuren und FFprobe validiert bei realen Downloads anschließend mindestens eine nutzbare Videospur und eine Laufzeit vor dem endgültigen Export. Defekte Dateien werden nicht in die Jellyfin-Bibliothek übernommen.
+- **HLS-Audiosprache:** Master-Playlists mit `EXT-X-MEDIA:TYPE=AUDIO` werden für die bevorzugte Sprache ausgewertet; eine separate, unverschlüsselte Audio-Playlist kann als zweite Eingabe in FFmpeg eingemuxt werden. Keine Garantie für alle Codecs, Gruppierungen oder komplexen Streams.
+- **Vollständiges SQLite-Backup:** `GET /api/backup/database` erstellt einen konsistenten Datenbanksnapshot samt Admin-Accounts, Quellen, Episoden, Transferstatus und Ereignisverlauf. In der Weboberfläche gibt es einen eigenen Downloadknopf. **Die Sicherung enthält Passwort-Hashes und ist vertraulich.**
+- **Transfer-Ereignisse:** Status, automatische Wartezeiten, Retries und Abschlüsse sind über `GET /api/transfers/:id/events` und im Dashboard einsehbar.
+- **Cache-Lebenszyklus:** Erfolgreiche Downloads räumen den Cache auf. Verwaiste, abgeschlossene/fehlgeschlagene Caches können nach sieben Tagen beim Start entfernt werden; ausstehende Jobs behalten ihre Dateien.
+
+**Wichtig:** Dies ist die Phase-4-Alpha, nicht die vollständige Abnahme aller Stabilitätsziele. Eine unterbrochene laufende Segmentübertragung wird erneut von Beginn des Segments geladen (keine HTTP-Range-/Byte-Resume-Funktion). Nicht unterstützte HLS/DASH-Typen, DRM und komplexe Mehrspur-Container bleiben eingeschränkt. Echte ZimaOS-/SMB-Schreibtests, Langzeitdownloads, Medien-Wiedergabeprüfungen mit verschiedenen Codecs und Recovery unter Stromausfall müssen noch stattfinden.
+
+### Datensicherheit beim Upgrade von v0.2.9
+
+Vor dem ersten Start von v0.3.9 ein vollständiges SQLite-Backup erstellen und die `forgecore-data`-Volume sichern. Die Migration erweitert die Datenbank auf Schema 6; ein **Downgrade auf v0.2.9 mit der aktualisierten SQLite-Datei wird nicht unterstützt**. Für Rollback den vorherigen Code **und** die zugehörige Datenvolume-Sicherung wiederherstellen.
+
+Nach einem Fehler kann der Segmentcache erheblichen Speicherplatz benötigen (bis zur konfigurierten Medienobergrenze). Die Datenvolume braucht daher ausreichend freien Platz. Ein SQLite-Backup kann nur bei gestopptem ForgeCore-Container sicher direkt als `/data/forgecore.sqlite` eingespielt werden; dabei unbedingt auch die zugehörigen WAL-/SHM-Dateien beziehungsweise eine vollständige Volume-Sicherung berücksichtigen.
 
 ## Neu in Phase 3 (v0.2.0–v0.2.9)
 
@@ -107,7 +125,7 @@ Geschützte APIs benötigen einen Sessioncookie. Schreibaufrufe zusätzlich `X-F
 
 ## Versions- und Releasepolitik
 
-- **ForgeCore:** eigene Versionsnummer ab `v0.0.1`. Der aktuelle Phase-3-Beta-Vorschau-Stand ist `v0.2.9`.
+- **ForgeCore:** eigene Versionsnummer ab `v0.0.1`. Der aktuelle Phase-4-Alpha-Stand ist `v0.3.9`.
 - **Browser-Snapshot:** `ForgeCore/browser-extension/` bleibt auf **StreamForge v1.8.1**; Änderungen erfolgen ausschließlich bewusst und separat.
 - Release-Tags für ForgeCore tragen den Präfix `forgecore-vX.Y.Z`, um mit der bestehenden Browser-Erweiterung keine Tags zu kollidieren.
 - Die detaillierten Meilensteine stehen in [ROADMAP.md](./ROADMAP.md), die konkreten Änderungen in [CHANGELOG.md](./CHANGELOG.md).
