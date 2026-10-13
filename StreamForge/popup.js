@@ -124,10 +124,20 @@ function render(){
       const remembered=subtitleSelections.get(item.id);
       subtitleSelect.value=(remembered&&tracks.some(t=>t.uri===remembered))?remembered:tracks.find(t=>t.isDefault)?.uri||tracks[0]?.uri||'';
       if(subtitleSelect.value)subtitleSelections.set(item.id,subtitleSelect.value);
+      node.querySelector('.subtitleDownload').hidden=!/\.vtt(?:$|[?#])/i.test(subtitleSelect.value||'');
     };
     refreshSubtitles();
     qualitySelect.addEventListener('change',refreshSubtitles);
     subtitleSelect.addEventListener('change',()=>subtitleSelections.set(item.id,subtitleSelect.value));
+    node.querySelector('.subtitleDownload').addEventListener('click',async e=>{
+      const url=subtitleSelect.value;
+      if(!/\.vtt(?:$|[?#])/i.test(url))return;
+      const checked=validateNaming(readNaming());
+      if(!checked.ok){alert('Bitte zuerst die Dateibenennung vervollständigen.');return;}
+      const filename=buildMediaBasename(checked.value);
+      const result=await chrome.runtime.sendMessage({type:'sf_subtitle_download',candidate:item,url,filename});
+      if(!result?.ok)alert(result?.error||'Untertitel konnte nicht gespeichert werden.');
+    });
     node.querySelector('.subtitleCopy').addEventListener('click',async e=>{
       if(!subtitleSelect.value)return;
       await navigator.clipboard.writeText(subtitleSelect.value);
