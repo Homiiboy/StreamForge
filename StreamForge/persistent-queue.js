@@ -78,6 +78,10 @@ export class PersistentDownloadQueue {
     this.draining = true;
     try {
       while (this.pending.length && !this.paused) {
+        // Await all previously scheduled storage writes before selecting the next
+        // job; otherwise concurrent enqueue snapshots can resurrect finished jobs.
+        await this.lock;
+        if (this.paused || !this.pending.length) break;
         const job = this.pending.shift();
         this.active = job;
         try { await this.persist(); }
