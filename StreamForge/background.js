@@ -713,5 +713,17 @@ chrome.downloads.onChanged.addListener(async delta => {
   }
 });
 
+// Resume only persisted *waiting* jobs after Chrome starts. Active transfers
+// are marked interrupted by the persistent queue and must be started manually.
+async function restorePendingQueueOnStartup() {
+  try {
+    const saved = (await chrome.storage.local.get('sf_queue_v170'))?.sf_queue_v170;
+    if (saved?.version === 1 && (saved.active || (Array.isArray(saved.pending) && saved.pending.length))) {
+      await ensureOffscreen();
+    }
+  } catch (error) { console.warn('StreamForge queue recovery:', error); }
+}
+chrome.runtime.onStartup.addListener(() => { restorePendingQueueOnStartup().catch(() => {}); });
+chrome.runtime.onInstalled.addListener(() => { restorePendingQueueOnStartup().catch(() => {}); });
 chrome.tabs.onRemoved.addListener(tabId => chrome.storage.session.remove([stateKey(tabId), previewKey(tabId), pageMetaKey(tabId)]));
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => { if (changeInfo.status === "loading") updateBadge(tabId).catch(() => {}); });
