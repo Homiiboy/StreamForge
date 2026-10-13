@@ -9,7 +9,7 @@ export function libraryParts(naming, extension='.mp4', placement='library'){
   const checked=validateNaming(naming);
   if(!checked.ok)throw Error(checked.error);
   const n=checked.value;
-  if(!['.mp4','.ts','.webm','.mkv','.srt','.vtt'].includes(extension))throw Error('Dateityp nicht unterstützt');
+  if(!['.mp4','.ts','.webm','.mkv','.m4v','.mov','.avi','.mp3','.m4a','.aac','.ogg','.opus','.wav','.srt','.vtt'].includes(extension))throw Error('Dateityp nicht unterstützt');
   const basename=safeFolderPart(buildMediaBasename(n));
   const filename=basename+extension;
   const container=n.type==='movie'?'Movies':'Shows';
