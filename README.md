@@ -49,6 +49,8 @@ Bei Serien in einem freigegebenen Medienordner kann StreamForge bestehende `Seas
 
 Die künftige Server-App heißt **[ForgeCore](./ForgeCore/)**. Unter `ForgeCore/browser-extension/` liegt eine vollständige Kopie der aktiven Browser-Erweiterung aus dem **Git-Release v1.8.1** (ohne das nicht aktive Upload-Archiv). Der neue `ForgeCore/server/`-Bereich enthält das eigenständige Docker-/ZimaOS-Grundgerüst.
 
+Die eigenständige ForgeCore-App startet bei **v0.0.1**. Die [ForgeCore-Roadmap](./ForgeCore/ROADMAP.md) beschreibt die nächsten Entwicklungsphasen.
+
 **StreamForge selbst bleibt unverändert:** Die ursprüngliche Erweiterung unter `StreamForge/` entwickelt sich getrennt weiter. ForgeCore ist aktuell ein Architektur- und Servicefundament, noch kein automatisierter Downloader.
 
 ## Installation
