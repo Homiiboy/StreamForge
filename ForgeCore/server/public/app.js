@@ -111,6 +111,47 @@ async function refreshLibrary(){const data=await api('/api/media');const root=$(
       if(item.kind==='series'&&!b.episodeId)throw Error('Bitte zuerst eine Episode wählen.');
       await api('/api/transfers',{method:'POST',body:b});notify('Download in Warteschlange aufgenommen.');
     }));
+    if(item.kind==='series'){
+      const monitor=node('details','','sourceMonitor');
+      const heading=node('summary','Automatische Quellenprüfung konfigurieren');
+      monitor.append(heading);
+      const policyResult=await api('/api/sources/'+source.id+'/automation');
+      let policy=policyResult.policy;
+      const option=(label,type,init)=>{
+        const wrapper=node('label');const input=node('input');input.type=type;
+        if(type==='checkbox')input.checked=!!init;else input.value=String(init);
+        wrapper.append(input,document.createTextNode(' '+label));return {wrapper,input};
+      };
+      const enabled=option('Regelmäßige Prüfung aktivieren','checkbox',policy.enabled);
+      const autoQueue=option('Fehlende Episoden automatisch zur Download-Warteschlange hinzufügen','checkbox',policy.autoQueue);
+      const autoAdd=option('Neue Episoden zur Bibliothek hinzufügen','checkbox',policy.autoAddEpisodes);
+      const interval=option('Prüfintervall (Minuten; mindestens 30)','number',policy.intervalMinutes);
+      interval.input.min='30';interval.input.max='10080';
+      const maximum=option('Maximale neue Downloads je Prüfung (1–50)','number',policy.maxPerCheck);
+      maximum.input.min='1';maximum.input.max='50';
+      const controlsMonitor=node('div','','sourceControls');
+      controlsMonitor.append(action('Regeln speichern',async()=>{
+        const body={enabled:enabled.input.checked,autoQueue:autoQueue.input.checked,autoAddEpisodes:autoAdd.input.checked,intervalMinutes:Number(interval.input.value),maxPerCheck:Number(maximum.input.value)};
+        if(body.enabled&&body.autoQueue&&!confirm('Diese Einstellung darf automatisch neue Downloads starten. Wirklich aktivieren?'))return;
+        policy=(await api('/api/sources/'+source.id+'/automation',{method:'PUT',body})).policy;
+        monitorStatus.textContent='Gespeichert. Nächste Prüfung: '+(policy.enabled?new Date(policy.nextCheckEpoch).toLocaleString('de-AT'):'deaktiviert');
+        notify('Quellenautomatisierung gespeichert.');
+      }));
+      controlsMonitor.append(action('Jetzt prüfen',async()=>{
+        const r=await api('/api/sources/'+source.id+'/automation/check',{method:'POST'});
+        monitorStatus.textContent='Gefunden: '+r.discovered+' · Neue Episoden: '+r.newEpisodes+' · Downloads: '+r.queued;
+        notify('Quellenprüfung abgeschlossen.');await refreshLibrary();
+      }));
+      controlsMonitor.append(action('Verlauf anzeigen',async()=>{
+        const data=await api('/api/sources/'+source.id+'/automation/history');
+        const pre=node('pre',data.items.map(x=>x.checked_at+' · '+x.status+' · Episoden '+x.new_episodes+' · Downloads '+x.queued+' · '+x.message).join('\n')||'Noch keine Prüfungen','muted');
+        pre.style.whiteSpace='pre-wrap';pre.style.maxHeight='200px';pre.style.overflow='auto';
+        monitor.querySelector('pre')?.remove();monitor.append(pre);
+      }));
+      const monitorStatus=node('small',policy.lastError?'Letzter Fehler: '+policy.lastError:policy.lastCheckEpoch?'Letzte Prüfung: '+new Date(policy.lastCheckEpoch).toLocaleString('de-AT'):'Noch nicht geprüft','muted');
+      monitor.append(enabled.wrapper,autoQueue.wrapper,autoAdd.wrapper,interval.wrapper,maximum.wrapper,controlsMonitor,monitorStatus);
+      row.append(monitor);
+    }
     row.append(controls);sourcesBox.append(row);
     populateItems().catch(()=>{});
   }
