@@ -1,5 +1,13 @@
 # StreamForge Browser Connector – Changelog
 
+## 1.7.9 – Warteschlangen-Priorisierung und Abschluss der 1.7-Reihe
+
+- Im Download-Center können wartende HLS-/DASH-Aufträge mit ↑ Höher und ↓ Tiefer priorisiert werden.
+- Neue Reihenfolge wird dauerhaft in der Queue gespeichert und bei Neustart wiederhergestellt.
+- Laufende Aufträge werden nicht nachträglich verschoben.
+- Regressionstests für Reihenfolge, Grenzen und ungültige Richtung.
+- Limitierungen der 1.7-Reihe: kein bytegenaues HLS-/DASH-Resume und keine automatische Schreibberechtigung auf ZimaOS-Netzfreigaben.
+
 ## 1.7.8 – TS-Medienprüfung
 
 - MPEG-TS-Kopf- und Endbereich werden vor dem Export stichprobenartig auf TS-Synchronisation und Transport-Fehlerbits geprüft.
