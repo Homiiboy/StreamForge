@@ -1,8 +1,51 @@
 # ForgeCore
 
-**ForgeCore v0.5.9 – Phase 6 Alpha (Quellenadapter und Jellyfin-API).** Eigenständiger Docker-/ZimaOS-Server. Die beigefügte Browser-Erweiterung in `browser-extension/` bleibt unverändert auf **StreamForge 1.8.1**.
+**ForgeCore v0.9.9 – Phase 7 Beta-Vorschau (ZimaOS-Betrieb, Backups & Rollback).** Eigenständiger Docker-/ZimaOS-Server. Die beigefügte Browser-Erweiterung in `browser-extension/` bleibt unverändert auf **StreamForge 1.8.1**.
 
 > **Abnahmestand:** Automatisierte Node-/HTTP-/Docker-Tests und lokaler HLS/FFmpeg-Medientest sind durchgeführt. **Reale Websites, lange Serienläufe, ZimaOS-Mounts und SMB-Speicherpfade sind noch nicht auf deiner Hardware getestet.** Die App unterstützt ausdrücklich nur ausgewählte unverschlüsselte Formate, nicht jede Streaming-Website.
+
+## Phase 7 – v0.9.9 (automatisiert getestete Beta-Vorschau)
+
+Diese Version bündelt die geplanten Stabilisierungsarbeiten aus **v0.6.x–v0.9.x** in einem Entwicklungsstand. Sie ist **kein** Versprechen, dass alle ZimaOS-spezifischen Anforderungen oder der Dauerbetrieb schon abgenommen wurden.
+
+### Funktionen
+
+- **Host-Verwaltung:** `manage.sh` unterstützt `doctor`, `install`, `backup`, `update`, `rollback BACKUP` und `status`. Vor der Installation werden Docker, Compose, der konfigurierte Jellyfin-Medienpfad und Basis-Schreibrechte geprüft.
+- **Konsistente Sicherungen:** Für eine Volume-Sicherung wird der ForgeCore-Container gestoppt; das komplette `/data`-Volume wird als `data.tar.gz` in `ForgeCore/backups/` abgelegt. Enthält SQLite (inklusive Accounts und Jellyfin-Schlüssel), Downloads und Transfercache; Backupverzeichnis erhält restriktive Dateirechte.
+- **Update mit Healthcheck:** Das neue Docker-Image wird zunächst gebaut. Der laufende Dienst wird anschließend angehalten, das Datenvolume gesichert und der neue Container gestartet. Falls er nicht gesund wird, versucht `manage.sh` das vorherige Image und dessen Daten automatisch wiederherzustellen.
+- **Expliziter Rollback:** Mit `manage.sh rollback backups/backup-...` kann bei vorhandenem alten Docker-Image zur vorherigen Datenversion zurückgekehrt werden. **Ein Rollback setzt Daten und Queue-Zustände zurück, die nach der Sicherung entstanden sind. Jellyfin-Mediendateien werden nicht rückgängig gemacht** – vor einem Rollback laufende Exporte unbedingt prüfen.
+- **Betriebsdiagnose:** Neue authentifizierte Endpunkte `GET /api/operations` und `GET /api/operations/errors`: DB-`quick_check`, Dateisystem-/Speicherplatzstatus, RSS/RAM, Uptime, Medienbibliothek, Queue-Größen und gekürzte Fehlerübersicht. In der Weboberfläche erscheint dafür ein eigener Reiter **System**.
+- **Bedienung & Zugänglichkeit:** Responsive Systemübersicht mit besserer Fokusanzeige, verständlichen Hinweisen zu Volume-Problemen und schreibgeschützten Systemwerten.
+- **Tests:** Simulierte Docker-Befehle für den Sicherungs-/Rollback-Pfad, Datenbankpersistenz mit 1.200 Testprojekten, Syntax-/Unit-/Integrationsprüfungen und Docker-CI.
+
+### Ausführung auf ZimaOS
+
+```bash
+cd ForgeCore
+# Erstinstallation:
+cp .env.example .env  # nur wenn noch keine .env besteht!
+# FORGECORE_MEDIA_HOST_PATH in .env auf den tatsächlichen Pfad setzen
+bash manage.sh doctor
+bash manage.sh install
+
+# Späteres Upgrade, zuvor zusätzlich extern sichern:
+bash manage.sh update
+
+# Manuelle Sicherung:
+bash manage.sh backup
+
+# Manuelles Zurückrollen nach einem Update:
+bash manage.sh rollback backups/backup-YYYYMMDDTHHMMSSZ-PID
+```
+
+**Wichtige Sicherheitsgrenzen:**
+
+- Verwende die App standardmäßig nur über `127.0.0.1:8787`. Für Fernzugriff benötigt sie einen HTTPS-Reverse-Proxy, sichere Cookies und zusätzliche Zugriffskontrollen; den Port nicht einfach ins Internet freigeben.
+- Die Host-Prüfung kann nicht garantieren, dass der **Containerbenutzer** auf ZimaOS/SMB tatsächlich schreiben darf. Das wird erst im Hardwaretest geprüft.
+- Sicherungen enthalten **vollständige Zugangsdaten und API-Schlüssel**. Niemals veröffentlichen oder in Git einchecken. `.gitignore` ignoriert `.env`, Datenbanken und Backup-Verzeichnis.
+- Der automatische Rollback wurde mit einem **simulierten** Docker-Befehlsablauf geprüft; reale ZimaOS-Docker-Volumes, unterbrochene Upgrades, Netzwerklaufwerke und Restore von großen Dateien müssen vor dem stabilen Release getestet werden.
+- Bei einem fatalen Fehler während der Erstellung des Backups wird versucht, den alten Container wieder zu starten. Wenn Docker selbst unbrauchbar ist, ist manuelle Intervention nötig. Vor kritischen Updates zusätzlich externe Sicherung anlegen.
+- Das Paket bleibt **Beta**; ein finales `v1.0.0` setzt echte Abnahme inklusive Langzeitbetrieb, Update/Restore, API-/Streaming-Kompatibilität und Sicherheit voraus.
 
 ## Phase 6 – v0.5.9 (automatisiert getestete Alpha)
 
@@ -174,7 +217,7 @@ Geschützte APIs benötigen einen Sessioncookie. Schreibaufrufe zusätzlich `X-F
 
 ## Versions- und Releasepolitik
 
-- **ForgeCore:** eigene Versionsnummer ab `v0.0.1`. Der aktuelle Phase-6-Alpha-Stand ist `v0.5.9`.
+- **ForgeCore:** eigene Versionsnummer ab `v0.0.1`. Der aktuelle Phase-7-Beta-Vorschau-Stand ist `v0.9.9`.
 - **Browser-Snapshot:** `ForgeCore/browser-extension/` bleibt auf **StreamForge v1.8.1**; Änderungen erfolgen ausschließlich bewusst und separat.
 - Release-Tags für ForgeCore tragen den Präfix `forgecore-vX.Y.Z`, um mit der bestehenden Browser-Erweiterung keine Tags zu kollidieren.
 - Die detaillierten Meilensteine stehen in [ROADMAP.md](./ROADMAP.md), die konkreten Änderungen in [CHANGELOG.md](./CHANGELOG.md).
