@@ -28,14 +28,14 @@ jobs:
         run: |
           VERSION=$(node -p "require('./ForgeCore/server/package.json').version")
           TAG="forgecore-v${VERSION}"
-          test "$VERSION" = "0.0.9"
+          test "$VERSION" = "0.1.9"
           mkdir -p dist
           zip -qr "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
             ForgeCore/server ForgeCore/compose.yaml ForgeCore/.env.example \
             ForgeCore/README.md ForgeCore/ROADMAP.md ForgeCore/CHANGELOG.md
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
-              --title "ForgeCore ${VERSION} – ZimaOS Phase 1 Alpha" \
+              --title "ForgeCore ${VERSION} – ZimaOS Phase 2 Alpha" \
               --target "$GITHUB_SHA" \
-              --notes "Eigenständige ForgeCore-ZimaOS-Alpha-App. SQLite, Admin-Login, Weboberfläche, Medienbibliothek, read-only Jellyfin-Scan, Hintergrundaufgaben und Backups. Automatisierte CI bestanden. Kein automatischer Stream-Downloader; reale ZimaOS-/SMB-Abnahme steht aus."
+              --notes "Eigenständige ForgeCore-ZimaOS-Alpha-App. SQLite, Admin-Login, Weboberfläche, Medienbibliothek, Quellen- und Episodenverwaltung, begrenzte ungeschützte HLS-VOD-, DASH-SegmentList- und MP4-Downloads, persistente Transfers und Jellyfin-Export. Nicht universell für alle Websites/Manifestvarianten; reale ZimaOS-/SMB-Abnahme steht aus."
           fi
