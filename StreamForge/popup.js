@@ -348,7 +348,7 @@ function render(){
       }
       const naming=readNaming(); const namingCheck=validateNaming(naming); if(!namingCheck.ok){alert(`Dateiname unvollständig:\n${namingCheck.error}`);return;} persistNaming(item.id,namingCheck.value);
       b.disabled=true;b.textContent=item.kind==='media'?'Speichern …':item.kind==='hls'?'HLS startet …':item.kind==='dash'?'DASH startet …':'Prüfe …';
-      if(librarySelection.mode==='picked' && !(await libraryStore.get().catch(()=>null))){
+      if(librarySelection.mode==='picked' && item.kind!=='media' && !(await libraryStore.get().catch(()=>null))){
         alert('Bitte zuerst über „Medienordner auswählen“ ein Zielverzeichnis festlegen.');b.disabled=false;b.textContent=old;return;
       }
       let handleKey='';
