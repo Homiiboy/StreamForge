@@ -1,5 +1,19 @@
 # ForgeCore – Changelog
 
+## v0.3.9 – Phase-4-Alpha: Recovery und Medienintegrität
+
+Die Meilensteine v0.3.0–v0.3.9 sind in einem gemeinsamen 0.3.9-Entwicklungsstand zusammengefasst, nicht als zehn separate Releases veröffentlicht.
+
+- **v0.3.0–v0.3.2:** SHA-256-verifizierter Segmentcache, Neustart- und Retry-Recovery auf persistentem Datenvolume; beschädigte Segmente werden neu geladen.
+- **v0.3.3:** Exponentielles Retry-/Backoff-Verhalten für vorübergehende Netzwerkfehler, ereignisbasierter Jobverlauf.
+- **v0.3.4:** FFprobe-Prüfung auf gültigen Videostream und Laufzeit vor Jellyfin-Publish; FFmpeg-Muxing bleibt ohne Re-Encoding.
+- **v0.3.5:** Unterstützung ausgewählter alternativer HLS-Audio-Playlists mit bevorzugter Sprache (nicht universell).
+- **v0.3.6:** Vollständiger SQLite-Online-Backup-Download, Ereignisprotokoll in der Benutzeroberfläche.
+- **v0.3.7:** Bereinigung alter verwaister Download-Zwischenstände und kontrollierter Cache-Lebenszyklus.
+- **v0.3.8–v0.3.9:** Regressionstests für Recovery, Prüfsummen, Audio, Datenbankmigration, SQLite-Backup und Container; Dokumentation und CI-Release.
+
+**Noch offen:** HTTP-Range-/Byte-Resume innerhalb eines Segments, echte ZimaOS-/SMB-Netzlaufwerkstests, vollständige Codec-Wiedergabeprüfung auf Jellyfin, alle Audiotrack-/Untertitelformate, Langzeittests und automatischer Rollback. Nicht als vollständig produktionsreif betrachten.
+
 ## v0.2.9 – Phase-3-Beta-Vorschau
 
 Die Entwicklungsmeilensteine v0.2.0–v0.2.9 sind im gemeinsamen v0.2.9-Stand gebündelt. Es handelt sich **nicht** um zehn einzelne Releases oder um eine auf ZimaOS abgenommene Produktionsversion.

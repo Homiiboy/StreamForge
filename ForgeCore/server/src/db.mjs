@@ -36,7 +36,11 @@ CREATE INDEX IF NOT EXISTS idx_source_items_source ON source_items(source_id);`,
 `CREATE TABLE IF NOT EXISTS notifications(id TEXT PRIMARY KEY,category TEXT NOT NULL,message TEXT NOT NULL,ref_id TEXT,created_at TEXT NOT NULL,read_at TEXT);
 CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read_at,created_at);
 CREATE TABLE IF NOT EXISTS subtitle_jobs(id TEXT PRIMARY KEY,media_id TEXT NOT NULL REFERENCES media(id) ON DELETE CASCADE,episode_id TEXT REFERENCES episodes(id) ON DELETE SET NULL,url TEXT NOT NULL,language TEXT NOT NULL,state TEXT NOT NULL CHECK(state IN ('queued','running','complete','failed','cancelled')),result TEXT,error TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
-CREATE INDEX IF NOT EXISTS idx_subtitle_state ON subtitle_jobs(state,created_at);`
+CREATE INDEX IF NOT EXISTS idx_subtitle_state ON subtitle_jobs(state,created_at);`,
+`ALTER TABLE transfer_jobs ADD COLUMN retry_after_epoch INTEGER NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_transfer_retry ON transfer_jobs(state,retry_after_epoch);
+CREATE TABLE IF NOT EXISTS transfer_events(id INTEGER PRIMARY KEY AUTOINCREMENT,transfer_id TEXT NOT NULL,category TEXT NOT NULL,description TEXT NOT NULL,created_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_transfer_events ON transfer_events(transfer_id,id);`
 ];
 export const utc=()=>new Date().toISOString();
 export function openDatabase(path=':memory:'){

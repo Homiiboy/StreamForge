@@ -131,6 +131,12 @@ async function refreshTransfers(){
   box.append(node('p',(item.progress||0)+'% · '+(item.downloaded_bytes||0)+' Bytes · '+(item.error||item.result_json||''),'muted'));
   if(['queued','running'].includes(item.state))box.append(action('Abbrechen',async()=>{await api('/api/transfers/'+item.id+'/cancel',{method:'POST'});await refreshTransfers();}));
   if(['failed','cancelled'].includes(item.state))box.append(action('Erneut versuchen',async()=>{await api('/api/transfers/'+item.id+'/retry',{method:'POST'});await refreshTransfers();}));
+  box.append(action('Ereignisverlauf',async()=>{
+   const history=await api('/api/transfers/'+item.id+'/events');
+   const region=node('pre',history.items.map(e=>e.created_at+' · '+e.category+': '+e.description).join('\n')||'Keine Ereignisse','muted');
+   region.style.whiteSpace='pre-wrap';region.style.maxHeight='180px';region.style.overflow='auto';
+   box.querySelector('pre')?.remove();box.append(region);
+  }));
   root.append(box);
  }
 }
@@ -221,6 +227,17 @@ async function refreshSchedule(){
 }
 async function refreshSettings(){const c=await api('/api/config');const entries=Object.fromEntries(c.items.map(x=>[x.key,x.value]));$('#jellyfinUrl').value=entries.jellyfin_url||'';$('#libraryLabel').value=entries.library_label||'';$('#preferredLanguage').value=entries.preferred_language||'';$('#volumeStatus').textContent=c.mediaRoot.configured?`Medienvolume: ${c.mediaRoot.readable?'lesbar':'nicht lesbar'} · Schreibrecht: ${c.mediaRoot.writeable?'vorhanden':'nicht vorhanden'}`:'Kein Medienvolume eingebunden';}
 $('#settingsForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/config',{method:'PUT',body:{jellyfin_url:$('#jellyfinUrl').value,library_label:$('#libraryLabel').value,preferred_language:$('#preferredLanguage').value}});notify('Einstellungen gespeichert.');}catch(err){notify(err.message,true);}});
+$('#fullBackupDownload').addEventListener('click',async()=>{
+ try{
+  const result=await fetch('/api/backup/database',{headers:{'x-forgecore-request':'1'},credentials:'same-origin'});
+  if(!result.ok)throw Error('SQLite-Backup fehlgeschlagen: HTTP '+result.status);
+  const blob=await result.blob();
+  const uri=URL.createObjectURL(blob),link=node('a');
+  link.href=uri;link.download='forgecore-complete-'+new Date().toISOString().slice(0,10)+'.sqlite';
+  document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(uri),1500);
+  notify('Vollständiges Datenbank-Backup erstellt. Bitte sicher aufbewahren.');
+ }catch(error){notify(error.message,true)}
+});
 $('#backupDownload').addEventListener('click',async()=>{try{const data=await api('/api/backup/export');const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),link=node('a');link.href=url;link.download='forgecore-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);}catch(err){notify(err.message,true);}});
 startup();
 

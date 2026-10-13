@@ -52,7 +52,17 @@
 | **v0.2.5** | ZimaOS-App-Installation und Update-Migrationspfad inkl. Rollback |
 | **v0.2.6–v0.2.9** | Beta-Stabilisierung, Sicherheit, UX, große Bibliotheken und Langzeittests |
 
-## Phase 4 – Erste stabile Version
+## Phase 4 – Download-Recovery und Medienintegrität (v0.3.x)
+
+**ForgeCore v0.3.9 als Alpha umgesetzt:** SHA-256-geprüfter Cache abgeschlossener HLS-/DASH-Segmente; Resume dieser Segmente nach Neustart/Fehler; automatische begrenzte Backoff-Retries; FFprobe-Dateiprüfung; teilweise HLS-Mehrsprach-Audiogruppen; vollständiges SQLite-Backup und Download-Ereignisprotokoll. **Noch offen:** bytegenauer HTTP-Range-Resume, komplexe mehrspurige Formate, ZimaOS-/SMB- und Langzeitabnahme.
+
+## Weitere Vorschlagsphasen (noch nicht implementiert)
+
+- **Phase 5 / v0.4.x:** Regelmäßige Prüfungen unterstützter Quellen, fehlende/neue Episoden vorschlagen, konfigurierbare Automatisierungsregeln.
+- **Phase 6 / v0.5.x:** Quellenadapter-Schnittstellen ausbauen, Jellyfin-API-Refresh, Quellen- und Medienabgleich.
+- **Phase 7 / v0.6.x–v0.9.x:** Verbesserte ZimaOS-Installation, Updates/Rollback, Bedienung, Langzeit- und Sicherheitsabnahme auf echter Hardware.
+
+## Stable Release – v1.0.0
 
 **v1.0.0** ist erst geplant, wenn ForgeCore auf einer unterstützten ZimaOS-Installation Filme und Serien von technisch unterstützten, berechtigt nutzbaren Quellen vollständig verwalten kann und Installation, Updates, Sicherheit, Jellyfin-Export und Recovery praktisch überprüft sind.
 
@@ -74,4 +84,4 @@
 - Docker-Build geprüft; tatsächliche ZimaOS-Kompatibilität nur behaupten, wenn praktisch getestet
 - Version und Git-Tag nur nach bestandenem Release-Gate veröffentlicht
 
-**Nächster Entwicklungsschritt:** ZimaOS-/SMB-Abnahme für v0.2.9 (Freigabe, Zeitplan, Download, FFmpeg, SRT, Datenmigration). Danach die offen genannten Phase-3-Komfortfunktionen vervollständigen und auf Grundlage realer Tests zur v1.0.0 stabilisieren.
+**Nächster Entwicklungsschritt:** ZimaOS-/SMB-Abnahme für v0.3.9 (Freigabe, Zeitplan, Download, FFmpeg, SRT, Datenmigration). Danach die offen genannten Phase-3-Komfortfunktionen vervollständigen und auf Grundlage realer Tests zur v1.0.0 stabilisieren.

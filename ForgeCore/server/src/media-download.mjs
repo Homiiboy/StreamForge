@@ -1,4 +1,5 @@
 import {safeFetch,safeStream,parseWebUrl} from './source-security.mjs';
+import {prepareStaging,cacheSegments,cleanupTransferStaging} from './transfer-recovery.mjs';
 import {parseHls,parseDash} from './source-adapters.mjs';
 import {mkdir,mkdtemp,open,rm,stat,lstat,link,unlink} from 'node:fs/promises';
 import {createWriteStream} from 'node:fs';
@@ -14,7 +15,7 @@ const MAX_SEGMENT=48*1024*1024;
 const MAX_MEDIA=12*1024*1024*1024;
 const MAX_SEGMENTS=4000;
 function ensureNotAborted(signal){if(signal?.aborted)throw Object.assign(Error('Download aborted'),{code:'ABORT_ERR'});}
-export async function fetchManifest(url,fetcher=safeFetch,depth=0){
+export async function fetchManifest(url,fetcher=safeFetch,depth=0,language='de'){
  if(depth>2)throw Error('Too many nested HLS playlists');
  const response=await fetcher(url,{maxBytes:4*1024*1024});
  const finalUrl=response.url||url;
@@ -23,7 +24,17 @@ export async function fetchManifest(url,fetcher=safeFetch,depth=0){
  const hls=parseHls(text,finalUrl);
  if(hls.kind==='master'){
   if(!hls.variants.length)throw Error('Empty HLS master playlist');
-  return fetchManifest(hls.variants[0].url,fetcher,depth+1);
+  const variant=hls.variants[0];
+  const video=await fetchManifest(variant.url,fetcher,depth+1,language);
+  const available=(hls.audioGroups||[]).filter(x=>x.group===variant.audioGroup);
+  if(!available.length)return video;
+  const matching=available.find(x=>x.language.toLowerCase()===language.toLowerCase())
+    ||available.find(x=>x.language.toLowerCase().split('-')[0]===language.toLowerCase().split('-')[0])
+    ||available.find(x=>x.default)||available[0];
+  if(!matching)return video;
+  const track=await fetchManifest(matching.url,fetcher,depth+1,language);
+  if(track.kind!=='hls'||video.kind!=='hls')throw Error('Invalid separate HLS audio track');
+  return {...video,audioSegments:[...(track.init?[track.init]:[]),...track.segments],audioLanguage:matching.language};
  }
  return {url:finalUrl,...hls};
 }
@@ -74,6 +85,28 @@ async function ffmpegRemux(inputs,output,{signal,ffmpeg='ffmpeg',timeoutMs=45*60
  ensureNotAborted(signal);
  const s=await stat(output);if(s.size<1024)throw Error('Muxed media file is unexpectedly small');
 }
+export async function verifyMediaTracks(filename,{signal,ffprobe='ffprobe',timeoutMs=60000}={}){
+ ensureNotAborted(signal);
+ const output=await new Promise((resolve,reject)=>{
+  const child=spawn(ffprobe,['-v','error','-show_entries','stream=codec_type,codec_name:format=duration','-of','json',filename],{stdio:['ignore','pipe','pipe']});
+  let stdout='',stderr='',settled=false;
+  const finish=(error,value)=>{if(settled)return;settled=true;clearTimeout(timer);signal?.removeEventListener('abort',abort);error?reject(error):resolve(value)};
+  const abort=()=>child.kill('SIGKILL');signal?.addEventListener('abort',abort,{once:true});
+  const timer=setTimeout(()=>child.kill('SIGKILL'),timeoutMs);
+  child.stdout.on('data',chunk=>{stdout+=chunk.toString();if(stdout.length>65536)child.kill('SIGKILL')});
+  child.stderr.on('data',chunk=>{stderr=(stderr+chunk.toString()).slice(-2000)});
+  child.once('error',error=>finish(error));
+  child.once('close',code=>code===0?finish(null,stdout):finish(Error('ffprobe failed: '+stderr.slice(-250))));
+ });
+ ensureNotAborted(signal);
+ let data;try{data=JSON.parse(output)}catch{throw Error('Invalid ffprobe result')}
+ const video=data.streams?.filter(x=>x.codec_type==='video'&&x.codec_name&&x.codec_name!=='unknown')||[];
+ if(video.length===0)throw Error('Output has no valid video stream');
+ const duration=Number(data.format?.duration||0);
+ if(!Number.isFinite(duration)||duration<0.1)throw Error('Invalid or missing media duration');
+ return {videoStreams:video.length,audioStreams:(data.streams||[]).filter(x=>x.codec_type==='audio').length,duration};
+}
+
 export async function safePublish(from,root,media,episode,{signal}={}){
  const {previewLibrary}=await import('./library.mjs');
  const preview=await previewLibrary(root,media,episode);
@@ -120,30 +153,34 @@ async function assertMp4Signature(filename){
   if(bytesRead<12||head.toString('ascii',4,8)!=='ftyp')throw Error('Invalid MP4 media signature; refusing HTML or unrelated content');
  }finally{await file.close()}
 }
-export async function downloadMedia({sourceUrl,media,episode=null,root,fetcher=safeFetch,signal,onProgress,ffmpeg='ffmpeg',rateLimitBytesPerSecond=0}={}){
+export async function downloadMedia({sourceUrl,media,episode=null,root,fetcher=safeFetch,signal,onProgress,ffmpeg='ffmpeg',rateLimitBytesPerSecond=0,jobId=null,verifyCodecs=true,language='de'}={}){
  if(!root)throw Error('Jellyfin media root is not configured');
  if(!Number.isFinite(rateLimitBytesPerSecond)||rateLimitBytesPerSecond<0||rateLimitBytesPerSecond>52428800)throw Error('Invalid transfer bandwidth');
  const uri=parseWebUrl(sourceUrl);
- const staging=await mkdtemp(join(process.env.FORGECORE_STAGING_ROOT||tmpdir(),'forgecore-transfer-'));
+ const staging=jobId?await prepareStaging(process.env.FORGECORE_STAGING_ROOT||tmpdir(),jobId):await mkdtemp(join(process.env.FORGECORE_STAGING_ROOT||tmpdir(),'forgecore-transfer-'));
+ let completed=false;
  try{
   const kind=uri.pathname.toLowerCase();
   let video=join(staging,'video.data'),audio='',output=join(staging,'output.mp4');
   if(kind.endsWith('.m3u8')||kind.endsWith('.mpd')){
-   const manifest=await fetchManifest(sourceUrl,fetcher);
+   const manifest=await fetchManifest(sourceUrl,fetcher,0,language);
    if(manifest.kind==='hls'){
-    await writeParts(video,[...(manifest.init?[manifest.init]:[]),...manifest.segments],{fetcher,signal,onProgress,rateLimitBytesPerSecond});
+    await cacheSegments({staging,track:'video',urls:[...(manifest.init?[manifest.init]:[]),...manifest.segments],fetcher,signal,onProgress,rateLimitBytesPerSecond});
+    if(manifest.audioSegments?.length){audio=join(staging,'audio.data');await cacheSegments({staging,track:'audio',urls:manifest.audioSegments,fetcher,signal,onProgress,rateLimitBytesPerSecond});}
    }else if(manifest.kind==='dash'){
-    await writeParts(video,[manifest.video.init,...manifest.video.segments],{fetcher,signal,onProgress,rateLimitBytesPerSecond});
-    if(manifest.audio){audio=join(staging,'audio.data');await writeParts(audio,[manifest.audio.init,...manifest.audio.segments],{fetcher,signal,onProgress,rateLimitBytesPerSecond});}
+    await cacheSegments({staging,track:'video',urls:[manifest.video.init,...manifest.video.segments],fetcher,signal,onProgress,rateLimitBytesPerSecond});
+    if(manifest.audio){audio=join(staging,'audio.data');await cacheSegments({staging,track:'audio',urls:[manifest.audio.init,...manifest.audio.segments],fetcher,signal,onProgress,rateLimitBytesPerSecond});}
    }else throw Error('Unsupported media format');
    await ffmpegRemux(audio?[video,audio]:[video],output,{signal,ffmpeg});
   }else if(/\.(?:mp4|m4v)$/i.test(kind)){
-   await writeParts(video,[sourceUrl],{fetcher,signal,onProgress,rateLimitBytesPerSecond});
+   await cacheSegments({staging,track:'video',urls:[sourceUrl],fetcher,signal,onProgress,rateLimitBytesPerSecond});
    // Native MP4 is copied without re-encoding.
    output=video;
   }else throw Error('Only supported HLS, DASH, or direct MP4 URLs are accepted');
   const final=await stat(output);if(final.size<1024)throw Error('Output media invalid: too small');
   await assertMp4Signature(output);
-  return await safePublish(output,root,media,episode,{signal});
- }finally{await rm(staging,{recursive:true,force:true})}
+  if(verifyCodecs&&fetcher===safeFetch)await verifyMediaTracks(output,{signal,ffprobe:process.env.FORGECORE_FFPROBE||'ffprobe'});
+  const result=await safePublish(output,root,media,episode,{signal});
+  completed=true;return result;
+ }finally{if(completed||!jobId)await rm(staging,{recursive:true,force:true})}
 }
