@@ -54,6 +54,7 @@ export class SourceAutomation{
    // Disabling automation while a fetch is in progress must prevent auto-queuing.
    const refreshed=one(this.db,'SELECT * FROM sources WHERE id=?',id);
    if(!refreshed||!refreshed.enabled)throw Error('Source disabled during check');
+   if(p.enabled&&!one(this.db,'SELECT enabled FROM source_automation WHERE source_id=?',id)?.enabled)return {status:'disabled'};
    if(result.adapter!=='html-links')throw Error('Automatic episode discovery requires HTML links');
    if(!Array.isArray(result.items)||result.items.length>500||!result.items.length)throw Error('No usable links; previous discoveries preserved');
    let created=0,queued=0,skipped=0,discovered=0;
@@ -76,7 +77,7 @@ export class SourceAutomation{
     if(state)this.db.prepare('UPDATE source_automation SET last_check_epoch=?,last_error=NULL,failures=0,last_discovered=?,updated_at=? WHERE source_id=?').run(now,discovered,utc(),id);
    });
    const latest=one(this.db,'SELECT enabled,auto_queue,max_per_check FROM source_automation WHERE source_id=?',id);
-   const mayQueue=manual?!!latest?.auto_queue:!!latest?.enabled&&!!latest?.auto_queue;
+   const mayQueue=!!latest?.enabled&&!!latest?.auto_queue;
    if(mayQueue)for(const x of eligible){
     if(queued>=(latest?.max_per_check||p.maxPerCheck))break;
     const pending=one(this.db,"SELECT id FROM transfer_jobs WHERE episode_id=? AND state IN ('queued','running') LIMIT 1",x.episodeId);
