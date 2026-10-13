@@ -201,6 +201,24 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
      return response(res,200,{item:one(db,'SELECT * FROM sources WHERE id=?',id)});
     }
    }
+   if(path==='/api/transfers/batch'&&method==='POST'){
+    const b=await readJson(req);
+    const mediaId=idCheck(b.mediaId),sourceId=idCheck(b.sourceId);
+    const media=one(db,'SELECT * FROM media WHERE id=?',mediaId);
+    const source=one(db,'SELECT * FROM sources WHERE id=? AND media_id=? AND enabled=1',sourceId,mediaId);
+    if(!media||media.kind!=='series')fail('A series is required for batch transfers');
+    if(!source)fail('Active source not found',404);
+    const items=rows(db,'SELECT * FROM source_items WHERE source_id=? AND season IS NOT NULL AND episode IS NOT NULL ORDER BY season,episode LIMIT 200',sourceId);
+    let queued=0;const skipped=[];
+    for(const item of items){
+     const episode=one(db,'SELECT * FROM episodes WHERE media_id=? AND season=? AND episode=?',mediaId,item.season,item.episode);
+     if(!episode){skipped.push({itemId:item.id,reason:'episode_not_registered'});continue;}
+     if(episode.status==='available'||episode.status==='ignored'){skipped.push({itemId:item.id,reason:'not_missing'});continue;}
+     try{transfers.enqueue({mediaId,episodeId:episode.id,sourceId,itemId:item.id});queued++;}
+     catch(error){skipped.push({itemId:item.id,reason:String(error.message||error).slice(0,120)});}
+    }
+    return response(res,200,{queued,skipped,scanned:items.length});
+   }
    if(path==='/api/transfers'){
     if(method==='GET')return response(res,200,{items:transfers.list()});
     if(method==='POST'){
