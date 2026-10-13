@@ -6,6 +6,8 @@ import {tmpdir} from 'node:os';
 import {cacheSegments,prepareStaging,cleanupTransferStaging} from '../src/transfer-recovery.mjs';
 import {openDatabase,utc} from '../src/db.mjs';
 import {TransferQueue} from '../src/transfer-queue.mjs';
+import {withDatabaseSnapshot} from '../src/database-backup.mjs';
+import {fetchManifest} from '../src/media-download.mjs';
 import {newId} from '../src/db.mjs';
 test('checksum-verified segments survive a failed download and resume without refetch',async()=>{
  const root=await mkdtemp(join(tmpdir(),'forgecore-resume-'));const id=newId();
@@ -64,4 +66,35 @@ test('existing ForgeCore SQLite data migrates without deleting library',async()=
   assert.equal(again.prepare('SELECT title FROM media WHERE id=?').get(mediaId).title,'Keep Me');
   again.close();
  }finally{await rm(root,{recursive:true,force:true})}
+});
+
+test('consistent SQLite backup contains complete admin and media data',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'forgecore-backup-'));
+ try{
+  const db=openDatabase(join(root,'original.sqlite'));
+  const id=newId(),now=utc();
+  db.prepare('INSERT INTO media(id,kind,title,created_at,updated_at) VALUES(?,?,?,?,?)').run(id,'movie','Backup Verified',now,now);
+  await withDatabaseSnapshot(db,async path=>{
+   const buf=await readFile(path);assert.equal(buf.subarray(0,16).toString(),'SQLite format 3\u0000');
+   const copy=join(root,'restored.sqlite');await writeFile(copy,buf);
+   const restored=openDatabase(copy);
+   assert.equal(restored.prepare('SELECT title FROM media WHERE id=?').get(id).title,'Backup Verified');
+   restored.close();
+  },{directory:root});
+  db.close();
+ }finally{await rm(root,{recursive:true,force:true})}
+});
+test('alternate HLS audio playlist selects preferred language',async()=>{
+ const data={
+  'master.m3u8':'#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="a",NAME="Deutsch",LANGUAGE="de",DEFAULT=NO,URI="de.m3u8"\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="a",NAME="English",LANGUAGE="en",DEFAULT=YES,URI="en.m3u8"\n#EXT-X-STREAM-INF:BANDWIDTH=2500000,AUDIO="a"\nvideo.m3u8',
+  'video.m3u8':'#EXTM3U\n#EXTINF:5,\nv1.ts\n#EXT-X-ENDLIST',
+  'de.m3u8':'#EXTM3U\n#EXTINF:5,\nde1.aac\n#EXT-X-ENDLIST',
+  'en.m3u8':'#EXTM3U\n#EXTINF:5,\nen1.aac\n#EXT-X-ENDLIST'
+ };
+ const fetcher=async url=>({url,body:Buffer.from(data[url.split('/').pop()]||'')});
+ const en=await fetchManifest('https://example.org/master.m3u8',fetcher,0,'en');
+ assert.deepEqual(en.audioSegments,['https://example.org/en1.aac']);
+ const de=await fetchManifest('https://example.org/master.m3u8',fetcher,0,'de');
+ assert.deepEqual(de.audioSegments,['https://example.org/de1.aac']);
+ assert.deepEqual(de.segments,['https://example.org/v1.ts']);
 });
