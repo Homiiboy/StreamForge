@@ -1,5 +1,12 @@
 # StreamForge Browser Connector – Changelog
 
+## 1.7.6 – Jellyfin-Dateistruktur
+
+- Überprüfte relative Jellyfin-Ordner-/Dateivorschläge für Filme und Episoden.
+- Neuer „Jellyfin-Pfad kopieren“-Button neben der Dateibenennung.
+- Verhindert ungültige Namen und unerwünschte absolute Pfade.
+- Der Browser schreibt **nicht** ohne explizite Benutzerfreigabe direkt auf ZimaOS-Netzfreigaben. Der kopierte Pfad dient der Organisation beim Speichern.
+
 ## 1.7.5 – Untertitel-Center
 
 - Direkte WebVTT-Dateien und unverschlüsselte HLS-WebVTT-Playlisten können separat als SRT exportiert werden.
