@@ -1,5 +1,14 @@
 # StreamForge Browser Connector – Changelog
 
+## 1.7.3 – Download-Center
+
+- Neue eigene Download-Center-Ansicht mit aktuellen Aufträgen, Fortschrittsleisten, Geschwindigkeit und Restzeit.
+- Begrenzter lokaler Verlauf der letzten 60 abgeschlossenen, fehlgeschlagenen oder abgebrochenen Vorgänge.
+- Verlauf speichert keine Stream-URLs, Cookies oder Zugriffstokens; Verlauf lässt sich löschen.
+- Bessere Tastaturfokus-Anzeige und reduzierte Animation bei entsprechender Systemeinstellung.
+- Bisherige Warteschlangensteuerung und Medienauswahl bleiben erhalten.
+- Zusätzliche Regressionstests für lokale Verlaufsspeicherung und gleichzeitige Updates.
+
 ## 1.7.2 (Medienauswahl)
 
 - HLS-Master-Playlists: Untertitelgruppen (SUBTITLES) mit Sprache, Name, Default und URL erkennen.
