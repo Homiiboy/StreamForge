@@ -117,6 +117,19 @@ function render(){
     }
     else if(item.download?.state==='export_error'&&item.download?.exportRetryAvailable) downloadButton.textContent='Speichern erneut versuchen';
     else if(item.download?.state==='complete') downloadButton.textContent='Erneut laden';
+    if(item.download?.state==='queued') {
+      const cancel=document.createElement('button');
+      cancel.className='ghost'; cancel.textContent='Aus Warteschlange entfernen';
+      downloadButton.insertAdjacentElement('afterend',cancel);
+      cancel.addEventListener('click',async()=>{
+        cancel.disabled=true;
+        try {
+          const result=await chrome.runtime.sendMessage({type:'sf_queue_cancel',tabId,candidateId:item.id});
+          if(!result?.ok) alert(result?.error||'Abbrechen nicht möglich');
+        } catch(error) { alert(String(error?.message||error)); }
+        await load();
+      });
+    }
     downloadButton.addEventListener('click',async e=>{
       const b=e.currentTarget,old=b.textContent;
       if(item.download?.state==='export_error'&&item.download?.exportRetryAvailable&&item.download?.exportJobId){
