@@ -25,9 +25,14 @@ export class PersistentDownloadQueue {
     if (record?.version === 1) {
       this.paused = record.paused === true;
       this.pending = (Array.isArray(record.pending) ? record.pending : []).filter(validJob);
-      if (validJob(record.active)) await this.onInterrupted(record.active);
+      if (validJob(record.active)) { try { await this.onInterrupted(record.active); } catch {} }
       this.active = null;
       await this.persist();
+      // Restore the visible status of every waiting item; notification errors must not
+      // prevent recovery or invalidate the already persisted queue.
+      for (let i=0;i<this.pending.length;i++) {
+        try { await this.onQueued(this.pending[i], i+1); } catch {}
+      }
     }
     this.drain().catch(() => {});
   }
@@ -40,7 +45,7 @@ export class PersistentDownloadQueue {
     try { await this.persist(); }
     catch (error) { this.pending = this.pending.filter(j => j.id !== job.id); throw error; }
     const position = this.pending.findIndex(j => j.id === job.id) + (this.active ? 1 : 0);
-    if (position > 0) await this.onQueued(job, position);
+    if (position > 0 || this.paused) { try { await this.onQueued(job, Math.max(1, position)); } catch {} }
     if (!this.paused) this.drain().catch(() => {});
     return { ok: true, position };
   }
