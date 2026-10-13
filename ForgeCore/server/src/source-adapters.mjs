@@ -7,7 +7,7 @@ export function parseHls(text,base){
  if(/#EXT-X-KEY:|#EXT-X-SESSION-KEY:/i.test(text))throw Error('Encrypted HLS unsupported');
  const lines=text.replace(/\r/g,'').split('\n').map(x=>x.trim()).filter(Boolean);
  const master=[];const audioGroups=[];const segments=[];let expected='';let init='';let ended=false;
- for(const line of lines){if(!line.startsWith('#EXT-X-MEDIA:')||!/(?:^|,)TYPE=AUDIO(?:,|$)/.test(line))continue;
+ for(const line of lines){if(!line.startsWith('#EXT-X-MEDIA:')||!/TYPE=AUDIO(?:,|$)/.test(line))continue;
   const match=line.match(/URI="([^"]+)"/i);if(!match)continue;
   audioGroups.push({url:new URL(match[1],base).href,group:(line.match(/GROUP-ID="([^"]+)"/)||[])[1]||'',language:(line.match(/LANGUAGE="([^"]+)"/)||[])[1]||'',default:/DEFAULT=YES/.test(line)});
  }
