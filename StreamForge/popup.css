@@ -48,3 +48,5 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .subtitleSrt[hidden]{display:none}.subtitleRow .subtitleSrt{font-size:10px;padding:6px 7px;white-space:nowrap}
 
 .jellyfinCopy{margin-top:8px;font-size:10px;padding:7px 9px;width:100%;text-align:center}
+
+.queueItemControls{display:flex;gap:7px;margin-top:9px}.queueItemControls button{font-size:11px;flex:1;padding:6px 8px}.queueItemControls button:focus-visible{outline:2px solid #ffae54;outline-offset:2px}
