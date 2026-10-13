@@ -1,5 +1,12 @@
 # StreamForge Browser Connector – Changelog
 
+## 1.7.5 – Untertitel-Center
+
+- Direkte WebVTT-Dateien und unverschlüsselte HLS-WebVTT-Playlisten können separat als SRT exportiert werden.
+- Zeitstempel und Segmentstartzeiten werden berücksichtigt; doppelte identische Cues herausgefiltert.
+- Schutz gegen zu große / verschlüsselte Untertitel, zu viele Segmente und nicht unterstützte MPEGTS-Zeitbasen.
+- Bekannte Grenze: kein MP4-Untertitel-Muxing und keine garantierte Verarbeitung sämtlicher WebVTT-Varianten.
+
 ## 1.7.4 – Download-Validierung
 
 - Leere Segmentantworten und offensichtliche HTML-/XML-Fehlerseiten werden vor dem Muxing erkannt.
