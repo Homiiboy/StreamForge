@@ -4,8 +4,20 @@ import { shouldProbeNow } from "./probe-utils.js";
 let tabId = null, items = [];
 const profileSelect=document.querySelector('#performanceProfile');
 const queueSummary=document.querySelector('#queueSummary');
+const queueControls=document.querySelector('#queueControls');
+const queuePause=document.querySelector('#queuePause');
 let selectedProfile='balanced';
 chrome.storage.local.get('sf_performance_profile').then(data=>{ selectedProfile=['gentle','balanced','fast'].includes(data.sf_performance_profile)?data.sf_performance_profile:'balanced'; profileSelect.value=selectedProfile; }).catch(()=>{});
+queuePause.addEventListener('click',async()=>{
+  queuePause.disabled=true;
+  try {
+    const paused=queuePause.dataset.paused!=='true';
+    const response=await chrome.runtime.sendMessage({type:'sf_queue_pause',paused});
+    if(!response?.ok) throw Error(response?.error||'Warteschlange konnte nicht geändert werden');
+    await refreshQueueSummary();
+  } catch(error) { alert(String(error?.message||error)); }
+  finally { queuePause.disabled=false; }
+});
 profileSelect.addEventListener('change',()=>{selectedProfile=profileSelect.value;chrome.storage.local.set({sf_performance_profile:selectedProfile}).catch(()=>{});});
 const audioSelections = new Map();
 const qualitySelections = new Map();
@@ -47,6 +59,9 @@ async function refreshQueueSummary(){
   const waiting=Array.isArray(record?.pending)?record.pending.length:0;
   const active=record?.active?1:0;
   queueSummary.hidden=!(waiting||active);
+  queueControls.hidden=!(waiting||active);
+  queuePause.textContent=record?.paused?'Warteschlange fortsetzen':'Warteschlange pausieren';
+  queuePause.dataset.paused=record?.paused?'true':'false';
   queueSummary.textContent=active||waiting?`Warteschlange: ${active} aktiv · ${waiting} wartend · Profil: ${profileSelect.selectedOptions[0]?.textContent||'Ausgewogen'}`:'';
 }
 function qualityText(item){ const p=item.probe||null; if(p?.summary)return p.summary; if(p?.height)return `${p.height}p`; if(p?.contentLength)return fmtSize(p.contentLength); if(p&&item.kind==='hls')return p.playlistType==='media'?'HLS · bereit':'HLS · analysiert'; if(p&&item.kind==='dash')return 'DASH · analysiert'; if(p&&item.kind==='media')return 'Medium · bereit'; if(['queued','preparing','downloading','muxing','saving'].includes(item.download?.state))return `${shortKind(item.kind)} · aktiv`; if(item.probeError)return 'Analysefehler'; return 'Analysiere …'; }
