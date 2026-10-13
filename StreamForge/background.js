@@ -1,3 +1,4 @@
+import {subtitleSegments,mergeWebVttToSrt} from './subtitle-export.js';
 import {HistoryStore,TERMINAL_STATES,HISTORY_KEY} from './download-history.js';
 import { classifyCandidate, cleanUrl, displayName, makeCandidateKey, safeHostname, extensionFromUrl, safeFilename, hlsProbeContainsVariant } from "./media.js";
 import { shouldRetryStatus, describeFetchFailure, failureInfo, formatDiagnostic, backoffMs } from "./network.js";
@@ -654,6 +655,38 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       await setDownloadStatus(message.tabId,message.candidateId,{state:'cancelled',phase:'queued',progress:0,message:'Wartender Download abgebrochen'});
       sendResponse({ok:true});
     })().catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
+    return true;
+  }
+  if (message?.type === 'sf_subtitle_srt' && message.url && message.filename) {
+    (async()=>{
+      const url=new URL(String(message.url));
+      if(!/^https?:$/.test(url.protocol))throw Error('Nur HTTP(S)-Untertitel werden unterstützt');
+      const filename=safeFilename(String(message.filename).replace(/\.(?:srt|vtt)$/i,''));
+      const read=async(target)=>{
+        const r=await fetch(target,{credentials:'include',cache:'no-store'});
+        if(!r.ok)throw Error('HTTP '+r.status+' beim Untertitelabruf');
+        const content=await r.text();
+        if(content.length>5*1024*1024)throw Error('Untertitel überschreiten die Größenbeschränkung');
+        return content;
+      };
+      const playlist=await read(url.href);
+      const segments=/^\s*WEBVTT/m.test(playlist)?[{url:url.href,start:0}]:subtitleSegments(playlist,url.href);
+      if(segments.length>500)throw Error('Maximal 500 Untertitelsegmente pro Export');
+      let bytes=0;
+      const fragments=[];
+      for(const seg of segments){
+        const text=segments.length===1&&seg.url===url.href?playlist:await read(seg.url);
+        bytes+=text.length;
+        if(bytes>6*1024*1024)throw Error('Untertitel überschreiten das Exportlimit (6 MB)');
+        fragments.push({start:seg.start,text});
+      }
+      const output=mergeWebVttToSrt(fragments);
+      const payload=new TextEncoder().encode(output);
+      let binary='';
+      for(let i=0;i<payload.length;i+=8192) binary+=String.fromCharCode(...payload.subarray(i,i+8192));
+      const id=await chrome.downloads.download({url:'data:application/x-subrip;base64,'+btoa(binary),filename:filename+'.srt',saveAs:true});
+      sendResponse({ok:true,downloadId:id});
+    })().catch(e=>sendResponse({ok:false,error:String(e?.message||e)}));
     return true;
   }
   if (message?.type === 'sf_subtitle_download' && message.url && message.candidate) {
