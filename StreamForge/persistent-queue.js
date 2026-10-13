@@ -24,7 +24,13 @@ export class PersistentDownloadQueue {
     const record = (await this.storage.get(this.key))?.[this.key];
     if (record?.version === 1) {
       this.paused = record.paused === true;
-      this.pending = (Array.isArray(record.pending) ? record.pending : []).filter(validJob);
+      // Corrupted or stale persistence must not replay the same candidate twice.
+      const seen=new Set();
+      this.pending=(Array.isArray(record.pending)?record.pending:[]).filter(recordJob=>{
+        if(!validJob(recordJob) || seen.has(recordJob.id)) return false;
+        seen.add(recordJob.id);
+        return true;
+      });
       if (validJob(record.active)) { try { await this.onInterrupted(record.active); } catch {} }
       this.active = null;
       await this.persist();
@@ -90,7 +96,7 @@ export class PersistentDownloadQueue {
   }
 }
 function validJob(j) {
-  return !!j && typeof j === 'object' && typeof j.id === 'string' && j.id.length > 0 &&
+  return !!j && typeof j === 'object' && typeof j.id === 'string' && j.id.length > 0 && j.id.length <= 512 &&
     (j.type === 'sf_hls_start' || j.type === 'sf_dash_start') &&
     !!j.job && Number.isInteger(j.job.tabId) && typeof j.job.candidateId === 'string' &&
     typeof j.job.jobId === 'string' && /^https?:\/\//.test(j.job.url || '');
