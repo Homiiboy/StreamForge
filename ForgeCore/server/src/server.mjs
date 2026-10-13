@@ -1,5 +1,8 @@
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
+import {createReadStream} from 'node:fs';
+import {pipeline} from 'node:stream/promises';
+import {withDatabaseSnapshot} from './database-backup.mjs';
 import {fileURLToPath} from 'node:url';
 import {dirname,join,resolve} from 'node:path';
 import {openDatabase,newId,utc,rows,one,transaction} from './db.mjs';
@@ -13,7 +16,7 @@ import {loadSchedule,setSchedule,sourceRanking,missingEpisodePlan,addNotificatio
 import {downloadSubtitle,normalizeLanguage} from './subtitles.mjs';
 
 export const APP_NAME='ForgeCore';
-export const APP_VERSION='0.2.9';
+export const APP_VERSION='0.3.9';
 const staticDir=resolve(dirname(fileURLToPath(import.meta.url)),'../public');
 const MAX_BODY=64*1024;
 const limitText=(v,max=150)=>typeof v==='string'?v.trim().slice(0,max):'';
@@ -351,6 +354,19 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
      }
     });
     return response(res,200,{ok:true,media:backup.media.length,episodes:backup.episodes.length});
+   }
+   if(path==='/api/backup/database'&&method==='GET'){
+    return await withDatabaseSnapshot(db,async(file,size)=>{
+     res.writeHead(200,{'content-type':'application/vnd.sqlite3','cache-control':'no-store','x-content-type-options':'nosniff',
+      'content-disposition':'attachment; filename="forgecore-full-backup.sqlite"','content-length':size});
+     await pipeline(createReadStream(file),res);
+    });
+   }
+   const transferEventsMatch=path.match(/^\/api\/transfers\/([0-9a-f-]{36})\/events$/);
+   if(transferEventsMatch&&method==='GET'){
+    const job=idCheck(transferEventsMatch[1]);
+    if(!one(db,'SELECT id FROM transfer_jobs WHERE id=?',job))fail('Transfer not found',404);
+    return response(res,200,{items:rows(db,'SELECT id,category,description,created_at FROM transfer_events WHERE transfer_id=? ORDER BY id DESC LIMIT 150',job)});
    }
    if(path==='/api/backup/export'&&method==='GET'){
     const data={format:'forgecore-export-v1',version:APP_VERSION,createdAt:utc(),media:rows(db,'SELECT * FROM media'),episodes:rows(db,'SELECT * FROM episodes'),config:rows(db,'SELECT * FROM config'),sources:rows(db,'SELECT * FROM sources'),source_items:rows(db,'SELECT * FROM source_items')};
