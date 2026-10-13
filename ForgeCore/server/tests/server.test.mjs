@@ -8,9 +8,9 @@ import {openDatabase} from '../src/db.mjs';
 import {mediaRelative,mediaBaseName,safePart,ensureWithin,previewLibrary} from '../src/library.mjs';
 import {JobQueue} from '../src/queue.mjs';
 
-async function harness(fn){
+async function harness(fn,options={}){
  const root=await mkdtemp(join(tmpdir(),'forgecore-test-'));
- let app=createApp({dbPath:join(root,'db.sqlite'),mediaRoot:root,startWorker:false});
+ let app=createApp({dbPath:join(root,'db.sqlite'),mediaRoot:root,startWorker:false,...options});
  await new Promise((ok,fail)=>{app.server.once('error',fail);app.server.listen(0,'127.0.0.1',ok);});
  const base='http://127.0.0.1:'+app.server.address().port;
  let cookie='',csrf='';
@@ -109,4 +109,41 @@ test('Library recognizes existing Staffel directories',async()=>{
   const preview=await previewLibrary(root,{kind:'series',title:'Slugterra'},{season:2,episode:8});
   assert.equal(preview.exists,true);assert.equal(preview.directory,'Shows/Slugterra/Staffel 2');
  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('Phase 2 sources, episode discovery and persistent transfer processing',async()=>{
+ const calls=[];
+ const sourceFetch=async(url)=>({url,body:Buffer.from('<a href="/Slugterra-S02E08.m3u8" title="Slugterra S02E08">Episode</a>')});
+ const download=async(args)=>{calls.push(args);return {path:'Shows/Slugterra/Season 02/Slugterra S02E08.mp4',bytes:2048};};
+ await harness(async({app,request})=>{
+  assert.equal((await request('/api/sources/not-an-id')).status,401);
+  await request('/api/setup','POST',{password:'long passphrase for alpha testing'});
+  await request('/api/auth/login','POST',{password:'long passphrase for alpha testing'});
+  const media=(await request('/api/media','POST',{kind:'series',title:'Slugterra'})).data.item;
+  assert.equal((await request('/api/media/'+media.id+'/sources','POST',{url:'ftp://unsafe.invalid/video'})).status,400);
+  const src=(await request('/api/media/'+media.id+'/sources','POST',{url:'https://example.org/slugterra.html',label:'Testquelle'}));
+  assert.equal(src.status,201);
+  const source=src.data.item;
+  assert.equal((await request('/api/media/'+media.id+'/sources','POST',{url:source.url})).status,409);
+  assert.equal((await request('/api/sources/'+source.id+'/analyze','POST',{})).data.items.length,1);
+  const items=(await request('/api/sources/'+source.id+'/items')).data.items;
+  assert.equal(items[0].season,2);assert.equal(items[0].episode,8);
+  const imported=await request('/api/sources/'+source.id+'/import-episodes','POST',{});
+  assert.equal(imported.data.added,1);
+  assert.equal((await request('/api/sources/'+source.id+'/import-episodes','POST',{})).data.added,0);
+  const episode=(await request('/api/media/'+media.id+'/episodes')).data.items[0];
+  assert.equal((await request('/api/transfers','POST',{mediaId:media.id,sourceId:source.id,itemId:items[0].id})).status,400);
+  const transfer=await request('/api/transfers','POST',{mediaId:media.id,sourceId:source.id,itemId:items[0].id,episodeId:episode.id});
+  assert.equal(transfer.status,201);
+  assert.equal((await request('/api/transfers','POST',{mediaId:media.id,sourceId:source.id,itemId:items[0].id,episodeId:episode.id})).status,409);
+  await app.transfers.tick();
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].sourceUrl,items[0].url);
+  assert.equal((await request('/api/transfers')).data.items[0].state,'complete');
+  assert.equal((await request('/api/media/'+media.id+'/episodes')).data.items[0].status,'available');
+  const another=await request('/api/transfers','POST',{mediaId:media.id,sourceId:source.id,itemId:items[0].id,episodeId:episode.id});
+  assert.equal(another.status,201);
+  assert.equal((await request('/api/transfers/'+another.data.item.id+'/cancel','POST',{})).status,200);
+  assert.equal((await request('/api/transfers/'+another.data.item.id+'/retry','POST',{})).status,200);
+ },{sourceFetch,download});
 });
