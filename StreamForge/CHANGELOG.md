@@ -1,5 +1,12 @@
 # StreamForge Browser Connector – Changelog
 
+## 1.7.8 – TS-Medienprüfung
+
+- MPEG-TS-Kopf- und Endbereich werden vor dem Export stichprobenartig auf TS-Synchronisation und Transport-Fehlerbits geprüft.
+- Erkannte beschädigte Container-Stichproben werden zurückgehalten und mit verständlichem Fehlercode gemeldet.
+- Regressionstests für Transportfehler und ungültige TS-Pakete.
+- **Grenze:** Die Stichproben sind keine vollständige Codec-Dekodierung oder Prüfung aller Segmente.
+
 ## 1.7.7 – Performance Engine 2.0
 
 - Netzwerkparallelität wird bei stark gefülltem Segmentpuffer dynamisch begrenzt, um Speicherpeaks zu reduzieren.
