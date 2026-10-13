@@ -36,7 +36,8 @@ test('auto-queue adds missing episodes once, respects cap and ignored episodes',
   let res=await worker.check(sourceId,{manual:true});
   assert.equal(res.queued,1);assert.equal(transfers.jobs.length,1);
   res=await worker.check(sourceId,{manual:true});
-  assert.equal(res.queued,0);assert.equal(db.prepare('SELECT COUNT(*) n FROM episodes').get().n,2);
+  assert.equal(res.queued,1);assert.equal(db.prepare('SELECT COUNT(*) n FROM episodes').get().n,2);
+  res=await worker.check(sourceId,{manual:true});assert.equal(res.queued,0);
   // The first fake job is considered already queued, leaving the other episode eligible.
   assert.ok(worker.history(sourceId).some(x=>x.queued===1));
   const another=db.prepare('SELECT id FROM episodes WHERE season=1 AND episode=2').get().id;
