@@ -726,7 +726,7 @@ async function restorePendingQueueOnStartup() {
     }
   } catch (error) { console.warn('StreamForge queue recovery:', error); }
 }
-chrome.runtime.onStartup.addListener(() => { restorePendingQueueOnStartup().catch(() => {}); });
-chrome.runtime.onInstalled.addListener(() => { restorePendingQueueOnStartup().catch(() => {}); });
+chrome.runtime.onStartup?.addListener(() => { restorePendingQueueOnStartup().catch(() => {}); });
+chrome.runtime.onInstalled?.addListener(() => { restorePendingQueueOnStartup().catch(() => {}); });
 chrome.tabs.onRemoved.addListener(tabId => chrome.storage.session.remove([stateKey(tabId), previewKey(tabId), pageMetaKey(tabId)]));
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => { if (changeInfo.status === "loading") updateBadge(tabId).catch(() => {}); });
