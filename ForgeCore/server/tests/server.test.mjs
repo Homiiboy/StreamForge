@@ -27,10 +27,10 @@ async function harness(fn){
  }
  try{await fn({app,root,request,close:()=>app.close()});}finally{await app.close();await rm(root,{recursive:true,force:true});}
 }
-test('v0.0.9 setup, auth, CRUD, jobs, exports and secure API',async()=>harness(async({app,request,root})=>{
- assert.equal(APP_VERSION,'0.0.9');
- assert.equal((await request('/api/health')).data.version,'0.0.9');
- assert.equal((await request('/api/status')).data.capabilities.downloads,false);
+test('v0.1.9 setup, auth, CRUD, jobs, exports and secure API',async()=>harness(async({app,request,root})=>{
+ assert.equal(APP_VERSION,'0.1.9');
+ assert.equal((await request('/api/health')).data.version,'0.1.9');
+ assert.equal((await request('/api/status')).data.capabilities.downloads,true);
  assert.equal((await request('/api/media')).status,401);
  assert.equal((await request('/api/setup','POST',{password:'short'})).status,400);
  assert.equal((await request('/api/setup','POST',{password:'correct horse battery staple 2026'})).status,201);
@@ -81,7 +81,7 @@ test('persisted media and queued jobs survive restart',async()=>{
   let db=openDatabase(dbPath);const q=new JobQueue(db,{mediaRoot:dir});
   const item=q.enqueue('library_scan');assert.equal(item.state,'queued');db.close();
   db=openDatabase(dbPath);assert.equal(db.prepare('SELECT state FROM jobs WHERE id=?').get(item.id).state,'queued');
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version,3);db.close();
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version,4);db.close();
  }finally{await rm(dir,{recursive:true,force:true});}
 });
 
