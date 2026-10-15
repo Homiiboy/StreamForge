@@ -1,5 +1,14 @@
 # StreamForge Browser Connector – Changelog
 
+## v1.8.2 – Vereinfachter Connector (UX-Update)
+
+- Schritt-für-Schritt-Hinweis, klarere Tabs und Hauptaktion „Jetzt herunterladen“.
+- Speicherziel, Leistungsprofil und Filter standardmäßig unter „Weitere Einstellungen“; Zustand bleibt gespeichert.
+- Technische Stream-URL, Untertitel und zusätzliche Quellaktionen über optionale Detailbereiche erreichbar.
+- Verständliche Downloadstatusmeldungen, insbesondere beim HLS/DASH-Vorbereiten.
+- Keine Änderung an Download-Pipeline, Netzwerkzugriff, Muxing oder ForgeCore-Snapshot.
+
+
 ## 1.8.1 – Vorhandene Staffelordner erkennen
 
 - Bei Serien lassen sich die vorhandenen Staffelordner des ausgewählten Medienverzeichnisses anzeigen und mit einem Klick übernehmen.

@@ -59,3 +59,43 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .libraryTarget{font-size:11px;color:#8fb1d6;overflow-wrap:anywhere}
 
 .seasonDiscoveryActions{display:flex;flex-direction:column;flex:1;min-width:0;gap:5px}.seasonDiscoveryActions button{font-size:11px;padding:7px 8px}.seasonDiscoveryActions select{font-size:11px;min-width:0}.seasonHint{font-size:10px;color:#aab8c9;line-height:1.4}.seasonFound[hidden],.seasonDiscovery[hidden]{display:none!important}
+
+/* v1.8.2: reduced-cognitive-load interface */
+body{width:540px;background:#0c111b;color:#eef5ff}
+header{background:#111b2a;border-bottom-color:#24344b}
+header img{width:42px;height:42px;object-fit:contain}
+.badge{background:#1d497c;color:#cbeaff}
+button.primary{background:#3278ef;color:white;border-color:#4a8dff}
+button.primary:hover{background:#458aff}
+.viewTabs .tab.active{background:#193961;color:#e2f2ff;border-color:#3476d4}
+.quickGuide{padding:12px 15px;background:#13233a;color:#d7e8fa;line-height:1.5;font-size:12px;border-bottom:1px solid #294266}
+.quickGuide span{color:#5daaff}
+.advancedSettings{border-bottom:1px solid #28374b;background:#101824}
+.advancedSettings>summary{cursor:pointer;padding:11px 14px;font-size:12px;color:#c9ddf6;font-weight:700}
+.advancedSettings>summary span{display:block;margin:3px 0 0 19px;font-size:10px;color:#8799b0;font-weight:400}
+.advancedSettings .toolbar{border-bottom:1px solid #2c3d52}
+.advancedSettings .librarySettings{border-bottom:0}
+.item{grid-template-columns:102px minmax(0,1fr);border-color:#2b3d54;background:#141f30}
+.previewWrap{min-height:112px}
+.preview{min-height:112px}
+.previewFallback{color:#67aeff}
+.itemBody{padding:12px}
+.item .title{font-size:14px;white-space:normal;overflow-wrap:anywhere;line-height:1.35}
+.item .host{color:#afc2d7}
+.item .namingBox{background:#0e1928;border-color:#2b4669}
+.item .namingRow span{width:46px;flex-basis:46px}
+.item .actions{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start}
+.item .actions .download{font-size:12px;padding:11px 10px}
+.sourceDetails,.trackDetails,.extraNaming,.extraActions{margin-top:7px}
+.sourceDetails>summary,.trackDetails>summary,.extraNaming>summary,.extraActions>summary{cursor:pointer;color:#91bde8;font-size:11px;padding:5px 0}
+.sourceDetails .url{white-space:normal;overflow-wrap:anywhere}
+.extraActionButtons{display:grid;gap:5px;min-width:140px;margin-top:6px}
+.extraActionButtons button{font-size:11px;text-align:left}
+.item .actions .extraActions{margin-top:3px}
+.item .actions .remove{width:auto;font-size:11px}
+.trackDetails .subtitleRow{flex-wrap:wrap}
+.trackDetails .subtitleRow select{flex-basis:100%}
+.progressFill,.centerProgress div{background:#3786f6}
+.centerEntry{background:#142139;border-color:#304663}
+.entryState{color:#9cc9ff;text-transform:none}
+button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid #72b8ff;outline-offset:2px}

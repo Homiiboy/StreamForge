@@ -51,6 +51,9 @@ document.querySelector('#libraryForget').addEventListener('click',async()=>{
 updateLibrarySettings().catch(()=>{});
 let tabId = null, items = [];
 let currentView='media';
+const advancedSettings=document.querySelector('#advancedSettings');
+chrome.storage.local.get('sf_advanced_open').then(v=>{advancedSettings.open=!!v.sf_advanced_open;}).catch(()=>{});
+advancedSettings.addEventListener('toggle',()=>chrome.storage.local.set({sf_advanced_open:advancedSettings.open}).catch(()=>{}));
 let historyEntries=[];
 let queueSnapshot=null;
 const mediaTab=document.querySelector('#viewMedia'),downloadsTab=document.querySelector('#viewDownloads');
@@ -150,6 +153,7 @@ document.querySelector('#historyClear').addEventListener('click',async()=>{
   if(r?.ok){historyEntries=[];renderDownloadCenter();}
   else alert(r?.error||'Verlauf konnte nicht gelöscht werden.');
 });
+function friendlyStatus(state){return ({queued:'Wartet',preparing:'Video wird vorbereitet',downloading:'Wird heruntergeladen',muxing:'Video wird zusammengesetzt',ready:'Fast fertig',saving:'Wird gespeichert',complete:'Fertig',error:'Fehler',export_error:'Speichern fehlgeschlagen',cancelled:'Abgebrochen'})[state]||state||'Unbekannt';}
 function centerRow(title,sub,status,progress=null){
   const div=document.createElement('article');div.className='centerEntry';
   const header=document.createElement('div');header.className='entryTitle';
@@ -178,7 +182,7 @@ function renderDownloadCenter(){
   for(const item of running){
     const d=item.download||{};
     const details=[d.message||d.state,d.speedBps?fmtRate(d.speedBps):'',d.etaSeconds?'ETA '+fmtEta(d.etaSeconds):''].filter(Boolean).join(' · ');
-    const entry=centerRow(item.title||'Medienstream',details,d.state, d.downloadProgress??d.progress??0);
+    const entry=centerRow(item.title||'Medienstream',details,friendlyStatus(d.state), d.downloadProgress??d.progress??0);
     if(d.state==='queued'){
       const controls=document.createElement('div');controls.className='queueItemControls';
       for(const [direction,label] of [['up','↑ Höher'],['down','↓ Tiefer']]){
@@ -203,7 +207,7 @@ function renderDownloadCenter(){
   downloadHistory.textContent='';
   for(const h of historyEntries.slice(0,60)){
     const when=new Date(h.time).toLocaleString('de-DE');
-    downloadHistory.appendChild(centerRow(h.title||'Medienstream',when+(h.message?' · '+h.message:''),h.state));
+    downloadHistory.appendChild(centerRow(h.title||'Medienstream',when+(h.message?' · '+h.message:''),friendlyStatus(h.state)));
   }
   if(!historyEntries.length)downloadHistory.appendChild(centerRow('Noch kein Verlauf','Abgeschlossene und fehlgeschlagene Downloads erscheinen hier','Leer'));
 }
@@ -387,7 +391,7 @@ function render(){
     if(state){
       status.hidden=false; status.dataset.state=state;
       const visualProgress=state==='muxing'&&dl.muxProgress!==undefined?dl.muxProgress:(dl.downloadProgress!==undefined&&['downloading','ready','saving'].includes(state)?dl.downloadProgress:dl.progress);
-      fill.style.width=`${Math.max(0,Math.min(100,Number(visualProgress||0)))}%`; progressText.textContent=dl.message||item.probeError||state; progressText.title=progressText.textContent;
+      fill.style.width=`${Math.max(0,Math.min(100,Number(visualProgress||0)))}%`; progressText.textContent=(state==='preparing' && (!dl.message||dl.message==='HLS wird vorbereitet …'||dl.message==='DASH wird vorbereitet …'))?'Video wird vorbereitet. Falls dies länger dauert, unter „Details anzeigen“ nach Hinweisen suchen.':(dl.message||item.probeError||friendlyStatus(state)); progressText.title=progressText.textContent;
       const networkBits=[]; if(dl.speedBps>0)networkBits.push(`Netzwerk ↓ ${fmtRate(dl.speedBps)}`); if(dl.segmentDone>0&&dl.segmentTotal>0)networkBits.push(`Download ${dl.segmentDone}/${dl.segmentTotal} Seg.`); if(dl.etaSeconds>0)networkBits.push(`ETA ${fmtEta(dl.etaSeconds)}`); else if(dl.etaPending&&state==='downloading')networkBits.push('ETA wird berechnet …'); if(dl.concurrency>0)networkBits.push(`Parallelität ${dl.concurrency}`); if(dl.activeRequests>0||dl.queuedRequests>0)networkBits.push(`${dl.activeRequests||0} aktiv${dl.queuedRequests>0?` · ${dl.queuedRequests} wartend`:''}`); if(dl.retries>0)networkBits.push(`${dl.retries} Retry${dl.retries===1?'':'s'}`); if(dl.exportBytes>0&&['ready','saving','export_error','complete'].includes(state))networkBits.push(`Fertige Datei ${fmtSize(dl.exportBytes)}`);
       const muxBits=[]; if(dl.phase==='streaming_mux'){muxBits.push(`Muxing ${Math.round(dl.muxProgress||0)}%${dl.muxSegmentTotal>0?` · ${dl.muxSegmentDone||0}/${dl.muxSegmentTotal} Seg.`:''}`);if(dl.bufferCapacity>0)muxBits.push(`Puffer ${dl.bufferPairs||0}/${dl.bufferCapacity}${dl.bufferedBytes>0?` · ${fmtSize(dl.bufferedBytes)}${dl.bufferMaxBytes>0?`/${fmtSize(dl.bufferMaxBytes)}`:''}`:''}`);} else if(state==='muxing'||dl.phase==='muxing')muxBits.push(`Muxing: ${Math.round(dl.muxProgress||0)}%`); if(dl.bottleneck)muxBits.push(`Engpass: ${dl.bottleneck}`);
       if(networkBits.length||muxBits.length){transferStats.hidden=false;networkStat.textContent=networkBits.join(' · ');networkStat.hidden=!networkBits.length;muxStat.textContent=muxBits.join(' · ');muxStat.hidden=!muxBits.length;}
@@ -396,15 +400,15 @@ function render(){
     const downloadButton=node.querySelector('.download');
     if(['queued','preparing','downloading','muxing','ready','saving'].includes(item.download?.state)){
       downloadButton.disabled=true;
-      if(item.download?.state==='queued') downloadButton.textContent='In Warteschlange';
+      if(item.download?.state==='queued') downloadButton.textContent='Wartet auf Download';
        else if(item.download?.state==='saving') downloadButton.textContent='Speichern …';
       else if(item.download?.state==='ready') downloadButton.textContent='Fertig …';
-      else if(item.download?.state==='preparing') downloadButton.textContent='Bereitet vor …';
+      else if(item.download?.state==='preparing') downloadButton.textContent='Video wird vorbereitet …';
       else if(item.download?.state==='muxing') downloadButton.textContent=`Muxxt ${Math.round(item.download?.muxProgress??item.download?.progress??0)}%`;
       else downloadButton.textContent=`Lädt ${Math.round(item.download?.downloadProgress??item.download?.progress??0)}%`;
     }
     else if(item.download?.state==='export_error'&&item.download?.exportRetryAvailable) downloadButton.textContent='Speichern erneut versuchen';
-    else if(item.download?.state==='complete') downloadButton.textContent='Erneut laden';
+    else if(item.download?.state==='complete') downloadButton.textContent='Erneut herunterladen';
     if(item.download?.state==='queued') {
       const cancel=document.createElement('button');
       cancel.className='ghost'; cancel.textContent='Aus Warteschlange entfernen';
