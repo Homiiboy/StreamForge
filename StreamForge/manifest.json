@@ -3,7 +3,7 @@
   "name": "StreamForge Connector",
   "short_name": "StreamForge",
   "version": "1.8.2",
-  "description": "Erkennt und lädt direkte Medien sowie unverschlüsselte HLS-/DASH-Streams; mit robuster Pipeline, Film-/Serien-Benennung, validiertem Container-Export und wiederholbarem Dateiexport.",
+  "description": "Einfacher Medien-Downloader mit klarer Videoauswahl, optionalen Profi-Einstellungen und HLS-/DASH-Unterstützung.",
   "permissions": [
     "activeTab",
     "storage",
