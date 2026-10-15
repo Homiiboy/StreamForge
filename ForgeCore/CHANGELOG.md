@@ -1,5 +1,13 @@
 # ForgeCore – Changelog
 
+## Browser-Connector-Snapshot: StreamForge v1.8.2 (ForgeCore-Server bleibt v1.0.0)
+
+- Bewusste Synchronisierung von `ForgeCore/browser-extension/` mit StreamForge Connector v1.8.2.
+- Vereinfachte Popup-Oberfläche und verständlichere Downloadstatusmeldungen übernommen.
+- Automatische Jellyfin-kompatible Ordnerstruktur sowie die vorhandene HLS-/DASH-Pipeline unverändert belassen.
+- Frühere Versionsangaben in den historischen ForgeCore-Releaseeinträgen bleiben zur Nachvollziehbarkeit bestehen.
+
+
 ## v1.0.0 – Phase 8: Releasekandidat (Hardware-Abnahme ausstehend)
 
 - Die Funktionen der bisherigen Phasen 1–7 wurden in einem gemeinsam versionierten Releasekandidaten zusammengeführt.
