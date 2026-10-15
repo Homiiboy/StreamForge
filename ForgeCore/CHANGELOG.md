@@ -1,5 +1,11 @@
 # ForgeCore – Changelog
 
+## Browser-Connector-Snapshot: StreamForge v1.8.3 (ForgeCore-Server bleibt v1.0.0)
+
+- Popup-Detailbereiche (Streamdetails, Tonspuren/Untertitel sowie weitere Optionen) bleiben bei regelmäßigen Aktualisierungen geöffnet.
+- Beide Connector-Kopien synchronisiert; automatische Medienordner und Download-Pipeline bleiben unverändert.
+
+
 ## Browser-Connector-Snapshot: StreamForge v1.8.2 (ForgeCore-Server bleibt v1.0.0)
 
 - Bewusste Synchronisierung von `ForgeCore/browser-extension/` mit StreamForge Connector v1.8.2.

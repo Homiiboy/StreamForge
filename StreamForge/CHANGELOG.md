@@ -1,5 +1,12 @@
 # StreamForge Browser Connector – Changelog
 
+## v1.8.3 – Aufklappbereiche bleiben geöffnet
+
+- Geöffnete Stream-Details und Tonspuren/Untertitel bleiben während der automatischen Aktualisierung der Videokarten offen.
+- Auch „Weitere Serienfunktionen“ und „Mehr“ behalten ihren Zustand bei.
+- Zustand wird je Videotreffer und Browser-Tab verwaltet, ohne Download-Pipeline oder automatische Ordnererstellung zu ändern.
+
+
 ## v1.8.2 – Vereinfachter Connector (UX-Update)
 
 - Schritt-für-Schritt-Hinweis, klarere Tabs und Hauptaktion „Jetzt herunterladen“.

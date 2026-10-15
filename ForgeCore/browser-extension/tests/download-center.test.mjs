@@ -11,4 +11,8 @@ const version=JSON.parse(fs.readFileSync(new URL('../manifest.json',import.meta.
 assert.ok(html.includes('Browser Connector '+version));
 assert.match(css,/#downloadCenter/);
 assert.match(js,/aria-pressed/);
+for(const selector of ['.sourceDetails','.trackDetails','.extraNaming','.extraActions']) assert.ok(html.includes(selector.slice(1)), 'missing expandable section '+selector);
+assert.match(js,/const expandedDetails = new Map\(\)/);
+assert.match(js,/restoreExpandedDetails\(article,item\.id\)/);
+assert.match(js,/el\.addEventListener\('toggle'/);
 console.log('download center markup checks passed');

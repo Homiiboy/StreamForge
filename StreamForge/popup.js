@@ -85,6 +85,19 @@ const seasonSearchResults = new Map();
 const subtitleSelections = new Map();
 const namingSaveTimers = new Map();
 const renderGate = new RenderGate();
+// Merke geöffnete Detailbereiche pro Tab und Video, auch wenn die Karten regelmäßig neu gezeichnet werden.
+const expandedDetails = new Map();
+const detailSelectors = ['.sourceDetails','.trackDetails','.extraNaming','.extraActions'];
+function restoreExpandedDetails(article, itemId) {
+  for (const selector of detailSelectors) {
+    const el=article.querySelector(selector);
+    if (!el) continue;
+    const key=`${tabId}:${itemId}:${selector}`;
+    el.open=expandedDetails.get(key)===true;
+    el.addEventListener('toggle',()=>expandedDetails.set(key,el.open));
+  }
+}
+
 let deferredRenderScheduled = false;
 let enrichRunning = false;
 const list=document.querySelector('#list'), empty=document.querySelector('#empty'), count=document.querySelector('#count'), filter=document.querySelector('#filter'), template=document.querySelector('#itemTemplate');
@@ -236,7 +249,7 @@ function render(){
   if(currentView==='downloads'){renderDownloadCenter();return;}
   const wanted=filter.value; const shown=wanted==='all'?items:items.filter(x=>x.kind===wanted); list.textContent=''; empty.style.display=shown.length?'none':'block'; count.textContent=String(items.length);
   for(const item of shown){
-    const node=template.content.cloneNode(true); const article=node.querySelector('.item'); article.dataset.itemId=item.id; const img=node.querySelector('.preview'), fallback=node.querySelector('.previewFallback');
+    const node=template.content.cloneNode(true); const article=node.querySelector('.item'); article.dataset.itemId=item.id; restoreExpandedDetails(article,item.id); const img=node.querySelector('.preview'), fallback=node.querySelector('.previewFallback');
     if(item.previewUrl){ img.src=item.previewUrl; img.style.display='block'; fallback.style.display='none'; img.addEventListener('error',()=>{img.style.display='none';fallback.style.display='grid';},{once:true}); }
     else {img.style.display='none';fallback.style.display='grid';}
     node.querySelector('.qualityBadge').textContent=qualityText(item); node.querySelector('.kind').textContent=shortKind(item.kind); const ctx=item.download?.requestContext||item.probe?.requestContext; const cb=node.querySelector('.contextBadge'); if(ctx?.active||ctx?.flags?.length){cb.textContent='Browser-Kontext ✓';cb.title=(ctx.flags||[]).join(' · ');} else cb.hidden=true; node.querySelector('.hits').textContent=item.hits>1?`${item.hits}× erkannt`:'';
@@ -459,7 +472,7 @@ function render(){
     });
     node.querySelector('.open').addEventListener('click',async()=>{ const r=await chrome.runtime.sendMessage({type:'sf_open',candidate:item}); if(!r?.ok){await navigator.clipboard.writeText(item.url);alert('StreamForge konnte nicht geöffnet werden. Die URL wurde kopiert.');} });
     node.querySelector('.copy').addEventListener('click',async e=>{await navigator.clipboard.writeText(item.url);const b=e.currentTarget,old=b.textContent;b.textContent='Kopiert';setTimeout(()=>b.textContent=old,900)});
-    node.querySelector('.remove').addEventListener('click',async()=>{await chrome.runtime.sendMessage({type:'sf_remove',tabId,id:item.id});await load()}); list.appendChild(node);
+    node.querySelector('.remove').addEventListener('click',async()=>{await chrome.runtime.sendMessage({type:'sf_remove',tabId,id:item.id});for(const selector of detailSelectors)expandedDetails.delete(`${tabId}:${item.id}:${selector}`);await load()}); list.appendChild(node);
   }
 }
 async function enrichVisible({force=false}={}){
