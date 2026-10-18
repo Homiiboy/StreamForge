@@ -12,7 +12,7 @@ for(const id of ['libraryMode','libraryPlacement','libraryPick','libraryTarget',
 assert.match(popup,/showDirectoryPicker\(/);
 assert.match(popup,/handleKey='job-'/);
 assert.match(offscreen,/writeIntoLibrary\(/);
-assert.match(offscreen,/directoryHandleStore\(\)\.get\(job\.library\?\.handleKey/);
+assert.match(offscreen,/directoryHandleStore\(\)\.get\(job\.library\.handleKey/);
 assert.match(background,/downloadsRelativePath\(/);
 assert.match(background,/conflictAction:'uniquify'/);
 assert.match(background,/naming:message\.naming, library:message\.library/);
