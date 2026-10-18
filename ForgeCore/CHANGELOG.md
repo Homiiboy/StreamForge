@@ -1,5 +1,11 @@
 # ForgeCore – Changelog
 
+## Browser-Connector-Snapshot StreamForge v1.8.6
+
+- HLS/DASH-Engine und Direktstart auf den funktionierenden Stand V1.6.5 zurückgesetzt.
+- Neuer Medienordner-Export ist separat angebunden; ForgeCore-Server bleibt v1.0.0.
+
+
 ## Browser-Connector-Snapshot: StreamForge v1.8.5
 
 - Verbindungsbereitschaft zwischen Background-Service-Worker und Offscreen-Downloader wird vor dem Start geprüft.

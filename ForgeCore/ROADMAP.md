@@ -1,6 +1,6 @@
 # ForgeCore – Entwicklungsroadmap
 
-**Eigenständige Versionierung:** ForgeCore startet bei **v0.0.1**. Die Kopie unter `ForgeCore/browser-extension/` wurde durch die bewusste Integration auf **StreamForge v1.8.5** angehoben. Die zwei Versionsnummern sind unabhängig.
+**Eigenständige Versionierung:** ForgeCore startet bei **v0.0.1**. Die Kopie unter `ForgeCore/browser-extension/` wurde durch die bewusste Integration auf **StreamForge v1.8.6** angehoben. Die zwei Versionsnummern sind unabhängig.
 
 **Produktziel:** Eine auf ZimaOS/Docker laufende, lokal verwaltete Medien-App, die Filme und Serien als Projekte organisiert, autorisierte Quellen nach freigegebenen Medien untersucht, unterstützte HLS-/DASH-Downloads koordiniert und fertig geprüfte Dateien Jellyfin-konform ablegt.
 
@@ -83,7 +83,7 @@ Das verbindliche Prüfprotokoll steht unter [ACCEPTANCE-v1.0.0.md](./ACCEPTANCE-
 
 ## Architekturprinzipien
 
-1. **Versionen strikt trennen:** ForgeCore ab v0.0.1, Browser-Snapshot nun StreamForge v1.8.5. Änderungen am Snapshot erfolgen nicht unbemerkt.
+1. **Versionen strikt trennen:** ForgeCore ab v0.0.1, Browser-Snapshot nun StreamForge v1.8.6. Änderungen am Snapshot erfolgen nicht unbemerkt.
 2. **Server-first:** Hintergrundaufgaben laufen als eigenständiger Docker-Dienst; ein offener Browser ist nicht zwingend nötig.
 3. **Sichere Medienverwaltung:** Keine Überschreibungen ohne ausdrückliche Zustimmung, atomare/validierte Exporte, nachvollziehbare Fehler und Duplikatschutz.
 4. **Security by default:** Authentifizierung vor Netzwerkfreigabe, SSRF-Schutz bei nutzereingegebenen URLs, Ressourcenlimits und keine DRM- oder Zugangsbeschränkungsumgehung.

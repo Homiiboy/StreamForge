@@ -1,11 +1,6 @@
 import {directoryHandleStore} from './directory-handle-store.js';
 import {writeIntoLibrary} from './library-writer.js';
 import {extensionForMediaMime} from './export.js';
-import {inspectMediaSample} from './media-integrity.js';
-import {bufferAwareConcurrency,performanceSignal} from './performance-engine.js';
-import {validateSegmentPayload,validateDownloadProgress} from './download-reliability.js';
-import { PersistentDownloadQueue } from './persistent-queue.js';
-import { performanceProfile } from './performance-profile.js';
 import { parseMasterPlaylist, parseMediaPlaylist, chooseBestVariant, chooseVariant, isHlsPlaylist, isMasterPlaylist, looksLikeHlsPlaylistBytes } from './hls.js';
 import { parseDashManifest } from './dash.js';
 import { muxFmp4Files } from './fmp4mux.js';
@@ -18,25 +13,10 @@ import { createDynamicLimiter, recommendedBufferLimits, effectiveBufferPairs, pi
 import { canonicalMediaMime, normalizeMediaFilename, inspectMediaHead, createTypedMediaBlob, describeDownloadError } from './export.js';
 
 const activeUrls=new Map();
-const downloadQueue = new PersistentDownloadQueue({
-  storage: chrome.storage.local,
-  execute: async record => (record.type === 'sf_hls_start' ? downloadHls : downloadDash)(record.job),
-  onQueued: async (record, position) => sendProgress(record.job, 'queued', 0, `Warteschlange · Position ${position}`),
-  onInterrupted: async record => {
-    if(record.job.library?.handleKey)await directoryHandleStore().clear(record.job.library.handleKey).catch(()=>{});
-    await sendProgress(record.job, 'error', 0,
-      'Browser-Neustart während der Verarbeitung. Der laufende Auftrag wurde aus Sicherheitsgründen nicht automatisch neu gestartet.',
-      { diagnostic: { code: 'QUEUE_INTERRUPTED', title: 'Download unterbrochen', text: 'Bitte den Download manuell erneut starten.' } });
-  },
-  onError: async (record, error) => {
-    if(record.job.library?.handleKey)await directoryHandleStore().clear(record.job.library.handleKey).catch(()=>{});
-    await sendProgress(record.job, 'error', 0, String(error?.message || error));
-  }
-});
 function formatBytes(bytes){const n=Number(bytes||0);if(n>=1073741824)return `${(n/1073741824).toFixed(2)} GB`;if(n>=1048576)return `${(n/1048576).toFixed(1)} MB`;if(n>=1024)return `${(n/1024).toFixed(1)} KB`;return `${n} B`;}
 function safeName(raw,fallback='StreamForge-Download'){ const text=String(raw||fallback).replace(/[<>:"/\\|?*\x00-\x1f]/g,' ').replace(/\s+/g,' ').trim(); return (text||fallback).slice(0,140); }
 function networkState(job){
-  if(!job._net) { const profile=performanceProfile(job.performanceProfile); job._net={concurrency:profile.start,min:1,max:profile.max,successStreak:0,retries:0,lastRetryAt:0,lastDecreaseAt:0,growthCooldownUntil:0}; }
+  if(!job._net) job._net={concurrency:4,min:1,max:8,successStreak:0,retries:0,lastRetryAt:0,lastDecreaseAt:0,growthCooldownUntil:0};
   return job._net;
 }
 function metricsState(job){ if(!job._metrics) job._metrics=new TransferMetrics(); return job._metrics; }
@@ -198,7 +178,7 @@ async function writePartsToTemp(parts,tempName,job,{start=3,end=80,label='Spur',
   const {handle,writable}=await openTemp(tempName);
   const metrics=metricsState(job);
   const phaseStartedAt=performance.now();
-  const limiter=createDynamicLimiter(()=>bufferAwareConcurrency(networkState(job).concurrency,bufferedBytes,128*1024*1024));
+  const limiter=createDynamicLimiter(()=>networkState(job).concurrency);
   const slots=new Map();
   const readyIndexes=new Set();
   let nextSchedule=0,nextWrite=0,downloaded=0,ready=0,written=0,bufferedBytes=0,totalDownloadedBytes=0;
@@ -246,7 +226,7 @@ async function writePartsToTemp(parts,tempName,job,{start=3,end=80,label='Spur',
         segmentDone:downloaded,segmentTotal:parts.length,concurrency:networkState(job).concurrency,retries:networkState(job).retries,
         activeRequests:limiter.active(),queuedRequests:limiter.queued(),bufferPairs:ready,bufferCapacity:cap,bufferedBytes,bufferMaxBytes:lim.maxBytes,
         etaSeconds:eta,etaPending:downloaded<10||eta<=0,
-        bottleneck:performanceSignal({activeRequests:limiter.active(),queuedRequests:limiter.queued(),bufferedBytes,bufferMaxBytes:lim.maxBytes,downloadDone:downloaded,muxDone:nextWrite})
+        bottleneck:(!readyIndexes.has(nextWrite)&&(limiter.active()>0||limiter.queued()>0))?'Netzwerk':''
       });
       await sendProgress(job,'downloading',Math.min(progress,end),`${label}: ${downloaded}/${parts.length} Teile · ${(totalDownloadedBytes/1048576).toFixed(1)} MB · Puffer ${ready}/${cap} · Parallelität ${networkState(job).concurrency}`,{bytes:written,prefetch:true,prefetchRequests:limiter.active()+limiter.queued(),...mx});
     })().finally(()=>{progressPromise=null;});
@@ -262,7 +242,7 @@ async function writePartsToTemp(parts,tempName,job,{start=3,end=80,label='Spur',
         const settled=await slots.get(nextWrite);
         if(!settled)throw new Error(`${label}-Prefetch-Puffer ist inkonsistent.`);
         if(settled.error)throw settled.error;
-        const bytes=validateSegmentPayload(settled.bytes,{index:nextWrite+1,total:parts.length,label});
+        const bytes=settled.bytes;
         const writeIndex=nextWrite;
         slots.delete(writeIndex);
         ready=Math.max(0,ready-1);
@@ -280,7 +260,6 @@ async function writePartsToTemp(parts,tempName,job,{start=3,end=80,label='Spur',
       clearInterval(ticker);
     }
     await emitProgress();
-    validateDownloadProgress({written,total:parts.length,done:nextWrite});
     await writable.close();
     return {handle,bytes:written};
   }catch(e){
@@ -369,16 +348,6 @@ async function prepareExportBlob(record){
   if(!inspection.ok){const e=new Error(inspection.code);e.code=inspection.code;e.detectedMime=inspection.detectedMime||'';throw e;}
 
   const mime=canonicalMediaMime(inspection.detectedMime||requestedMime);
-  if(mime==='video/mp2t'){
-    const tailStart=Math.max(0,file.size-64*1024);
-    const tailBytes=new Uint8Array(await file.slice(tailStart,file.size).arrayBuffer());
-    const validity=inspectMediaSample(headBytes,tailBytes,mime);
-    if(!validity.ok){
-      const err=new Error(validity.code+' ('+(validity.where||'unknown')+')');
-      err.code=validity.code;
-      throw err;
-    }
-  }
   const filename=normalizeMediaFilename(String(record?.filename||tempName),mime);
   // A Blob containing a File references the File's data; it does not build a
   // multi-gigabyte Uint8Array in JavaScript. The explicit MIME type is vital:
@@ -403,34 +372,31 @@ async function publishFile(job,tempName,filename,tempNames){
     throw e;
   }
   const metrics=metricsState(job);metrics.addOutput(prepared.bytes);
+  // The 1.6.5 network/download/mux pipeline is unchanged. Only the final
+  // validated media file is optionally written into a chosen Jellyfin folder.
   if(job.library?.mode==='picked'){
-    try{
-      const rootHandle=await directoryHandleStore().get(job.library?.handleKey||'destination');
-      if(!rootHandle)throw Error('Kein Zielordner ausgewählt.');
-      const entry=activeUrls.get(String(job.jobId));
-      const file=entry?.typedBlob;
+    try {
+      const handle=await directoryHandleStore().get(job.library.handleKey||'destination');
+      if(!handle)throw Error('Kein Zielordner ausgewählt.');
+      const media=activeUrls.get(String(job.jobId))?.typedBlob;
       const extension=extensionForMediaMime(prepared.mime);
-      if(!extension)throw Error('Dateiformat für direkten Ordnerexport nicht unterstützt.');
-      await sendProgress(job,'saving',99,'Jellyfin-Ordner wird angelegt bzw. wiederverwendet …');
-      const saved=await writeIntoLibrary(rootHandle,file,job.naming,extension,job.library.placement,
-        async(written,total)=>sendProgress(job,'saving',99,
-          'Im Jellyfin-Ordner speichern: '+Math.round(written/total*100)+'%'),
+      if(!media||!extension)throw Error('Exportdatei oder Medienformat fehlt.');
+      await sendProgress(job,'saving',99,'Medienordner wird erstellt bzw. wiederverwendet …');
+      const saved=await writeIntoLibrary(handle,media,job.naming,extension,job.library.placement,
+        async(written,total)=>sendProgress(job,'saving',99,'Im Medienordner speichern: '+Math.round(written/total*100)+'%'),
         {seasonFolder:job.library.seasonFolder||''});
       await sendProgress(job,'complete',100,'Abgeschlossen: '+saved.relativePath,{
         bytes:saved.bytes,outputBytes:saved.bytes,phase:'complete',downloadProgress:100,muxProgress:100
       });
       await releaseExport(job.jobId);
       await removeTemps(tempNames||[tempName]);
-      if(job.library?.handleKey)await directoryHandleStore().clear(job.library.handleKey).catch(()=>{});
+      if(job.library.handleKey)await directoryHandleStore().clear(job.library.handleKey).catch(()=>{});
       return;
     }catch(error){
-      if(job.library?.handleKey)await directoryHandleStore().clear(job.library.handleKey).catch(()=>{});
-      // Keep the validated OPFS file and fall back to Chrome's save dialog.
-      // Never silently overwrite an existing movie/episode.
-      await sendProgress(job,'saving',99,
-        'Direkter Ordnerexport nicht möglich ('+String(error?.message||error)+'). Browser-Speicherdialog wird geöffnet.',
-        {diagnostic:{code:'LIBRARY_WRITE_FALLBACK',title:'Ordnerexport nicht möglich',
-          text:String(error?.message||error),suggestion:'Wähle im Speicherdialog einen beschreibbaren Ordner.'}});
+      if(job.library.handleKey)await directoryHandleStore().clear(job.library.handleKey).catch(()=>{});
+      await sendProgress(job,'saving',99,'Ordnerexport nicht möglich. Browser-Speicherdialog wird geöffnet.',{
+        diagnostic:{code:'LIBRARY_WRITE_FALLBACK',title:'Ordnerexport nicht möglich',
+          text:String(error?.message||error),suggestion:'Im Dialog einen beschreibbaren Zielordner auswählen.'}});
     }
   }
   await sendProgress(job,'ready',99,`Fertig (${prepared.mime}) · ${formatBytes(prepared.bytes)} – Speicherort wird geöffnet …`,{bytes:prepared.bytes,...metrics.snapshot({phase:'ready',downloadProgress:100,muxProgress:job._hadMux?100:0,etaSeconds:0,bottleneck:''})});
@@ -610,7 +576,7 @@ async function downloadHls(job){
 
 function dashTrackParts(track){ const parts=[];if(track.init?.url)parts.push(track.init);parts.push(...(track.segments||[]));return parts; }
 async function downloadDash(job){
-  await sendProgress(job,'preparing',0,'DASH-MPD wird analysiert …'); const text=await getText(job.url,job,{label:'DASH-Manifest'}); const dash=parseDashManifest(text,job.url,{videoId:job.selectedVariant,audioId:job.selectedAudio});
+  await sendProgress(job,'preparing',0,'DASH-MPD wird analysiert …'); const text=await getText(job.url,job,{label:'DASH-Manifest'}); const dash=parseDashManifest(text,job.url);
   if(/webm/i.test(dash.video.mimeType||'')||/webm/i.test(dash.audio.mimeType||''))throw new Error('DASH-WebM-Muxing ist derzeit noch nicht unterstützt; fMP4/MP4-DASH wird unterstützt.');
   const vp=dashTrackParts(dash.video),ap=dashTrackParts(dash.audio); if(!vp.length||!ap.length)throw new Error('DASH-Segmente konnten nicht aufgelöst werden.');
   const vn=`streamforge-${job.jobId}-dash-video.mp4`,an=`streamforge-${job.jobId}-dash-audio.mp4`,out=`streamforge-${job.jobId}-dash-muxed.mp4`;
@@ -625,37 +591,7 @@ async function cleanup(jobId,fallbackTempNames=[]){
 }
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   if(message?.target!=='offscreen')return;
-  if(message.type==='sf_offscreen_ping'){sendResponse({ok:true,ready:true});return false;}
-  if(message.type==='sf_hls_start'||message.type==='sf_dash_start'){
-    const job=message.job;
-    downloadQueue.enqueue({id:`${job.tabId}:${job.candidateId}`,type:message.type,job})
-      .then(result=>sendResponse(result.ok?{ok:true,queued:result.position>0,position:result.position}:{ok:false,error:'Download bereits aktiv oder eingereiht'}))
-      .catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
-    return true;
-  }
-  if(message.type==='sf_queue_pause'){
-    downloadQueue.setPaused(Boolean(message.paused))
-      .then(state=>sendResponse({ok:true,paused:state.paused,waiting:state.pending.length}))
-      .catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
-    return true;
-  }
-  if(message.type==='sf_queue_move'){
-    downloadQueue.movePending(`${message.tabId}:${message.candidateId}`,message.direction)
-      .then(ok=>sendResponse({ok}))
-      .catch(err=>sendResponse({ok:false,error:String(err?.message||err)}));
-    return true;
-  }
-  if(message.type==='sf_queue_cancel'){
-    const pendingRecord=downloadQueue.pending.find(x=>x.id===`${message.tabId}:${message.candidateId}`);
-    downloadQueue.cancel(`${message.tabId}:${message.candidateId}`)
-      .then(async ok=>{
-        if(ok&&pendingRecord?.job?.library?.handleKey)
-          await directoryHandleStore().clear(pendingRecord.job.library.handleKey).catch(()=>{});
-        sendResponse({ok});
-      })
-      .catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
-    return true;
-  }
+  if(message.type==='sf_hls_start'||message.type==='sf_dash_start'){ const fn=message.type==='sf_hls_start'?downloadHls:downloadDash; fn(message.job).then(()=>sendResponse({ok:true})).catch(async e=>{await sendProgress(message.job,'error',0,String(e?.message||e));sendResponse({ok:false,error:String(e?.message||e)});});return true; }
   if(message.type==='sf_export_prepare'){prepareExportBlob(message.export||{}).then(x=>sendResponse({ok:true,...x})).catch(e=>sendResponse({ok:false,error:String(e?.message||e),code:e?.code||'EXPORT_PREPARE_FAILED'}));return true;}
   if(message.type==='sf_export_release'){releaseExport(message.jobId).then(()=>sendResponse({ok:true}));return true;}
   if(message.type==='sf_export_discard'||message.type==='sf_download_cleanup'){cleanup(message.jobId,message.tempNames||[]).then(()=>sendResponse({ok:true}));return true;}

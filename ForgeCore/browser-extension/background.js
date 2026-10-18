@@ -1,4 +1,3 @@
-import {waitForOffscreenReceiver} from './offscreen-bridge.js';
 import {downloadsRelativePath,normalizeLibraryOptions} from './library-folders.js';
 import {extensionForMediaMime} from './export.js';
 import {subtitleSegments,mergeWebVttToSrt} from './subtitle-export.js';
@@ -210,21 +209,16 @@ async function cleanupRequestBridge(jobId) {
 }
 
 async function ensureOffscreen() {
-  const url = chrome.runtime.getURL(OFFSCREEN_PATH);
-  const contexts = await chrome.runtime.getContexts({ contextTypes: ["OFFSCREEN_DOCUMENT"], documentUrls: [url] });
-  if (contexts.length) {
-    await waitForOffscreenReceiver(message=>chrome.runtime.sendMessage(message));
-    return;
-  }
-  if (!creatingOffscreen) {
-    creatingOffscreen = chrome.offscreen.createDocument({
-      url: OFFSCREEN_PATH,
-      reasons: ["BLOBS"],
-      justification: "HLS-/DASH-Spuren lokal zusammenführen, Audio und Video muxen und als Browser-Download bereitstellen."
-    }).finally(() => { creatingOffscreen = null; });
+  const url=chrome.runtime.getURL(OFFSCREEN_PATH);
+  const contexts=await chrome.runtime.getContexts({contextTypes:['OFFSCREEN_DOCUMENT'],documentUrls:[url]});
+  if(contexts.length)return;
+  if(!creatingOffscreen){
+    creatingOffscreen=chrome.offscreen.createDocument({
+      url:OFFSCREEN_PATH,reasons:['BLOBS'],
+      justification:'Medienstreams herunterladen, zusammenführen und als Datei speichern.'
+    }).finally(()=>{creatingOffscreen=null;});
   }
   await creatingOffscreen;
-  await waitForOffscreenReceiver(message=>chrome.runtime.sendMessage(message));
 }
 
 async function setDownloadStatus(tabId, candidateId, patch) {
@@ -761,38 +755,37 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (bridge?.flags?.length) await setDownloadStatus(message.tabId, c.id, { state: "saving", progress: 100, message: `Browser-Kontext aktiv: ${bridge.flags.join(" · ")}` });
         sendResponse({ ok: true, mode: "browser", downloadId: id });
       })().catch(async err => { sendResponse({ ok: false, error: String(err?.message || err) }); });
-    } else if (c.kind === "hls") {
+    } else if (c.kind === "hls" || c.kind === "dash") {
       (async()=>{
-        let probe=null, probeWarning="";
-        try{probe=await probeCandidate(c,message.tabId,{mode:'download'});}catch(err){probeWarning=String(err?.message||err);}
-        if (probe?.encrypted) throw new Error("Verschlüsselter/geschützter HLS-Stream wird nicht verarbeitet.");
-        const namingCheck=validateNaming(c.naming||{}); if(!namingCheck.ok) throw new Error(namingCheck.error); const outputBaseName=buildMediaBasename(namingCheck.value,c.title||"StreamForge-Download");
+        let probe=null,probeWarning='';
+        try{probe=await probeCandidate(c,message.tabId,{mode:'download'});}catch(e){probeWarning=String(e?.message||e);}
+        if(probe?.encrypted)throw Error('Geschützte oder verschlüsselte Streams werden nicht verarbeitet.');
+        const valid=validateNaming(c.naming||{});if(!valid.ok)throw Error(valid.error);
         await ensureOffscreen();
-        const jobId = crypto.randomUUID();
-        await setDownloadStatus(message.tabId, c.id, { reset: true, state: "preparing", phase: "preparing", progress: 0, downloadProgress: 0, muxProgress: 0, speedBps: 0, etaSeconds: 0, etaPending: true, segmentDone: 0, segmentTotal: 0, muxSegmentDone: 0, muxSegmentTotal: 0, retries: 0, concurrency: 0, activeRequests: 0, queuedRequests: 0, bufferPairs: 0, bufferCapacity: 0, bottleneck: "", downloadedBytes: 0, outputBytes: 0, message: probeWarning ? `Analysewarnung: ${probeWarning} – Download versucht es erneut …` : "HLS wird vorbereitet …" });
-        const accepted = await chrome.runtime.sendMessage({
-          type: "sf_hls_start", target: "offscreen",
-          job: (()=>{ const selected=(probe?.variantOptions||[]).find(v=>v.uri===String(c.selectedVariant||''))||null; return { jobId, tabId: message.tabId, candidateId: c.id, url: c.url, referer: c.referer || "", origin: c.origin || "", requestProfile: c.requestProfile || {}, frameId: Number.isInteger(c.frameId) ? c.frameId : -1, pageUrl: c.pageUrl || "", title: c.title || "StreamForge-Download", outputBaseName, naming:namingCheck.value, library:normalizeLibraryOptions(c.library), performanceProfile:profile, height: Number(selected?.height || probe?.height || 0), selectedHeight: Number(selected?.height || 0), selectedBandwidth: Number(selected?.bandwidth || 0), selectedVariant: String(c.selectedVariant || ""), selectedAudio: String(c.selectedAudio || "") }; })()
+        const jobId=crypto.randomUUID();
+        await setDownloadStatus(message.tabId,c.id,{
+          reset:true,state:'preparing',phase:'preparing',progress:0,downloadProgress:0,muxProgress:0,
+          message:probeWarning?'Analysewarnung: '+probeWarning+' – Download wird versucht …':(c.kind==='hls'?'HLS wird vorbereitet …':'DASH wird vorbereitet …')
         });
-        if (!accepted?.ok) throw new Error(accepted?.error || 'Download wurde nicht in die Warteschlange aufgenommen.');
-        sendResponse({ ok: true, mode: "browser-hls", jobId, queued: Boolean(accepted.queued), position: accepted.position });
-      })().catch(err => sendResponse({ ok: false, error: String(err?.message || err) }));
-    } else if (c.kind === "dash") {
-      (async()=>{
-        let probe=null, probeWarning="";
-        try{probe=await probeCandidate(c,message.tabId,{mode:'download'});}catch(err){probeWarning=String(err?.message||err);}
-        if (probe?.encrypted) throw new Error("Verschlüsseltes/DRM-geschütztes DASH wird nicht verarbeitet.");
-        const namingCheck=validateNaming(c.naming||{}); if(!namingCheck.ok) throw new Error(namingCheck.error); const outputBaseName=buildMediaBasename(namingCheck.value,c.title||"StreamForge-Download");
-        await ensureOffscreen();
-        const jobId = crypto.randomUUID();
-        await setDownloadStatus(message.tabId, c.id, { reset: true, state: "preparing", phase: "preparing", progress: 0, downloadProgress: 0, muxProgress: 0, speedBps: 0, etaSeconds: 0, etaPending: true, segmentDone: 0, segmentTotal: 0, muxSegmentDone: 0, muxSegmentTotal: 0, retries: 0, concurrency: 0, activeRequests: 0, queuedRequests: 0, bufferPairs: 0, bufferCapacity: 0, bottleneck: "", downloadedBytes: 0, outputBytes: 0, message: probeWarning ? `Analysewarnung: ${probeWarning} – Download versucht es erneut …` : "DASH wird vorbereitet …" });
-        const accepted = await chrome.runtime.sendMessage({
-          type: "sf_dash_start", target: "offscreen",
-          job: { jobId, tabId: message.tabId, candidateId: c.id, url: c.url, referer: c.referer || "", origin: c.origin || "", requestProfile: c.requestProfile || {}, frameId: Number.isInteger(c.frameId) ? c.frameId : -1, pageUrl: c.pageUrl || "", title: c.title || "StreamForge-Download", outputBaseName, naming:namingCheck.value, performanceProfile:profile, height: Number(probe?.height || 0), selectedVariant: String(c.selectedVariant || ""), selectedAudio: String(c.selectedAudio || "") }
-        });
-        if (!accepted?.ok) throw new Error(accepted?.error || 'Download wurde nicht in die Warteschlange aufgenommen.');
-        sendResponse({ ok: true, mode: "browser-dash", jobId, queued: Boolean(accepted.queued), position: accepted.position });
-      })().catch(err => sendResponse({ ok: false, error: String(err?.message || err) }));
+        const selected=(probe?.variantOptions||[]).find(v=>(v.uri||v.id)===String(c.selectedVariant||''))||null;
+        const library=normalizeLibraryOptions(c.library);
+        const job={jobId,tabId:message.tabId,candidateId:c.id,url:c.url,referer:c.referer||'',
+          origin:c.origin||'',requestProfile:c.requestProfile||{},frameId:Number.isInteger(c.frameId)?c.frameId:-1,
+          pageUrl:c.pageUrl||'',title:c.title||'StreamForge-Download',
+          outputBaseName:buildMediaBasename(valid.value,c.title||'StreamForge-Download'),
+          naming:valid.value,library,
+          height:Number(selected?.height||probe?.height||0),selectedHeight:Number(selected?.height||0),
+          selectedBandwidth:Number(selected?.bandwidth||0),selectedVariant:String(c.selectedVariant||''),
+          selectedAudio:String(c.selectedAudio||'')};
+        // 1.6.5: start download without awaiting offscreen's response.
+        // The offscreen listener responds only once the whole media file is done.
+        chrome.runtime.sendMessage({type:c.kind==='hls'?'sf_hls_start':'sf_dash_start',target:'offscreen',job})
+          .then(result=>{
+            if(result?.ok===false)setDownloadStatus(message.tabId,c.id,{state:'error',message:result.error||'Download fehlgeschlagen'}).catch(()=>{});
+          })
+          .catch(error=>setDownloadStatus(message.tabId,c.id,{state:'error',message:'Interner Downloader nicht erreichbar: '+String(error?.message||error)}).catch(()=>{}));
+        sendResponse({ok:true,mode:c.kind==='hls'?'browser-hls':'browser-dash',jobId});
+      })().catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
     } else {
       sendResponse({ ok: false, error: "Dieser Medientyp wird vom Browser-Downloader nicht unterstützt." });
     }

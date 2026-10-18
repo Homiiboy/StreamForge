@@ -1,5 +1,13 @@
 # StreamForge Browser Connector – Changelog
 
+## v1.8.6 – Rückkehr zur StreamForge-1.6.5-Downloadengine
+
+- HLS-/DASH-Datenabruf, Segmentverarbeitung und Muxing aus 1.6.5 wiederhergestellt.
+- 1.6.5-Direktstart statt späterer Warteschlange/Offscreen-Bereitschaftsabfrage.
+- Bestehende Auswahl von Medienordnern und automatische Jellyfin-Ordnergenerierung erst beim finalen Export ergänzt.
+- UI und aktuelle Versionskennung bleiben modern; Online-Feldtest noch erforderlich.
+
+
 ## v1.8.5 – Offscreen-Verbindung abgesichert
 
 - Chrome-Fehler „Receiving end does not exist“: Downloader wartet jetzt auf bestätigte Bereitschaft des Offscreen-Empfängers.
