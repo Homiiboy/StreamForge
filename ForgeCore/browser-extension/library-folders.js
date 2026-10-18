@@ -32,7 +32,7 @@ export function downloadsRelativePath(naming,extension='.mp4'){
   return [...folders,filename].join('/');
 }
 export function normalizeLibraryOptions(opts){
-  const mode=['ask','downloads','picked'].includes(opts?.mode)?opts.mode:'ask';
+  const mode=['ask','local','downloads','picked'].includes(opts?.mode)?opts.mode:'ask';
   const placement=['library','category','series','season'].includes(opts?.placement)?opts.placement:'library';
   const handleKey=typeof opts?.handleKey==='string' && /^job-[a-f0-9-]{36}$/i.test(opts.handleKey) ? opts.handleKey : '';
   const seasonFolder=typeof opts?.seasonFolder==='string' && /^(?:season|staffel)[\s._-]*0*\d{1,3}$|^specials$/i.test(opts.seasonFolder)

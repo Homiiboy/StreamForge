@@ -106,7 +106,7 @@ async function startFinalExport(meta, { blobUrl = '', retry = false } = {}) {
       ? downloadsRelativePath(meta.naming,extensionForMediaMime(preparedMime))
       : meta.filename;
     const id = await chrome.downloads.download({
-      url: prepared.blobUrl, filename:folderName, saveAs:retry || meta.library?.mode!=='downloads',
+      url: prepared.blobUrl, filename:folderName, saveAs:retry || !['downloads','local'].includes(meta.library?.mode),
       conflictAction:'uniquify'
     });
     if (!Number.isInteger(id) || id < 0) throw Object.assign(new Error('Chrome hat keine gültige Download-ID zurückgegeben.'), { code: 'EXPORT_DOWNLOAD_ID_MISSING' });
@@ -753,7 +753,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           try{targetFilename=downloadsRelativePath(namingCheck.value,ext);autoFolders=true;}catch{}
         }
         const id = await chrome.downloads.download({
-          url:c.url,filename:targetFilename,saveAs:!autoFolders,conflictAction:'uniquify'
+          url:c.url,filename:targetFilename,saveAs:!(autoFolders||library.mode==='local'),conflictAction:'uniquify'
         });
         downloadJobs.set(id, { jobId, tabId: message.tabId, candidateId: c.id, offscreen: false });
         await chrome.storage.session.set({ [`sf_dl_${id}`]: { jobId, tabId: message.tabId, candidateId: c.id, offscreen: false } });

@@ -1,5 +1,14 @@
 # StreamForge Browser Connector – Changelog
 
+## v1.8.10 – Lokalen Downloads-Ordner wiederhergestellt
+
+- Separater Speichermodus „Lokaler Downloads-Ordner (wie früher, ohne Unterordner)“.
+- Chrome speichert hier nur mit dem Dateinamen, ohne Movie-/Shows-Unterordner und ohne von StreamForge erzwungenen Speicherdialog.
+- Automatische Movies-/Shows-Ordner bleiben als eigenständige Wahl bestehen.
+- HLS-/DASH-Segmentdownload und Muxing aus 1.6.5 unverändert.
+- Zusätzlicher Regressionstest für die Trennung der Download-Modi.
+
+
 ## v1.8.9 – Verlässlicher Ordnerzugriff
 
 - Vor dem Download wird im ausgewählten Medienordner eine temporäre Testdatei geschrieben und der Testordner danach wieder entfernt.

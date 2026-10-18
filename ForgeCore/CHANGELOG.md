@@ -1,5 +1,11 @@
 # ForgeCore – Changelog
 
+## Browser-Connector v1.8.10
+
+- Lokale Chrome-Downloads ohne erzwungene Unterordner sind wieder als eigenständiger Modus verfügbar.
+- Movies-/Shows-Automatik bleibt separat; HLS-Downloadkern unverändert.
+
+
 ## Browser-Connector-Snapshot: StreamForge v1.8.9
 
 - Ordnerschreibtest vor dem Download, klare Hinweise bei fehlenden Berechtigungen und zur Staffelordner-Suche.

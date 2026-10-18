@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {normalizeLibraryOptions} from '../library-folders.js';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const background=read('background.js'),popup=read('popup.html');
+assert.equal(normalizeLibraryOptions({mode:'local'}).mode,'local');
+assert.equal(normalizeLibraryOptions({mode:'downloads'}).mode,'downloads');
+assert.equal(normalizeLibraryOptions({mode:'picked'}).mode,'picked');
+assert.match(popup,/<option value="local">Lokaler Downloads-Ordner/);
+assert.match(background,/saveAs:retry \|\| !\['downloads','local'\]\.includes\(meta\.library\?\.mode\)/);
+assert.match(background,/const folderName=!retry && meta\.library\?\.mode==='downloads'/);
+assert.match(background,/saveAs:!\(autoFolders\|\|library\.mode==='local'\)/);
+assert.match(background,/targetFilename=downloadsRelativePath\(namingCheck\.value,ext\)/);
+console.log('legacy local downloads vs folder automation regression checks passed');
