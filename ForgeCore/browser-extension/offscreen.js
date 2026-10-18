@@ -559,6 +559,41 @@ async function muxSeparatedTsHls(job,videoMedia,audioMedia,outputName){
     throw e;
   }
 }
+// Direct media is only handled here when a user selected a destination folder.
+// HLS/DASH continue using the unchanged StreamForge 1.6.5 pipeline.
+async function downloadDirectToLibrary(job){
+  const extension=String(job.extension||'').toLowerCase();
+  if(!['.mp4','.ts','.webm'].includes(extension))throw Error('Dateiformat wird für den ausgewählten Medienordner nicht unterstützt.');
+  const tempName=`streamforge-${job.jobId}-direct${extension}`;
+  let writable=null;
+  try{
+    await sendProgress(job,'preparing',0,'Direkte Videodatei wird geladen …');
+    const response=await fetchRetry(job.url,job,null,{attempts:3,timeoutMs:30000,ctx:{label:'Direktes Video'}});
+    // Never buffer a multi-gigabyte direct movie in JS memory.
+    const output=await openTemp(tempName);writable=output.writable;
+    const reader=response.body?.getReader?.();
+    if(!reader)throw Error('Der Medienserver unterstützt keinen Streaming-Abruf.');
+    let written=0;
+    const expected=Number(response.headers?.get?.('content-length')||0);
+    while(true){
+      const {done,value}=await readWithInactivityTimeout(reader,30000);
+      if(done)break;
+      if(value?.byteLength){
+        await writable.write(value);written+=value.byteLength;
+        const progress=expected>0?Math.min(95,Math.round(written/expected*95)):10;
+        await sendProgress(job,'downloading',progress,`Direkte Datei: ${formatBytes(written)} geladen`,{downloadedBytes:written,downloadProgress:progress});
+      }
+    }
+    if(written===0)throw Error('Die direkte Mediendatei ist leer.');
+    if(expected>0&&written!==expected)throw Error('Die direkte Mediendatei wurde unvollständig übertragen.');
+    await writable.close();writable=null;
+    await publishFile(job,tempName,`${safeName(job.outputBaseName||job.title)}${extension}`,[tempName]);
+  }catch(error){
+    try{await writable?.abort();}catch{}
+    await removeTemps([tempName]);
+    throw error;
+  }
+}
 async function downloadHls(job){
   await sendProgress(job,'preparing',0,'HLS wird vorbereitet …'); const {videoMedia,audioMedia,audioTrack,best}=await resolveHls(job); const q=Number(best?.height||job.height||0);
   if(!audioMedia){ const ext=videoMedia.fmp4?'.mp4':'.ts',name=`streamforge-${job.jobId}${ext}`; await writePartsToTemp(mediaParts(videoMedia),name,job,{start:3,end:96,label:'HLS',downloadStart:0,downloadEnd:100}); await publishFile(job,name,`${safeName(job.outputBaseName||job.title)}${ext}`,[name]); return; }
@@ -591,6 +626,7 @@ async function cleanup(jobId,fallbackTempNames=[]){
 }
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   if(message?.target!=='offscreen')return;
+  if(message.type==='sf_direct_start'){downloadDirectToLibrary(message.job).then(()=>sendResponse({ok:true})).catch(async e=>{await sendProgress(message.job,'error',0,String(e?.message||e));sendResponse({ok:false,error:String(e?.message||e)});});return true;}
   if(message.type==='sf_hls_start'||message.type==='sf_dash_start'){ const fn=message.type==='sf_hls_start'?downloadHls:downloadDash; fn(message.job).then(()=>sendResponse({ok:true})).catch(async e=>{await sendProgress(message.job,'error',0,String(e?.message||e));sendResponse({ok:false,error:String(e?.message||e)});});return true; }
   if(message.type==='sf_export_prepare'){prepareExportBlob(message.export||{}).then(x=>sendResponse({ok:true,...x})).catch(e=>sendResponse({ok:false,error:String(e?.message||e),code:e?.code||'EXPORT_PREPARE_FAILED'}));return true;}
   if(message.type==='sf_export_release'){releaseExport(message.jobId).then(()=>sendResponse({ok:true}));return true;}

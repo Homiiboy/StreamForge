@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const popup=read('popup.js'),background=read('background.js'),offscreen=read('offscreen.js'),html=read('popup.html');
+assert.match(background,/if\(library\.mode==='picked'\)/);
+assert.match(background,/browser-direct-library/);
+assert.match(background,/sf_direct_start/);
+assert.match(background,/chrome\.downloads\.download/);
+assert.match(offscreen,/async function downloadDirectToLibrary\(job\)/);
+assert.match(offscreen,/response\.body\?\.getReader/);
+assert.match(offscreen,/await publishFile\(job,tempName/);
+assert.match(offscreen,/writeIntoLibrary\(/);
+assert.match(popup,/handle\.requestPermission/);
+assert.match(popup,/r\.mode==='browser-direct-library'/);
+assert.doesNotMatch(html,/\(HLS\/DASH\)/);
+console.log('Direct media folder integration checks passed');

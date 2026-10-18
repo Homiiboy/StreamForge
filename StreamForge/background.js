@@ -713,6 +713,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const job = { jobId, tabId: message.tabId, frameId: Number.isInteger(c.frameId) ? c.frameId : -1, pageUrl: c.pageUrl || "", referer: c.referer || "", origin: c.origin || "", requestProfile: c.requestProfile || {} };
         const bridge = await prepareRequestBridge(job, c.url);
         const library=normalizeLibraryOptions(c.library);
+        if(library.mode==='picked'){
+          // Only this optional path uses the offscreen writer; the original
+          // chrome.downloads.download path is kept for other modes.
+          const supported=['.mp4','.ts','.webm'].includes(String(ext||'').toLowerCase());
+          if(supported&&library.handleKey){
+            await ensureOffscreen();
+            await setDownloadStatus(message.tabId,c.id,{reset:true,state:'preparing',progress:0,message:'Datei und Medienordner werden vorbereitet …'});
+            const directJob={...job,candidateId:c.id,url:c.url,title:c.title||'StreamForge-Download',
+              outputBaseName,naming:namingCheck.value,library,extension:ext};
+            chrome.runtime.sendMessage({type:'sf_direct_start',target:'offscreen',job:directJob})
+              .then(result=>{
+                if(result?.ok===false)setDownloadStatus(message.tabId,c.id,{state:'error',message:'Direkter Ordnerexport fehlgeschlagen: '+(result.error||'Unbekannter Fehler')}).catch(()=>{});
+              })
+              .catch(error=>setDownloadStatus(message.tabId,c.id,{state:'error',message:'Direkter Ordnerexport nicht erreichbar: '+String(error?.message||error)}).catch(()=>{}));
+            sendResponse({ok:true,mode:'browser-direct-library',jobId});
+            return;
+          }
+          throw Error('Diese direkte Medienquelle kann nicht automatisch im gewählten Ordner gespeichert werden. Bitte Downloads-Automatik oder den Browser-Speicherdialog verwenden.');
+        }
         let targetFilename=filename,autoFolders=false;
         if(library.mode==='downloads' && ext){
           try{targetFilename=downloadsRelativePath(namingCheck.value,ext);autoFolders=true;}catch{}

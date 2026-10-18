@@ -401,18 +401,17 @@ function render(){
       }
       const naming=readNaming(); const namingCheck=validateNaming(naming); if(!namingCheck.ok){alert(`Dateiname unvollständig:\n${namingCheck.error}`);return;} persistNaming(item.id,namingCheck.value);
       b.disabled=true;b.textContent=item.kind==='media'?'Speichern …':item.kind==='hls'?'HLS startet …':item.kind==='dash'?'DASH startet …':'Prüfe …';
-      if(librarySelection.mode==='picked' && item.kind==='media'){
-        alert('Direkte Videodateien werden derzeit noch über den Chrome-Speicherdialog gespeichert. Für HLS/DASH erstellt StreamForge den gewählten Medienordner automatisch.');
-        b.disabled=false;b.textContent=old;return;
-      }
-      if(librarySelection.mode==='picked' && item.kind!=='media' && !(await libraryStore.get().catch(()=>null))){
+      if(librarySelection.mode==='picked' && !(await libraryStore.get().catch(()=>null))){
         alert('Bitte zuerst über „Medienordner auswählen“ ein Zielverzeichnis festlegen.');b.disabled=false;b.textContent=old;return;
       }
       let handleKey='';
       try{
-        if(librarySelection.mode==='picked'&&item.kind!=='media'){
+        if(librarySelection.mode==='picked'){
           const handle=await libraryStore.get();
           if(!handle)throw Error('Bitte Medienordner erneut auswählen.');
+          if(typeof handle.queryPermission==='function'&&await handle.queryPermission({mode:'readwrite'})!=='granted'){
+            if(typeof handle.requestPermission!=='function'||await handle.requestPermission({mode:'readwrite'})!=='granted')throw Error('Schreibzugriff auf den ausgewählten Ordner wurde nicht erteilt.');
+          }
           handleKey='job-'+crypto.randomUUID();
           await libraryStore.put(handle,handleKey);
         }
@@ -426,7 +425,7 @@ function render(){
       catch(error){r={ok:false,error:String(error?.message||error)};}
       if(!r?.ok&&handleKey)await libraryStore.clear(handleKey).catch(()=>{});
       if(!r?.ok){ alert(`Download konnte nicht gestartet werden:\n${r?.error||'Unbekannter Fehler'}`); b.disabled=false;b.textContent=old; }
-      else if(r.mode==='browser-hls'||r.mode==='browser-dash'){ b.textContent='Lädt 0%'; setTimeout(load,250); }
+      else if(r.mode==='browser-hls'||r.mode==='browser-dash'||r.mode==='browser-direct-library'){ b.textContent='Lädt 0%'; setTimeout(load,250); }
       else { b.textContent='Gestartet'; setTimeout(()=>{b.disabled=false;b.textContent=old},1600); }
     });
     node.querySelector('.open').addEventListener('click',async()=>{ const r=await chrome.runtime.sendMessage({type:'sf_open',candidate:item}); if(!r?.ok){await navigator.clipboard.writeText(item.url);alert('StreamForge konnte nicht geöffnet werden. Die URL wurde kopiert.');} });

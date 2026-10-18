@@ -1,5 +1,11 @@
 # ForgeCore – Changelog
 
+## Browser-Connector v1.8.8
+
+- Ausgewählter Jellyfin-Ordner wird nun auch für direkte MP4/TS/WebM-Dateien unterstützt.
+- 1.6.5-basierter HLS/DASH-Downloadkern bleibt unverändert.
+
+
 ## Browser-Connector V1.8.7
 
 - Veraltete Warteschlangenbedienung entfernt; weiterhin Downloadengine aus V1.6.5 plus Medienordner-Export.

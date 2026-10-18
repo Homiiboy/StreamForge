@@ -1,5 +1,14 @@
 # StreamForge Browser Connector – Changelog
 
+## v1.8.8 – Automatische Ordner auch bei direkten Videos
+
+- Ausgewählter Medienordner funktioniert jetzt auch für direkte MP4-, TS- und WebM-Videos über einen separaten Streaming-Speicherweg.
+- HLS/DASH-Downloadkern aus 1.6.5 unangetastet; Chrome-Downloads-Modus weiterhin unverändert.
+- Schreibberechtigung des ausgewählten Ordners wird vor dem Download überprüft.
+- Film-/Serienordner und Staffeln werden beim fertigen Export erzeugt, bestehende Dateien nicht überschrieben.
+- Nicht unterstützte direkte Dateitypen melden die Einschränkung statt unbemerkt im falschen Ordner zu landen.
+
+
 ## v1.8.7 – Integrationskorrekturen nach erneuter Prüfung
 
 - Veraltete Download-Warteschlangen-Funktionen aus UI, Hintergrund und automatischem Restore entfernt; Downloader bleibt auf dem direkten V1.6.5-Pfad.

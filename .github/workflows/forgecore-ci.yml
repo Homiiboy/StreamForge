@@ -19,9 +19,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify pinned StreamForge 1.8.7 snapshot
+      - name: Verify pinned StreamForge 1.8.8 snapshot
         run: |
-          node --input-type=module -e "import fs from 'node:fs';let a=JSON.parse(fs.readFileSync('ForgeCore/browser-extension/manifest.json'));let b=JSON.parse(fs.readFileSync('ForgeCore/browser-extension/package.json'));if(a.version!=='1.8.7'||b.version!=='1.8.7')throw Error('ForgeCore snapshot must stay at StreamForge 1.8.7');"
+          node --input-type=module -e "import fs from 'node:fs';let a=JSON.parse(fs.readFileSync('ForgeCore/browser-extension/manifest.json'));let b=JSON.parse(fs.readFileSync('ForgeCore/browser-extension/package.json'));if(a.version!=='1.8.8'||b.version!=='1.8.8')throw Error('ForgeCore snapshot must stay at StreamForge 1.8.8');"
       - name: Test frozen browser extension
         working-directory: ForgeCore/browser-extension
         run: npm test
