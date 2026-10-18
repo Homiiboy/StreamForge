@@ -1,3 +1,4 @@
+import {verifyLibraryWrite} from './library-access-check.js';
 import {discoverSeasons} from './season-discovery.js';
 import {directoryHandleStore} from './directory-handle-store.js';
 import {normalizeLibraryOptions,LIBRARY_PREF_KEY} from './library-folders.js';
@@ -323,7 +324,7 @@ function render(){
         seasonSearchResults.set(item.id,seasons);
         seasonHint.textContent=seasons.length
           ?seasons.length+' vorhandene Staffelordner gefunden.'
-          :'Keine Staffelordner gefunden. Staffelnummer selbst eingeben.';
+          :'Keine Staffelordner gefunden. Bei Bibliothekswurzel muss die Struktur Shows/Serienname/Season XX bereits existieren.';
       }catch(error){
         seasonSearchResults.delete(item.id);
         foundSeasons.hidden=true;
@@ -412,6 +413,7 @@ function render(){
           if(typeof handle.queryPermission==='function'&&await handle.queryPermission({mode:'readwrite'})!=='granted'){
             if(typeof handle.requestPermission!=='function'||await handle.requestPermission({mode:'readwrite'})!=='granted')throw Error('Schreibzugriff auf den ausgewählten Ordner wurde nicht erteilt.');
           }
+          await verifyLibraryWrite(handle,{id:crypto.randomUUID()});
           handleKey='job-'+crypto.randomUUID();
           await libraryStore.put(handle,handleKey);
         }

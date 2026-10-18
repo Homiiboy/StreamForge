@@ -1,5 +1,13 @@
 # StreamForge Browser Connector – Changelog
 
+## v1.8.9 – Verlässlicher Ordnerzugriff
+
+- Vor dem Download wird im ausgewählten Medienordner eine temporäre Testdatei geschrieben und der Testordner danach wieder entfernt.
+- Fehlende Dateisystemberechtigungen werden sofort gemeldet, nicht erst nach einem langen HLS-Download.
+- Staffelsuche erhält eine explizite Berechtigungsprüfung und eine verständlichere Erklärung zur Shows/Serienname-Struktur.
+- HLS-/DASH-Downloadengine bleibt unverändert.
+
+
 ## v1.8.8 – Automatische Ordner auch bei direkten Videos
 
 - Ausgewählter Medienordner funktioniert jetzt auch für direkte MP4-, TS- und WebM-Videos über einen separaten Streaming-Speicherweg.

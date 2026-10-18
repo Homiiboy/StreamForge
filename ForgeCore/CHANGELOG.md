@@ -1,5 +1,11 @@
 # ForgeCore – Changelog
 
+## Browser-Connector-Snapshot: StreamForge v1.8.9
+
+- Ordnerschreibtest vor dem Download, klare Hinweise bei fehlenden Berechtigungen und zur Staffelordner-Suche.
+- HLS-/DASH-Engine aus V1.6.5 bleibt unverändert.
+
+
 ## Browser-Connector v1.8.8
 
 - Ausgewählter Jellyfin-Ordner wird nun auch für direkte MP4/TS/WebM-Dateien unterstützt.
