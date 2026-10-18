@@ -36,6 +36,7 @@ globalThis.chrome = {
     getContexts: async () => [{ contextType: 'OFFSCREEN_DOCUMENT' }],
     async sendMessage(msg) {
       internalMessages.push(clone(msg));
+      if (msg?.type === 'sf_offscreen_ping') return { ok: true, ready: true };
       if (msg?.type === 'sf_export_prepare') {
         return { ok: true, ...msg.export, blobUrl: `blob:test/${msg.export.jobId}` };
       }
