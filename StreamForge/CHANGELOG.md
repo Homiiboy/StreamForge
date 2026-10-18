@@ -1,5 +1,14 @@
 # StreamForge Browser Connector – Changelog
 
+## v1.8.7 – Integrationskorrekturen nach erneuter Prüfung
+
+- Veraltete Download-Warteschlangen-Funktionen aus UI, Hintergrund und automatischem Restore entfernt; Downloader bleibt auf dem direkten V1.6.5-Pfad.
+- Vorhandene alte Warteschlangeneinträge beeinflussen die aktuelle Anzeige nicht mehr.
+- Bei direktem Video mit ausgewähltem Ordner wird die fehlende Unterstützung ausdrücklich erklärt statt stillschweigend an einen anderen Speicherort zu schreiben.
+- Neuer automatisierter Integrationstest prüft den direkten Downloadstart und die getrennte Ordnerintegration.
+- Die HLS/DASH-Segmentlogik und das Muxing bleiben gegenüber V1.8.6 unverändert.
+
+
 ## v1.8.6 – Rückkehr zur StreamForge-1.6.5-Downloadengine
 
 - HLS-/DASH-Datenabruf, Segmentverarbeitung und Muxing aus 1.6.5 wiederhergestellt.

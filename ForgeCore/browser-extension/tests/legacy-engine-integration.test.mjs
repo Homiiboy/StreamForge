@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const background=read('background.js'),offscreen=read('offscreen.js'),popup=read('popup.js');
+assert.match(background,/chrome\.runtime\.sendMessage\(\{type:c\.kind==='hls'\?'sf_hls_start':'sf_dash_start'/);
+assert.doesNotMatch(background,/waitForOffscreenReceiver\(/);
+assert.doesNotMatch(background,/restorePendingQueueOnStartup\(/);
+assert.doesNotMatch(background,/sf_queue_pause/);
+assert.match(offscreen,/fn\(message\.job\)\.then/);
+assert.doesNotMatch(offscreen,/PersistentDownloadQueue/);
+assert.match(offscreen,/writeIntoLibrary\(/);
+assert.match(offscreen,/job\.library\?\.mode==='picked'/);
+assert.match(popup,/queueSnapshot=null;/);
+assert.doesNotMatch(popup,/type:'sf_queue_move'/);
+assert.doesNotMatch(popup,/type:'sf_queue_cancel'/);
+assert.match(popup,/Direkte Videodateien werden derzeit noch über den Chrome-Speicherdialog gespeichert/);
+console.log('Legacy 1.6.5 downloader integration invariants passed');

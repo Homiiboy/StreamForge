@@ -1,5 +1,11 @@
 # ForgeCore – Changelog
 
+## Browser-Connector V1.8.7
+
+- Veraltete Warteschlangenbedienung entfernt; weiterhin Downloadengine aus V1.6.5 plus Medienordner-Export.
+- Fehlende direkte Ordnerablage für einfache Mediendateien im UI explizit benannt.
+
+
 ## Browser-Connector-Snapshot StreamForge v1.8.6
 
 - HLS/DASH-Engine und Direktstart auf den funktionierenden Stand V1.6.5 zurückgesetzt.

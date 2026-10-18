@@ -66,16 +66,6 @@ const queueControls=document.querySelector('#queueControls');
 const queuePause=document.querySelector('#queuePause');
 let selectedProfile='balanced';
 chrome.storage.local.get('sf_performance_profile').then(data=>{ selectedProfile=['gentle','balanced','fast'].includes(data.sf_performance_profile)?data.sf_performance_profile:'balanced'; profileSelect.value=selectedProfile; }).catch(()=>{});
-queuePause.addEventListener('click',async()=>{
-  queuePause.disabled=true;
-  try {
-    const paused=queuePause.dataset.paused!=='true';
-    const response=await chrome.runtime.sendMessage({type:'sf_queue_pause',paused});
-    if(!response?.ok) throw Error(response?.error||'Warteschlange konnte nicht geändert werden');
-    await refreshQueueSummary();
-  } catch(error) { alert(String(error?.message||error)); }
-  finally { queuePause.disabled=false; }
-});
 profileSelect.addEventListener('change',()=>{selectedProfile=profileSelect.value;chrome.storage.local.set({sf_performance_profile:selectedProfile}).catch(()=>{});});
 const audioSelections = new Map();
 const qualitySelections = new Map();
@@ -129,18 +119,14 @@ function flushDeferredRender(){
 }
 async function load({forceProbe=false}={}){ const tab=await getCurrentTab(); tabId=tab?.id??null; if(!Number.isInteger(tabId))return; const result=await chrome.runtime.sendMessage({type:'sf_get',tabId}); items=result?.items||[]; requestRender(); renderDownloadCenter(); refreshQueueSummary().catch(()=>{}); if(currentView==='media')enrichVisible({force:forceProbe}); }
 async function refreshQueueSummary(){
-  const record=(await chrome.storage.local.get('sf_queue_v170'))?.sf_queue_v170;
-  queueSnapshot=record||null;
-  const waiting=Array.isArray(record?.pending)?record.pending.length:0;
-  const active=record?.active?1:0;
-  queueSummary.hidden=!(waiting||active);
-  queueControls.hidden=!(waiting||active);
-  queuePause.textContent=record?.paused?'Warteschlange fortsetzen':'Warteschlange pausieren';
-  queuePause.dataset.paused=record?.paused?'true':'false';
-  queueSummary.textContent=active||waiting?`Warteschlange: ${active} aktiv · ${waiting} wartend · Profil: ${profileSelect.selectedOptions[0]?.textContent||'Ausgewogen'}`:'';
+  // The legacy 1.6.5 downloader has no persistent queue. Ignore stale
+  // sf_queue_v170 data left by 1.7/1.8 installations.
+  queueSnapshot=null;
+  queueSummary.hidden=true;
+  queueControls.hidden=true;
   renderDownloadCenter();
 }
-const runningStates=new Set(['queued','preparing','downloading','muxing','ready','saving']);
+const runningStates=new Set(['preparing','downloading','muxing','ready','saving']);
 function setView(view){
   currentView=view==='downloads'?'downloads':'media';
   mediaTab.classList.toggle('active',currentView==='media');
@@ -182,38 +168,20 @@ function centerRow(title,sub,status,progress=null){
   return div;
 }
 function renderDownloadCenter(){
-  const order=(queueSnapshot?.pending||[]).map(record=>record.id);
+  const order=[];
   const running=items.filter(x=>runningStates.has(x.download?.state)).sort((a,b)=>{
     const ia=order.indexOf(`${tabId}:${a.id}`),ib=order.indexOf(`${tabId}:${b.id}`);
     const rank=x=>x<0?-1:x;
     return rank(ia)-rank(ib);
   });
   activeCount.textContent=String(running.length);
-  centerStats.textContent=`${running.length} aktiv oder wartend · ${historyEntries.length} im Verlauf`;
+  centerStats.textContent=`${running.length} aktiv · ${historyEntries.length} im Verlauf`;
   if(currentView!=='downloads')return;
   activeDownloads.textContent='';
   for(const item of running){
     const d=item.download||{};
     const details=[d.message||d.state,d.speedBps?fmtRate(d.speedBps):'',d.etaSeconds?'ETA '+fmtEta(d.etaSeconds):''].filter(Boolean).join(' · ');
     const entry=centerRow(item.title||'Medienstream',details,friendlyStatus(d.state), d.downloadProgress??d.progress??0);
-    if(d.state==='queued'){
-      const controls=document.createElement('div');controls.className='queueItemControls';
-      for(const [direction,label] of [['up','↑ Höher'],['down','↓ Tiefer']]){
-        const button=document.createElement('button');button.className='ghost';button.textContent=label;
-        button.addEventListener('click',async()=>{
-          button.disabled=true;
-          try{
-            const result=await chrome.runtime.sendMessage({type:'sf_queue_move',tabId,candidateId:item.id,direction});
-            if(!result?.ok)throw Error(result?.error||'Verschieben nicht möglich');
-            await refreshQueueSummary();
-            await load();
-          }catch(error){alert(String(error?.message||error));}
-          finally{button.disabled=false;}
-        });
-        controls.appendChild(button);
-      }
-      entry.appendChild(controls);
-    }
     activeDownloads.appendChild(entry);
   }
   if(!running.length)activeDownloads.appendChild(centerRow('Keine aktiven Downloads','Neue Downloads in der Medienansicht starten','Bereit'));
@@ -413,7 +381,7 @@ function render(){
     const downloadButton=node.querySelector('.download');
     if(['queued','preparing','downloading','muxing','ready','saving'].includes(item.download?.state)){
       downloadButton.disabled=true;
-      if(item.download?.state==='queued') downloadButton.textContent='Wartet auf Download';
+      if(item.download?.state==='queued') downloadButton.textContent='Alter Warteschlangenauftrag';
        else if(item.download?.state==='saving') downloadButton.textContent='Speichern …';
       else if(item.download?.state==='ready') downloadButton.textContent='Fertig …';
       else if(item.download?.state==='preparing') downloadButton.textContent='Video wird vorbereitet …';
@@ -422,19 +390,6 @@ function render(){
     }
     else if(item.download?.state==='export_error'&&item.download?.exportRetryAvailable) downloadButton.textContent='Speichern erneut versuchen';
     else if(item.download?.state==='complete') downloadButton.textContent='Erneut herunterladen';
-    if(item.download?.state==='queued') {
-      const cancel=document.createElement('button');
-      cancel.className='ghost'; cancel.textContent='Aus Warteschlange entfernen';
-      downloadButton.insertAdjacentElement('afterend',cancel);
-      cancel.addEventListener('click',async()=>{
-        cancel.disabled=true;
-        try {
-          const result=await chrome.runtime.sendMessage({type:'sf_queue_cancel',tabId,candidateId:item.id});
-          if(!result?.ok) alert(result?.error||'Abbrechen nicht möglich');
-        } catch(error) { alert(String(error?.message||error)); }
-        await load();
-      });
-    }
     downloadButton.addEventListener('click',async e=>{
       const b=e.currentTarget,old=b.textContent;
       if(item.download?.state==='export_error'&&item.download?.exportRetryAvailable&&item.download?.exportJobId){
@@ -446,6 +401,10 @@ function render(){
       }
       const naming=readNaming(); const namingCheck=validateNaming(naming); if(!namingCheck.ok){alert(`Dateiname unvollständig:\n${namingCheck.error}`);return;} persistNaming(item.id,namingCheck.value);
       b.disabled=true;b.textContent=item.kind==='media'?'Speichern …':item.kind==='hls'?'HLS startet …':item.kind==='dash'?'DASH startet …':'Prüfe …';
+      if(librarySelection.mode==='picked' && item.kind==='media'){
+        alert('Direkte Videodateien werden derzeit noch über den Chrome-Speicherdialog gespeichert. Für HLS/DASH erstellt StreamForge den gewählten Medienordner automatisch.');
+        b.disabled=false;b.textContent=old;return;
+      }
       if(librarySelection.mode==='picked' && item.kind!=='media' && !(await libraryStore.get().catch(()=>null))){
         alert('Bitte zuerst über „Medienordner auswählen“ ein Zielverzeichnis festlegen.');b.disabled=false;b.textContent=old;return;
       }

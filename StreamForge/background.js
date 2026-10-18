@@ -647,36 +647,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })().catch(err => sendResponse({ ok: false, error: String(err?.message || err), code: err?.code || '' }));
     return true;
   }
-  if (message?.type === 'sf_queue_pause' && typeof message.paused === 'boolean') {
-    (async()=>{
-      await ensureOffscreen();
-      const result=await chrome.runtime.sendMessage({target:'offscreen',type:'sf_queue_pause',paused:message.paused});
-      sendResponse(result?.ok ? result : {ok:false,error:result?.error||'Warteschlangenstatus konnte nicht gespeichert werden.'});
-    })().catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
-    return true;
-  }
-  if(message?.type==='sf_queue_move' && Number.isInteger(message.tabId) && message.candidateId &&
-    ['up','down'].includes(message.direction)){
-    (async()=>{
-      await ensureOffscreen();
-      const result=await chrome.runtime.sendMessage({
-        type:'sf_queue_move',target:'offscreen',tabId:message.tabId,candidateId:message.candidateId,direction:message.direction
-      });
-      sendResponse(result?.ok?{ok:true}:{ok:false,error:result?.error||'Verschieben nicht möglich'});
-    })().catch(err=>sendResponse({ok:false,error:String(err?.message||err)}));
-    return true;
-  }
-  if (message?.type === 'sf_queue_cancel' && Number.isInteger(message.tabId) && message.candidateId) {
-    (async()=>{
-      await ensureOffscreen();
-      const response=await chrome.runtime.sendMessage({type:'sf_queue_cancel',target:'offscreen',tabId:message.tabId,candidateId:message.candidateId});
-      if(!response?.ok){sendResponse({ok:false,error:'Auftrag wird bereits ausgeführt oder ist nicht mehr in der Warteschlange.'});return;}
-      await flushQueuedDownloadStatus(message.tabId,message.candidateId);
-      await setDownloadStatus(message.tabId,message.candidateId,{state:'cancelled',phase:'queued',progress:0,message:'Wartender Download abgebrochen'});
-      sendResponse({ok:true});
-    })().catch(error=>sendResponse({ok:false,error:String(error?.message||error)}));
-    return true;
-  }
   if (message?.type === 'sf_subtitle_srt' && message.url && message.filename) {
     (async()=>{
       const url=new URL(String(message.url));
@@ -825,17 +795,5 @@ chrome.downloads.onChanged.addListener(async delta => {
   }
 });
 
-// Resume only persisted *waiting* jobs after Chrome starts. Active transfers
-// are marked interrupted by the persistent queue and must be started manually.
-async function restorePendingQueueOnStartup() {
-  try {
-    const saved = (await chrome.storage.local.get('sf_queue_v170'))?.sf_queue_v170;
-    if (saved?.version === 1 && (saved.active || (Array.isArray(saved.pending) && saved.pending.length))) {
-      await ensureOffscreen();
-    }
-  } catch (error) { console.warn('StreamForge queue recovery:', error); }
-}
-chrome.runtime.onStartup?.addListener(() => { restorePendingQueueOnStartup().catch(() => {}); });
-chrome.runtime.onInstalled?.addListener(() => { restorePendingQueueOnStartup().catch(() => {}); });
 chrome.tabs.onRemoved.addListener(tabId => chrome.storage.session.remove([stateKey(tabId), previewKey(tabId), pageMetaKey(tabId)]));
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => { if (changeInfo.status === "loading") updateBadge(tabId).catch(() => {}); });
