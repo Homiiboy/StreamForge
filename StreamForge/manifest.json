@@ -3,7 +3,7 @@
   "name": "StreamForge Connector",
   "short_name": "StreamForge",
   "version": "1.8.8",
-  "description": "Medien-Downloader mit bewährter 1.6.5-Downloadengine, HLS/DASH sowie wählbaren und automatisch generierten Jellyfin-Medienordnern.",
+  "description": "Medien-Downloader mit bewährter HLS-/DASH-Engine und automatischen Jellyfin-Film-/Serienordnern auch für direkte MP4-/TS-/WebM-Dateien.",
   "permissions": [
     "activeTab",
     "storage",
