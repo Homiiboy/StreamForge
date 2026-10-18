@@ -1,5 +1,12 @@
 # StreamForge Browser Connector – Changelog
 
+## v1.8.4 – Branding-Icons wiederhergestellt
+
+- PNG-Icon-Rendering repariert: Farbmotiv und SVG-Maske werden verlustfrei kombiniert statt durch CairoSVG fehlerhaft transparent ausgegeben.
+- Chrome-Icons (16/32/48/128) und ForgeCore-Favicon neu generiert.
+- Alle Funktionen der v1.8.3 bleiben unverändert.
+
+
 ## v1.8.3 – Aufklappbereiche bleiben geöffnet
 
 - Geöffnete Stream-Details und Tonspuren/Untertitel bleiben während der automatischen Aktualisierung der Videokarten offen.

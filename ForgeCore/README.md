@@ -1,6 +1,6 @@
 # ForgeCore
 
-**ForgeCore v1.0.0 – Phase 8 Releasekandidat (Hardware-Abnahme ausstehend).** Eigenständiger Docker-/ZimaOS-Server. Die beigefügte Browser-Erweiterung in `browser-extension/` wurde bewusst auf **StreamForge 1.8.3** aktualisiert.
+**ForgeCore v1.0.0 – Phase 8 Releasekandidat (Hardware-Abnahme ausstehend).** Eigenständiger Docker-/ZimaOS-Server. Die beigefügte Browser-Erweiterung in `browser-extension/` wurde bewusst auf **StreamForge 1.8.4** aktualisiert.
 
 > **Abnahmestand:** Automatisierte Node-/HTTP-/Docker-Tests und lokaler HLS/FFmpeg-Medientest sind durchgeführt. **Reale Websites, lange Serienläufe, ZimaOS-Mounts und SMB-Speicherpfade sind noch nicht auf deiner Hardware getestet.** Die App unterstützt ausdrücklich nur ausgewählte unverschlüsselte Formate, nicht jede Streaming-Website.
 
@@ -10,7 +10,7 @@ Die Version **1.0.0** bündelt die bisher entwickelten Kernfunktionen und zusät
 
 - Sicherer Restore: Beim vollständigen Volume-Backup wird eine SHA-256-Prüfsumme erstellt. Beim Rollback werden die Prüfsumme, das vorherige Docker-Image und die Identität des aktuellen ForgeCore-Datenvolumes geprüft, **bevor** Daten ersetzt werden.
 - Automatisierte Tests für v1-Versionierung, Zugangsschutz, geschützte System-API, JSON-Backup/Restore, SQLite-Persistenz, große Testbibliothek, Upgrade- und Fehler-Rollback-Simulation.
-- Die Browserkopie wurde als separate, bewusste Integrationsänderung auf **StreamForge 1.8.3** aktualisiert; die ForgeCore-Serverversion bleibt v1.0.0.
+- Die Browserkopie wurde als separate, bewusste Integrationsänderung auf **StreamForge 1.8.4** aktualisiert; die ForgeCore-Serverversion bleibt v1.0.0.
 - Die vollständige Abnahmeliste steht in [ACCEPTANCE-v1.0.0.md](./ACCEPTANCE-v1.0.0.md). Insbesondere SMB-Schreibrechte, echte Medienwiedergabe, mehrtägiger Dauerbetrieb und Ausfall-/Restore-Szenarien sind noch nicht auf deiner Hardware durchgeführt.
 
 **Upgrade:** Vor der Verwendung immer zusätzlich eine Sicherung außerhalb von ForgeCore anlegen. `bash manage.sh doctor`, `bash manage.sh backup` und anschließend `bash manage.sh update` verwenden. Die Restore-Funktion rollt die interne Datenbank auf den Backup-Zeitpunkt zurück; bereits nach außen geschriebene Jellyfin-Dateien bleiben bestehen.
@@ -229,7 +229,7 @@ Geschützte APIs benötigen einen Sessioncookie. Schreibaufrufe zusätzlich `X-F
 ## Versions- und Releasepolitik
 
 - **ForgeCore:** eigene Versionsnummer ab `v0.0.1`. Der aktuelle Phase-7-Beta-Vorschau-Stand ist `v0.9.9`.
-- **Browser-Snapshot:** `ForgeCore/browser-extension/` steht jetzt auf **StreamForge v1.8.3**; Änderungen erfolgen ausschließlich bewusst und separat.
+- **Browser-Snapshot:** `ForgeCore/browser-extension/` steht jetzt auf **StreamForge v1.8.4**; Änderungen erfolgen ausschließlich bewusst und separat.
 - Release-Tags für ForgeCore tragen den Präfix `forgecore-vX.Y.Z`, um mit der bestehenden Browser-Erweiterung keine Tags zu kollidieren.
 - Die detaillierten Meilensteine stehen in [ROADMAP.md](./ROADMAP.md), die konkreten Änderungen in [CHANGELOG.md](./CHANGELOG.md).
 

@@ -1,5 +1,11 @@
 # ForgeCore – Changelog
 
+## Browser-Connector-Snapshot: StreamForge v1.8.4 (ForgeCore-Server bleibt v1.0.0)
+
+- Korrigierte PNG-Erweiterungsicons und Favicon aus dem gemeinsamen Branding übernommen.
+- Browser-Connector-Versionsangaben synchronisiert; Medienfunktionen bleiben unverändert.
+
+
 ## Browser-Connector-Snapshot: StreamForge v1.8.3 (ForgeCore-Server bleibt v1.0.0)
 
 - Popup-Detailbereiche (Streamdetails, Tonspuren/Untertitel sowie weitere Optionen) bleiben bei regelmäßigen Aktualisierungen geöffnet.
