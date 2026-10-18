@@ -625,6 +625,7 @@ async function cleanup(jobId,fallbackTempNames=[]){
 }
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   if(message?.target!=='offscreen')return;
+  if(message.type==='sf_offscreen_ping'){sendResponse({ok:true,ready:true});return false;}
   if(message.type==='sf_hls_start'||message.type==='sf_dash_start'){
     const job=message.job;
     downloadQueue.enqueue({id:`${job.tabId}:${job.candidateId}`,type:message.type,job})

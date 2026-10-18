@@ -1,5 +1,11 @@
 # ForgeCore – Changelog
 
+## Browser-Connector-Snapshot: StreamForge v1.8.5
+
+- Verbindungsbereitschaft zwischen Background-Service-Worker und Offscreen-Downloader wird vor dem Start geprüft.
+- Chrome-Fehler bei noch nicht registriertem Empfänger abgefangen, neuer Regressionstest.
+
+
 ## Browser-Connector-Snapshot: StreamForge v1.8.4 (ForgeCore-Server bleibt v1.0.0)
 
 - Korrigierte PNG-Erweiterungsicons und Favicon aus dem gemeinsamen Branding übernommen.

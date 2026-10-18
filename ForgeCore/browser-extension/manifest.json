@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "StreamForge Connector",
   "short_name": "StreamForge",
-  "version": "1.8.4",
+  "version": "1.8.5",
   "description": "Einfacher Medien-Downloader mit klarer Videoauswahl, optionalen Profi-Einstellungen und HLS-/DASH-Unterstützung.",
   "permissions": [
     "activeTab",

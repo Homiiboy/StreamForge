@@ -1,3 +1,4 @@
+import {waitForOffscreenReceiver} from './offscreen-bridge.js';
 import {downloadsRelativePath,normalizeLibraryOptions} from './library-folders.js';
 import {extensionForMediaMime} from './export.js';
 import {subtitleSegments,mergeWebVttToSrt} from './subtitle-export.js';
@@ -211,7 +212,10 @@ async function cleanupRequestBridge(jobId) {
 async function ensureOffscreen() {
   const url = chrome.runtime.getURL(OFFSCREEN_PATH);
   const contexts = await chrome.runtime.getContexts({ contextTypes: ["OFFSCREEN_DOCUMENT"], documentUrls: [url] });
-  if (contexts.length) return;
+  if (contexts.length) {
+    await waitForOffscreenReceiver(message=>chrome.runtime.sendMessage(message));
+    return;
+  }
   if (!creatingOffscreen) {
     creatingOffscreen = chrome.offscreen.createDocument({
       url: OFFSCREEN_PATH,
@@ -220,6 +224,7 @@ async function ensureOffscreen() {
     }).finally(() => { creatingOffscreen = null; });
   }
   await creatingOffscreen;
+  await waitForOffscreenReceiver(message=>chrome.runtime.sendMessage(message));
 }
 
 async function setDownloadStatus(tabId, candidateId, patch) {

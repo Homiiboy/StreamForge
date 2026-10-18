@@ -1,5 +1,13 @@
 # StreamForge Browser Connector – Changelog
 
+## v1.8.5 – Offscreen-Verbindung abgesichert
+
+- Chrome-Fehler „Receiving end does not exist“: Downloader wartet jetzt auf bestätigte Bereitschaft des Offscreen-Empfängers.
+- Begrenzte Bereitschaftsversuche und verständlicher Hinweis statt roher Chrome-Fehlermeldung.
+- Regressionstest für verspätet gestartete Offscreen-Module und fehlende Empfänger.
+- Downloadpipeline und Jellyfin-Ordnererstellung unverändert.
+
+
 ## v1.8.4 – Branding-Icons wiederhergestellt
 
 - PNG-Icon-Rendering repariert: Farbmotiv und SVG-Maske werden verlustfrei kombiniert statt durch CairoSVG fehlerhaft transparent ausgegeben.
