@@ -626,7 +626,7 @@ async function cleanup(jobId,fallbackTempNames=[]){
 }
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
   if(message?.target!=='offscreen')return;
-  if(message.type==='sf_direct_start'){downloadDirectToLibrary(message.job).then(()=>sendResponse({ok:true})).catch(async e=>{await sendProgress(message.job,'error',0,String(e?.message||e));sendResponse({ok:false,error:String(e?.message||e)});});return true;}
+  if(message.type==='sf_direct_start'){downloadDirectToLibrary(message.job).then(()=>sendResponse({ok:true})).catch(async e=>{if(message.job?.library?.handleKey)await directoryHandleStore().clear(message.job.library.handleKey).catch(()=>{});sendResponse({ok:false,error:String(e?.message||e)});});return true;}
   if(message.type==='sf_hls_start'||message.type==='sf_dash_start'){ const fn=message.type==='sf_hls_start'?downloadHls:downloadDash; fn(message.job).then(()=>sendResponse({ok:true})).catch(async e=>{await sendProgress(message.job,'error',0,String(e?.message||e));sendResponse({ok:false,error:String(e?.message||e)});});return true; }
   if(message.type==='sf_export_prepare'){prepareExportBlob(message.export||{}).then(x=>sendResponse({ok:true,...x})).catch(e=>sendResponse({ok:false,error:String(e?.message||e),code:e?.code||'EXPORT_PREPARE_FAILED'}));return true;}
   if(message.type==='sf_export_release'){releaseExport(message.jobId).then(()=>sendResponse({ok:true}));return true;}

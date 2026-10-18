@@ -722,11 +722,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             await setDownloadStatus(message.tabId,c.id,{reset:true,state:'preparing',progress:0,message:'Datei und Medienordner werden vorbereitet …'});
             const directJob={...job,candidateId:c.id,url:c.url,title:c.title||'StreamForge-Download',
               outputBaseName,naming:namingCheck.value,library,extension:ext};
+            // If an origin rejects extension fetch, retain the proven Chrome
+            // direct download route. The user explicitly chooses a destination.
+            const browserFallback=async reason=>{
+              try{
+                const id=await chrome.downloads.download({url:c.url,filename,saveAs:true,conflictAction:'uniquify'});
+                const recovery={jobId,tabId:message.tabId,candidateId:c.id,offscreen:false};
+                downloadJobs.set(id,recovery);
+                await chrome.storage.session.set({[`sf_dl_${id}`]:recovery});
+                await setDownloadStatus(message.tabId,c.id,{
+                  state:'saving',progress:99,phase:'fallback',
+                  message:'Automatische Ordnerablage nicht möglich. Chrome-Speicherdialog geöffnet.',
+                  diagnostic:{code:'DIRECT_FOLDER_FALLBACK',title:'Chrome-Speicherdialog',
+                    text:String(reason||'Browser-Fallback'),suggestion:'Wähle den gewünschten Speicherort im Dialog.'}
+                });
+              }catch(error){
+                await setDownloadStatus(message.tabId,c.id,{state:'error',message:'Automatischer Ordnerexport und Chrome-Speicherdialog fehlgeschlagen: '+String(error?.message||error)});
+              }
+            };
             chrome.runtime.sendMessage({type:'sf_direct_start',target:'offscreen',job:directJob})
-              .then(result=>{
-                if(result?.ok===false)setDownloadStatus(message.tabId,c.id,{state:'error',message:'Direkter Ordnerexport fehlgeschlagen: '+(result.error||'Unbekannter Fehler')}).catch(()=>{});
-              })
-              .catch(error=>setDownloadStatus(message.tabId,c.id,{state:'error',message:'Direkter Ordnerexport nicht erreichbar: '+String(error?.message||error)}).catch(()=>{}));
+              .then(result=>{if(result?.ok===false)browserFallback(result.error).catch(()=>{});})
+              .catch(error=>browserFallback(String(error?.message||error)).catch(()=>{}));
             sendResponse({ok:true,mode:'browser-direct-library',jobId});
             return;
           }

@@ -13,5 +13,6 @@ assert.match(offscreen,/job\.library\?\.mode==='picked'/);
 assert.match(popup,/queueSnapshot=null;/);
 assert.doesNotMatch(popup,/type:'sf_queue_move'/);
 assert.doesNotMatch(popup,/type:'sf_queue_cancel'/);
-assert.match(popup,/Direkte Videodateien werden derzeit noch über den Chrome-Speicherdialog gespeichert/);
+assert.match(background,/sf_direct_start/);
+assert.match(background,/browserFallback/);
 console.log('Legacy 1.6.5 downloader integration invariants passed');
