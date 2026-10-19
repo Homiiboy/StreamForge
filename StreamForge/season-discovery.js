@@ -16,11 +16,11 @@ async function existingFolder(parent, wanted) {
   }
   return null;
 }
-export async function findSeriesFolder(root,{placement='library',title=''}) {
+export async function findSeriesFolder(root,{placement='library',title='',category='Tv Shows'}) {
   if(!root || typeof root.entries!=='function')throw Error('Gewählter Ordner ist nicht lesbar.');
   if(placement==='season'||placement==='series')return root;
   let parent=root;
-  if(placement==='library')parent=await existingFolder(root,'Shows');
+  if(placement==='library')parent=await existingFolder(root,category);
   if(!parent)return null;
   return existingFolder(parent,title);
 }
@@ -34,7 +34,7 @@ export async function discoverSeasons(root,{placement='library',title=''}={}) {
     const number=parseSeasonFolder(root.name);
     return number===null?[]:[{number,name:root.name}];
   }
-  const series=await findSeriesFolder(root,{placement,title});
+  const series=await findSeriesFolder(root,{placement,title,category});
   if(!series)return [];
   const seasons=[];
   for await(const [name,handle] of series.entries()){

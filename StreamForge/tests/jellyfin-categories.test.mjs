@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {JELLYFIN_CATEGORIES,suggestJellyfinCategory,normalizeJellyfinCategory} from '../jellyfin-categories.js';
+assert.deepEqual(JELLYFIN_CATEGORIES,['Movies','Tv Shows','Animes','Anime Movies','Cartoon','Animation']);
+assert.equal(suggestJellyfinCategory({type:'series'},{genre:'Anime'}),'Animes');
+assert.equal(suggestJellyfinCategory({type:'movie'},{genres:['Anime']}),'Anime Movies');
+assert.equal(suggestJellyfinCategory({type:'series'},{category:'Cartoon'}),'Cartoon');
+assert.equal(suggestJellyfinCategory({type:'movie'},{genre:'Animation'}),'Animation');
+assert.equal(suggestJellyfinCategory({type:'series'},{}),'Tv Shows');
+assert.equal(normalizeJellyfinCategory('Cartoon',{type:'series'}),'Cartoon');
+assert.equal(normalizeJellyfinCategory('unknown',{type:'movie'}),'Movies');
+console.log('Jellyfin category tests passed');

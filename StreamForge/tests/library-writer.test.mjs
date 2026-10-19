@@ -34,4 +34,7 @@ await assert.rejects(
   writeIntoLibrary(german,new Blob(['bad']),{...ep,episode:12},'.mp4','series',()=>{}, {seasonFolder:'Season 01'}),
   /passt nicht/
 );
+const existingRoot=new MockDirectory('Media'); const animeRoot=new MockDirectory('Animes'); existingRoot.dirs.set('Animes',animeRoot);
+const resultCat=await writeIntoLibrary(existingRoot,new Blob(['test']),ep,'.ts','library',()=>{},{category:'Animes'});
+assert.equal(resultCat.relativePath,'Animes/Slugterra/Season 02/Slugterra S02E08.ts');assert.equal(existingRoot.dirs.get('Animes'),animeRoot);
 console.log('library writer tests passed');

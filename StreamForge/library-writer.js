@@ -7,7 +7,7 @@ export async function writeIntoLibrary(rootHandle, file, naming, extension, plac
     const permission=await rootHandle.queryPermission({mode:'readwrite'});
     if(permission!=='granted')throw Error('Schreibzugriff auf den ausgewählten Ordner nicht erteilt. Bitte den Ordner erneut auswählen.');
   }
-  const {folders,filename}=libraryParts(naming,extension,placement);
+  const {folders,filename}=libraryParts(naming,extension,placement,options.category||'');
   let dir=rootHandle;
   for(let i=0;i<folders.length;i++){
     let part=folders[i];

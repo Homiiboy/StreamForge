@@ -384,7 +384,7 @@ async function publishFile(job,tempName,filename,tempNames){
       await sendProgress(job,'saving',99,'Medienordner wird erstellt bzw. wiederverwendet …');
       const saved=await writeIntoLibrary(handle,media,job.naming,extension,job.library.placement,
         async(written,total)=>sendProgress(job,'saving',99,'Im Medienordner speichern: '+Math.round(written/total*100)+'%'),
-        {seasonFolder:job.library.seasonFolder||''});
+        {seasonFolder:job.library.seasonFolder||'',category:job.library.category||''});
       await sendProgress(job,'complete',100,'Abgeschlossen: '+saved.relativePath,{
         bytes:saved.bytes,outputBytes:saved.bytes,phase:'complete',downloadProgress:100,muxProgress:100
       });

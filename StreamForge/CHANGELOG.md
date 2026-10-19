@@ -1,5 +1,13 @@
 # StreamForge Browser Connector – Changelog
 
+## v1.8.11 – Jellyfin-Kategorien
+
+- Sechs vorhandene Jellyfin-Verzeichnisse: Movies, Tv Shows, Animes, Anime Movies, Cartoon, Animation.
+- Kategorienvorschläge aus Metadaten und manuelle Auswahl pro Download.
+- Ausgewählte Kategorie an Speicherexport und Staffelsuche übergeben; bestehende Verzeichnisse wiederverwenden.
+- Lokale Downloadmodi und HLS-Downloadengine unverändert.
+
+
 ## v1.8.10 – Lokalen Downloads-Ordner wiederhergestellt
 
 - Separater Speichermodus „Lokaler Downloads-Ordner (wie früher, ohne Unterordner)“.

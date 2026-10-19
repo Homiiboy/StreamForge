@@ -16,4 +16,7 @@ assert.equal(normalizeLibraryOptions({mode:'picked',handleKey:'../../secret'}).h
 assert.deepEqual(libraryParts(series,'.mp4','category').folders,['Slugterra','Season 02']);
 assert.equal(normalizeLibraryOptions({mode:'picked',placement:'series',seasonFolder:'Staffel 2'}).seasonFolder,'Staffel 2');
 assert.equal(normalizeLibraryOptions({mode:'picked',seasonFolder:'../Season 02'}).seasonFolder,undefined);
+assert.deepEqual(libraryParts(series,'.mp4','library','Animes').folders,['Animes','Slugterra','Season 02']);
+assert.deepEqual(libraryParts(movie,'.ts','library','Anime Movies').folders,['Anime Movies','Interstellar (2014)']);
+assert.equal(normalizeLibraryOptions({category:'Cartoon'}).category,'Cartoon');
 console.log('library folder path tests passed');

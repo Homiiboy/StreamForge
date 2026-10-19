@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "StreamForge Connector",
   "short_name": "StreamForge",
-  "version": "1.8.10",
+  "version": "1.8.11",
   "description": "StreamForge Connector mit bewährtem Videodownload, lokalem Downloads-Modus und optionaler automatischer Jellyfin-Ordnerstruktur.",
   "permissions": [
     "activeTab",

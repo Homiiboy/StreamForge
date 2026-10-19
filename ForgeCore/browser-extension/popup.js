@@ -1,3 +1,4 @@
+import {normalizeJellyfinCategory,suggestJellyfinCategory} from './jellyfin-categories.js';
 import {verifyLibraryWrite} from './library-access-check.js';
 import {discoverSeasons} from './season-discovery.js';
 import {directoryHandleStore} from './directory-handle-store.js';
@@ -71,6 +72,7 @@ profileSelect.addEventListener('change',()=>{selectedProfile=profileSelect.value
 const audioSelections = new Map();
 const qualitySelections = new Map();
 const namingSelections = new Map();
+const categorySelections = new Map();
 const seasonFolderSelections = new Map();
 const seasonSearchResults = new Map();
 const subtitleSelections = new Map();
@@ -283,6 +285,16 @@ function render(){
     const initialNaming={...(namingSelections.get(item.id)||item.naming||suggestNaming({mediaMeta:item.mediaMeta||{},title:item.title||''}))};
     namingSelections.set(item.id,initialNaming);
     mediaType.value=initialNaming.type==='series'?'series':'movie'; nameTitle.value=initialNaming.title||''; nameYear.value=initialNaming.year||''; nameSeason.value=initialNaming.season??''; nameEpisode.value=initialNaming.episode??'';
+    const categoryRow=node.querySelector('.jellyfinCategoryRow'),categorySelect=node.querySelector('.jellyfinCategory');
+    categorySelect.value=categorySelections.get(item.id)||suggestJellyfinCategory(initialNaming,item.mediaMeta||{});
+    categorySelect.addEventListener('change',()=>{
+      categorySelections.set(item.id,categorySelect.value);
+      selectedSeasonFolder='';
+      seasonFolderSelections.delete(item.id);
+      seasonSearchResults.delete(item.id);
+      foundSeasons.hidden=true;
+      seasonHint.textContent='Kategorie geändert. Staffelordner bei Bedarf neu suchen.';
+    });
     const seasonBox=node.querySelector('.seasonDiscovery');
     const scanSeasons=node.querySelector('.seasonScan');
     const foundSeasons=node.querySelector('.seasonFound');
@@ -310,6 +322,7 @@ function render(){
     const readNaming=()=>({type:mediaType.value==='series'?'series':'movie',title:nameTitle.value.trim(),year:nameYear.value.trim(),season:nameSeason.value,episode:nameEpisode.value});
     const updateSeasonVisibility=()=>{
       seasonBox.hidden=mediaType.value!=='series';
+      categoryRow.hidden=librarySelection.mode!=='picked'||librarySelection.placement!=='library';
       scanSeasons.disabled=librarySelection.mode!=='picked';
       scanSeasons.title=scanSeasons.disabled?'Bitte oben „Ausgewählten Medienordner verwenden“ einstellen.':'Vorhandene Staffelordner lesen';
     };
@@ -320,11 +333,11 @@ function render(){
       try{
         const root=await libraryStore.get();
         if(!root)throw Error('Bitte zuerst einen Medienordner auswählen.');
-        const seasons=await discoverSeasons(root,{placement:librarySelection.placement,title:nameTitle.value.trim()});
+        const seasons=await discoverSeasons(root,{placement:librarySelection.placement,title:nameTitle.value.trim(),category:categorySelect.value});
         seasonSearchResults.set(item.id,seasons);
         seasonHint.textContent=seasons.length
           ?seasons.length+' vorhandene Staffelordner gefunden.'
-          :'Keine Staffelordner gefunden. Bei Bibliothekswurzel muss die Struktur Shows/Serienname/Season XX bereits existieren.';
+          :'Keine Staffelordner gefunden. Gesucht wird in '+categorySelect.value+'/Serienname/Season XX.';
       }catch(error){
         seasonSearchResults.delete(item.id);
         foundSeasons.hidden=true;
@@ -353,7 +366,9 @@ function render(){
     });
     mediaType.addEventListener('change',()=>{selectedSeasonFolder='';seasonFolderSelections.delete(item.id);});
     const refreshNaming=({save=true}={})=>{
-      const naming=readNaming(); const isSeries=naming.type==='series'; movieNaming.hidden=isSeries; seriesNaming.hidden=!isSeries; updateSeasonVisibility();
+      const naming=readNaming(); const isSeries=naming.type==='series'; movieNaming.hidden=isSeries; seriesNaming.hidden=!isSeries;
+      if(!categorySelections.has(item.id))categorySelect.value=suggestJellyfinCategory(naming,item.mediaMeta||{});
+      categorySelect.value=normalizeJellyfinCategory(categorySelect.value,naming); updateSeasonVisibility();
       const checked=validateNaming(naming); filenamePreview.dataset.valid=checked.ok?'true':'false'; filenamePreview.textContent=checked.ok?`Dateiname: ${buildMediaBasename(checked.value)}`:`Dateiname: ${filenamePreviewText(naming)}`;
       if(save)persistNaming(item.id,naming); else namingSelections.set(item.id,naming);
     };
@@ -421,7 +436,7 @@ function render(){
         alert('Ordnerauswahl konnte nicht gespeichert werden: '+String(error?.message||error));
         b.disabled=false;b.textContent=old;return;
       }
-      const candidateForDownload={...item,naming:namingCheck.value,library:{...librarySelection,handleKey,seasonFolder:selectedSeasonFolder},selectedVariant:qualitySelections.get(item.id)||'',selectedAudio:audioSelections.get(item.id)||''};
+      const candidateForDownload={...item,naming:namingCheck.value,library:{...librarySelection,handleKey,seasonFolder:selectedSeasonFolder,category:categorySelect.value},selectedVariant:qualitySelections.get(item.id)||'',selectedAudio:audioSelections.get(item.id)||''};
       let r;
       try{r=await chrome.runtime.sendMessage({type:'sf_download',tabId,candidate:candidateForDownload,performanceProfile:selectedProfile});}
       catch(error){r={ok:false,error:String(error?.message||error)};}
