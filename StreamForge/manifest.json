@@ -3,7 +3,7 @@
   "name": "StreamForge Connector",
   "short_name": "StreamForge",
   "version": "1.8.11",
-  "description": "StreamForge Connector mit bewährtem Videodownload, lokalem Downloads-Modus und optionaler automatischer Jellyfin-Ordnerstruktur.",
+  "description": "StreamForge Connector mit bewährtem HLS-Download, lokalem Downloads-Modus und sechs auswählbaren Jellyfin-Medienkategorien.",
   "permissions": [
     "activeTab",
     "storage",
