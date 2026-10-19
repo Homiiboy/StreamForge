@@ -16,7 +16,7 @@ async function existingFolder(parent, wanted) {
   }
   return null;
 }
-export async function findSeriesFolder(root,{placement='library',title='',category='Tv Shows'}) {
+export async function findSeriesFolder(root,{placement='library',title='',category='Shows'}) {
   if(!root || typeof root.entries!=='function')throw Error('Gewählter Ordner ist nicht lesbar.');
   if(placement==='season'||placement==='series')return root;
   let parent=root;
@@ -24,7 +24,7 @@ export async function findSeriesFolder(root,{placement='library',title='',catego
   if(!parent)return null;
   return existingFolder(parent,title);
 }
-export async function discoverSeasons(root,{placement='library',title=''}={}) {
+export async function discoverSeasons(root,{placement='library',title='',category='Shows'}={}) {
   if(!root || typeof root.entries!=='function')throw Error('Bitte zuerst einen gültigen Medienordner auswählen.');
   if(typeof root.queryPermission==='function'){
     const permission=await root.queryPermission({mode:'read'});
