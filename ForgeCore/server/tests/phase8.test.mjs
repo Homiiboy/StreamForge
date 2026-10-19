@@ -14,7 +14,7 @@ test('v1.0.0 release metadata keeps the frozen extension distinct',async()=>{
  const pkg=JSON.parse(await readFile(join(root,'server/package.json'),'utf8'));
  assert.equal(APP_VERSION,'1.0.0');
  assert.equal(pkg.version,APP_VERSION);
- assert.equal(manifest.version,'1.8.10');
+ assert.equal(manifest.version,'1.8.11');
 });
 test('release operations and diagnostics stay authenticated and redact credentials',async()=>{
  const root=await mkdtemp(join(tmpdir(),'forgecore-release-'));

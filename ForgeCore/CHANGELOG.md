@@ -1,5 +1,10 @@
 # ForgeCore – Changelog
 
+## Connector v1.8.11
+
+- Sechs Jellyfin-Zielkategorien mit Vorschlag und manueller Auswahl, bestehende Bibliotheksordner bleiben erhalten.
+
+
 ## Browser-Connector v1.8.10
 
 - Lokale Chrome-Downloads ohne erzwungene Unterordner sind wieder als eigenständiger Modus verfügbar.
