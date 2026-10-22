@@ -89,7 +89,7 @@ export async function searchSites(db,query,{fetcher=safeFetch}={}){
    for(const item of media)results.push(item);
    // If media was found on a title page, avoid displaying the same link twice.
    for(const item of catalog){
-    if(!seen.has(item.url))results.push(catalogHit(item,site,q));
+    if(!seen.has(item.url)&&!media.some(hit=>hit.detailUrl===item.url))results.push(catalogHit(item,site,q));
    }
    if(!site.search_template&&catalog.length===0&&media.length===0)warnings.push({siteId:site.id,siteLabel:site.label,message:'Kein passender Titel auf der Startseite. Prüfe die Suchadresse mit {query}.'});
   }catch(e){errors.push({siteId:site.id,siteLabel:site.label,error:String(e?.message||e).slice(0,160)})}
