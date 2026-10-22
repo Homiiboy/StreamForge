@@ -39,7 +39,7 @@ jobs:
             ForgeCore/README.md ForgeCore/ROADMAP.md ForgeCore/CHANGELOG.md ForgeCore/ACCEPTANCE-v1.0.0.md
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
-              --title "ForgeCore ${VERSION} – Phase 9 Source Automation Network Fix" \
+              --title "ForgeCore ${VERSION} – Catalog Title Search" \
               --prerelease \
               --target "$GITHUB_SHA" \
               --notes "ForgeCore v1.2.0 – Testversion mit Titelkatalog-Treffern, Such-URL-Vorlagen, begrenzter Detailseiten-Erkennung und vorhandener Download-/Jellyfin-Verwaltung. Automatische End-to-End-Suche und unattended Downloads noch nicht fertig. ZimaOS-Hardwaretests ausstehend."
