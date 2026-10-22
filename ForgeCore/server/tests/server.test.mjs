@@ -81,7 +81,7 @@ test('persisted media and queued jobs survive restart',async()=>{
   let db=openDatabase(dbPath);const q=new JobQueue(db,{mediaRoot:dir});
   const item=q.enqueue('library_scan');assert.equal(item.state,'queued');db.close();
   db=openDatabase(dbPath);assert.equal(db.prepare('SELECT state FROM jobs WHERE id=?').get(item.id).state,'queued');
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version,8);db.close();
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version,9);db.close();
  }finally{await rm(dir,{recursive:true,force:true});}
 });
 
@@ -163,7 +163,7 @@ test('0.0.9 database migrates in-place to 0.1.9 without losing existing media',a
   db.exec('DROP TABLE transfer_jobs; DROP TABLE source_items; DROP TABLE sources; PRAGMA user_version=3');
   db.close();
   db=openDatabase(file);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version,8);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version,9);
   assert.equal(db.prepare('SELECT title FROM media WHERE id=?').get(id).title,'Interstellar');
   assert.equal(db.prepare("SELECT name FROM sqlite_master WHERE name='transfer_jobs'").get().name,'transfer_jobs');
   db.close();
