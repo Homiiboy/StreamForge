@@ -52,11 +52,11 @@ export function detailCandidates(html,base,term,{max=5}={}){
  */
 function catalogHit(candidate,site,query){
  const path=new URL(candidate.url).pathname;
- const label=String(candidate.title||'').replace(/\\s+/g,' ').trim().slice(0,140);
- const match=(label+' '+path).match(/(?:S(\\d{1,3})[\\s._-]*E(\\d{1,4})|(?:Staffel|Season)[\\s._-]*(\\d{1,3})[\\s._-]*(?:Folge|Episode)[\\s._-]*(\\d{1,4}))/i);
+ const label=String(candidate.title||'').replace(/\s+/g,' ').trim().slice(0,140);
+ const match=(label+' '+path).match(/(?:S(\d{1,3})[\s._-]*E(\d{1,4})|(?:Staffel|Season)[\s._-]*(\d{1,3})[\s._-]*(?:Folge|Episode)[\s._-]*(\d{1,4}))/i);
  const season=match?Number(match[1]||match[3]):null,episode=match?Number(match[2]||match[4]):null;
  const isEpisode=season!==null&&episode!==null;
- const type=isEpisode?'episode':/\\b(?:film|movie|kino)\\b/i.test(path)?'movie':/\\b(?:series|serie|shows|staffel|season|anime)\\b/i.test(path)?'series':'title';
+ const type=isEpisode?'episode':/\b(?:film|movie|kino)\b/i.test(path)?'movie':/\b(?:series|serie|shows|staffel|season|anime)\b/i.test(path)?'series':'title';
  return {url:candidate.url,title:label||query,kind:'catalog',mediaType:type,season,episode,siteId:site.id,siteLabel:site.label};
 }
 export async function searchSites(db,query,{fetcher=safeFetch}={}){
