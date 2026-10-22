@@ -1,5 +1,7 @@
 # ForgeCore – Entwicklungsroadmap
 
+**Aktueller Phase-9-Teststand: v1.1.0.** Eine globale, benutzerkonfigurierte Site-Suche mit Such-URL-Vorlage und begrenzter Detailseitenanalyse ist implementiert. Bis zu einer Sonarr-/Radarr-ähnlichen Vollautomatisierung fehlen noch Website-spezifische Suchadapter und Freigabe-/Zuordnungslogik für gefundene Medien.
+
 **Eigenständige Versionierung:** ForgeCore startet bei **v0.0.1**. Die Kopie unter `ForgeCore/browser-extension/` wurde durch die bewusste Integration auf **StreamForge v1.8.11** angehoben. Die zwei Versionsnummern sind unabhängig.
 
 **Produktziel:** Eine auf ZimaOS/Docker laufende, lokal verwaltete Medien-App, die Filme und Serien als Projekte organisiert, autorisierte Quellen nach freigegebenen Medien untersucht, unterstützte HLS-/DASH-Downloads koordiniert und fertig geprüfte Dateien Jellyfin-konform ablegt.

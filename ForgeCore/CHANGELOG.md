@@ -1,5 +1,14 @@
 # ForgeCore – Changelog
 
+## v1.1.0 – Testversion: Website-Suche / Phase 9
+
+- Globale Websiteverwaltung mit aktiviert/deaktiviert, Adapterwahl und optionaler URL-Suchvorlage mit `{query}`.
+- Treffererkennung auf Katalogseiten und maximal fünf passenden Detailseiten je Website; gleiche Origin und SSRF-geschützte HTTP-Abfragen.
+- Authentifizierte Such-API, neue UI, SQLite-Migrationen 9/10, JSON-Backup-Unterstützung und Tests.
+- Noch keine automatische Überwachung aller Website-Titel, kein universeller Browser-Crawler, keine ungefragten Downloads und keine Hardware-Abnahme.
+
+
+
 ## Source Automation: erweiterte Website-Suche (Entwicklungsstand)
 
 - Konfigurierbare Such-URL mit `{query}` für jede Website, streng auf dieselbe Herkunft beschränkt.

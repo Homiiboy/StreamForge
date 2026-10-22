@@ -1,5 +1,12 @@
 # ForgeCore
 
+## ForgeCore v1.1.0 – Phase 9 Source Automation (Testversion)
+
+Die neue **Website-Suche** unter Bibliothek erlaubt das Speichern unterstützter Websites, das Konfigurieren einer optionalen Suchadresse wie `https://example.org/search?q={query}`, das automatische Durchsuchen von passenden Titelseiten und das Anzeigen der direkt erkannten Mediendateien. Die Suche verwendet ausschließlich unterstützte HTML-Links, fragt keine Logins ab und startet keine Downloads automatisch. Suche und Dateiexport sind weiterhin getrennt.
+
+**Auf ZimaOS testen:** Vor dem Upgrade `sudo bash manage.sh doctor` und `sudo bash manage.sh backup` ausführen, danach die v1.1.0-Paketdateien in dein bestehendes ForgeCore-Verzeichnis übernehmen, die bestehende `.env` und Datenvolumes beibehalten und `sudo bash manage.sh update` ausführen. Kein Rollback auf v1.0.0 ohne Wiederherstellung der vorherigen Datenbanksicherung (Schema 10).
+
+
 **ForgeCore v1.0.0 – Phase 8 Releasekandidat (Hardware-Abnahme ausstehend).** Eigenständiger Docker-/ZimaOS-Server. Die beigefügte Browser-Erweiterung in `browser-extension/` wurde bewusst auf **StreamForge 1.8.11** aktualisiert.
 
 > **Abnahmestand:** Automatisierte Node-/HTTP-/Docker-Tests und lokaler HLS/FFmpeg-Medientest sind durchgeführt. **Reale Websites, lange Serienläufe, ZimaOS-Mounts und SMB-Speicherpfade sind noch nicht auf deiner Hardware getestet.** Die App unterstützt ausdrücklich nur ausgewählte unverschlüsselte Formate, nicht jede Streaming-Website.

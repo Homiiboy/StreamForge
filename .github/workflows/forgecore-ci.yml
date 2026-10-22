@@ -45,5 +45,5 @@ jobs:
             if curl -fsS http://127.0.0.1:18787/api/health >/tmp/forgecore-health.json; then break; fi
             sleep 1
           done
-          node -e "const fs=require('fs');const h=JSON.parse(fs.readFileSync('/tmp/forgecore-health.json'));if(h.version!=='1.0.0'||h.ok!==true)process.exit(1)"
+          node -e "const fs=require('fs');const h=JSON.parse(fs.readFileSync('/tmp/forgecore-health.json'));if(h.version!=='1.1.0'||h.ok!==true)process.exit(1)"
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18787/api/media)" = 401
