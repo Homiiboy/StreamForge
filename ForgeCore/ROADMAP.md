@@ -79,6 +79,8 @@ Das verbindliche Prüfprotokoll steht unter [ACCEPTANCE-v1.0.0.md](./ACCEPTANCE-
 
 ## Phase 9 – Source Automation (nach v1.0.0, in Entwicklung)
 
+**Erweiterung:** Konfigurierbare, same-origin Such-URL-Vorlagen und begrenzte Detailseiten-Suche. Keine universelle Website-Kompatibilität.
+
 **Erste Implementierungsstufe:** Website-Katalog unabhängig von Medienprojekten, manuelle Adapterwahl und read-only Suchabfrage über unterstützte Medienlinks. Eine Suche lädt keine Inhalte herunter. Für vollständige Suchfunktionen nach dem Sonarr/Radarr-Vorbild fehlen noch seitenbezogene Suchadapter, Treffer-zu-Projekt-Zuordnung, Prioritäten, Freigabe- und automatische Überwachungsregeln.
 
 ## Anforderungen für den späteren stabilen Betrieb

@@ -383,7 +383,8 @@ async function refreshSiteCatalog(){
   const row=node('div','','sourceEntry');row.append(node('strong',site.label),node('small',site.url,'muted'));
   const select=node('select');select.setAttribute('aria-label','Websiteadapter '+site.label);
   for(const a of adapters){const opt=node('option',a.label);opt.value=a.id;select.append(opt);}select.value=site.adapter_id;
-  row.append(select,action('Adapter speichern',async()=>{await api('/api/search-sites/'+site.id,{method:'PATCH',body:{adapterId:select.value}});notify('Adapter gespeichert.');}));
+  const template=node('input');template.value=site.search_template||'';template.maxLength=2048;template.placeholder='https://example.org/search?q={query}';template.setAttribute('aria-label','Suchadresse für '+site.label);
+  row.append(template,select,action('Adapter und Suche speichern',async()=>{await api('/api/search-sites/'+site.id,{method:'PATCH',body:{adapterId:select.value,searchTemplate:template.value}});notify('Adapter gespeichert.');}));
   row.append(action(site.enabled?'Deaktivieren':'Aktivieren',async()=>{await api('/api/search-sites/'+site.id,{method:'PATCH',body:{enabled:!site.enabled}});await refreshSiteCatalog();}));
   row.append(action('Entfernen',async()=>{if(!confirm('Diese Website entfernen?'))return;await api('/api/search-sites/'+site.id,{method:'DELETE'});await refreshSiteCatalog();},'danger'));
   box.append(row);
@@ -391,8 +392,8 @@ async function refreshSiteCatalog(){
  if(!sites.length)box.append(node('p','Noch keine Websites hinterlegt.','muted'));
 }
 $('#siteAddForm').addEventListener('submit',async e=>{e.preventDefault();try{
- await api('/api/search-sites',{method:'POST',body:{url:$('#siteUrl').value,label:$('#siteLabel').value}});
- $('#siteUrl').value='';$('#siteLabel').value='';await refreshSiteCatalog();notify('Website gespeichert.');
+ await api('/api/search-sites',{method:'POST',body:{url:$('#siteUrl').value,label:$('#siteLabel').value,searchTemplate:$('#siteSearchTemplate').value}});
+ $('#siteUrl').value='';$('#siteLabel').value='';$('#siteSearchTemplate').value='';await refreshSiteCatalog();notify('Website gespeichert.');
 }catch(error){notify(error.message,true);}});
 $('#siteSearchForm').addEventListener('submit',async e=>{e.preventDefault();
  const box=$('#siteSearchResults');box.replaceChildren(node('p','Suche läuft …','muted'));

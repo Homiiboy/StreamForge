@@ -1,5 +1,13 @@
 # ForgeCore – Changelog
 
+## Source Automation: erweiterte Website-Suche (Entwicklungsstand)
+
+- Konfigurierbare Such-URL mit `{query}` für jede Website, streng auf dieselbe Herkunft beschränkt.
+- Titelsuche lädt zunächst Suchergebnisse und folgt höchstens fünf passenden internen Detailseiten pro Quelle.
+- Kein Login-Automatismus, keine Browser-Ausführung und keine automatische Downloadfreigabe; eigene unterstützte direkte Medienlinks bleiben erforderlich.
+- Schema-Migration 10, sichere Speicherung und Regressionstests.
+
+
 ## Phase 9 – globale Website-Suche (Entwicklungsstand nach v1.0.0)
 
 - Globale Liste autorisierter Websites unabhängig von Medienprojekten, aktivierbar/deaktivierbar und mit vorhandenen vertrauenswürdigen Adaptern.
