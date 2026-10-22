@@ -1,6 +1,14 @@
 # ForgeCore – Changelog
 
-## v1.2.0 – Katalogsuche und Titelerkennung (Prerelease)
+## v1.2.1 – Titelqualität und Treffergruppierung
+
+- Diskussionen und Kommentare als falsche Serien- und Episodentreffer herausgefiltert.
+- HTML-Entities dekodiert, alternative Titel separiert, Suchtreffer nach Titelnähe sortiert.
+- UI gruppiert identische Titel mit einzeln zugänglichen Quellen und aufklappbaren Metadaten.
+- Bestehende API-/Queue-Verträge und Sicherheitsgrenzen erhalten; Tests ergänzt.
+
+
+## v1.2.1 – Katalogsuche und Titelerkennung (Prerelease)
 
 - Titel- und Detailseiten aus HTML-Suchergebnissen erscheinen als eigene Katalogtreffer, auch ohne direkte Mediendateien.
 - Begrenzte Analyse von bis zu fünf passenden, gleichursprünglichen Detailseiten; Medienlinks werden separat gekennzeichnet.
@@ -9,7 +17,7 @@
 
 
 
-## v1.2.0 – DNS-Pinning-Korrektur
+## v1.2.1 – DNS-Pinning-Korrektur
 
 - Node.js HTTP-`lookup` unterstützt `options.all=true` korrekt und bekommt geprüfte Adresse/Familie als Array statt als Einzeladresse.
 - IP-Pinning, URL-Validierung und SSRF-Schutz unverändert; neue Tests für IPv4 und IPv6 mit beiden Callback-Signaturen.

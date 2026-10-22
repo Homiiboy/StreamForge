@@ -94,3 +94,35 @@ test('catalog search informs user when site has no configured search URL',async(
  assert.equal(out.results.length,0);
  assert.match(out.warnings[0].message,/Suchadresse/);
 });
+
+test('v1.2.1: comments and questions do not become series or episodes',async()=>{
+ const {searchSites}=await import('../src/site-search.mjs');
+ const db={prepare:()=>({all:()=>[{id:'1',url:'https://media.example/catalog',label:'Quelle',adapter_id:'auto',search_template:'https://media.example/search?q={query}'}]})};
+ const fetcher=async url=>({url,body:Buffer.from(url.includes('/search?')?[
+ '<a href="/serie/slugterra">Slugterra</a>',
+ '<a href="/comments/541">Bei Slugterra s03e02 steht, Stream nicht verfügbar, was muss ich tun?</a>',
+ '<a href="/forum/frage">warum kann ich nur eine staffel anschauen aber es sind mehrere staffeln Slugterra</a>',
+ '<a href="/hilfe/slugterra">Slugterra Hilfe</a>'
+ ].join(''):'<h1>Slugterra</h1>')});
+ const r=await searchSites(db,'Slugterra',{fetcher});
+ assert.deepEqual(r.results.map(x=>x.title),['Slugterra']);
+ assert.equal(r.results[0].season,null);
+ assert.equal(r.errors.length,0);
+});
+test('v1.2.1: HTML entities, aliases, full detail title and ranking',async()=>{
+ const {searchSites,decodeTitle}=await import('../src/site-search.mjs');
+ assert.equal(decodeTitle('All&#039;arrembaggio &amp; Friends'),"All'arrembaggio & Friends");
+ const db={prepare:()=>({all:()=>[{id:'1',url:'https://media.example/catalog',label:'Ani',adapter_id:'auto',search_template:'https://media.example/search?q={query}'}]})};
+ const fetcher=async url=>({url,body:Buffer.from(url.includes('/search?')?
+ '<a href="/anime/one-piece-special" title="One Piece Special">Special</a><a href="/anime/one-piece" title="One Piece, ワンピース, One Piece, Tutti All&#039;arrembaggio!">One Piece</a>':
+ url.includes('/one-piece-special')?'<h1>One Piece Special</h1>':
+ '<h1>One Piece</h1>')});
+ const data=await searchSites(db,'One Piece',{fetcher});
+ assert.equal(data.results[0].title,'One Piece');
+ assert.ok(data.results[0].aliases.length===0||data.results[0].aliases.some(x=>x.includes('ワンピース')));
+ assert.equal(data.results[0].mediaType,'series');
+});
+test('v1.2.1: episode labels in comments not trusted and same-origin limits stay',()=>{
+ const comments=detailCandidates('<a href="/forum/slugterra-s03e02">Bei Slugterra s03e02 steht, Stream nicht verfügbar?</a><a href="/serie/slugterra">Slugterra</a><a href="https://evil.example/serie/slugterra">Slugterra</a>','https://media.example/suche','Slugterra');
+ assert.deepEqual(comments.map(x=>x.url),['https://media.example/serie/slugterra']);
+});

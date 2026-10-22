@@ -1,12 +1,21 @@
 # ForgeCore
 
-## V1.2.0 – Titelsuche und Katalogerkennung
+## v1.2.1 – Verbesserte Katalogsuche
+
+- Kommentar-, Forums-, Support- und Hilfeseiten werden nicht mehr als Serientreffer angezeigt.
+- HTML-Zeichen werden entschlüsselt; alternative Titel bleiben separat und Ergebnisse werden nach Titelnähe sortiert.
+- Treffer derselben Serie werden in der Weboberfläche gruppiert, einzelne Website-Links bleiben erhalten.
+- Aufklappbare Detailansicht zeigt verfügbare Katalogdaten (Titel, Alternativtitel, Jahr sofern auslesbar, Quellen). Keine vollständige Staffel- oder Episodenliste.
+- Keine neue Datenbankmigration; keine Downloads oder Sicherheitsausnahmen.
+
+
+## V1.2.1 – Titelsuche und Katalogerkennung
 
 Die Website-Suche meldet jetzt auch Titel- und Detailseiten als **Katalogtreffer**, wenn noch kein direkter Medienlink vorliegt. Auf bis zu fünf passenden Detailseiten werden vorhandene Medienlinks analysiert; die Ergebnisliste kennzeichnet Katalogtreffer getrennt von Medienlinks. Eine pro Website hinterlegte Suchadresse mit `{query}` ist für Seiten mit eigener Suche entscheidend. Keine universelle Volltextsuche, keine Umgehung von Schutzmaßnahmen und keine automatische Warteschlangenaktion. Weitere Website-spezifische Adapter werden später benötigt.
 
 
 
-## V1.2.0 – Netzwerkfix für Website-Suche
+## V1.2.1 – Netzwerkfix für Website-Suche
 
 Korrigiert die DNS-Pinning-Callback-Antwort für Node.js 22, wenn HTTP `lookup` mit `all:true` aufruft. Der Fehler `Invalid IP address: undefined` ist damit behoben, während SSRF-Abwehr, IP-Pinning und Redirect-Neuprüfung erhalten bleiben. Websites können unabhängig davon Such-URLs/Strukturänderungen oder Schutzmaßnahmen haben. Paket bleibt ein Prerelease bis zum Praxistest auf ZimaOS.
 

@@ -400,9 +400,30 @@ $('#siteSearchForm').addEventListener('submit',async e=>{e.preventDefault();
  try{
   const data=await api('/api/site-search',{method:'POST',body:{query:$('#siteQuery').value}});
   box.replaceChildren(node('p',data.results.length+' Treffer · '+data.checked+' Websites geprüft · '+data.errors.length+' Fehler','muted'));
+  // Group identical titles without losing individual source links.
+  const groups=new Map();
   for(const hit of data.results){
-   const row=node('div','','sourceEntry');row.append(node('strong',hit.title||'Suchtreffer'),node('small',hit.siteLabel+' · '+(hit.kind==='catalog'?'Katalogtreffer': 'Medienlink')+(hit.mediaType?' · '+({series:'Serie',movie:'Film',episode:'Episode',title:'Titel'}[hit.mediaType]||''):'')+(hit.season!=null&&hit.episode!=null?' · S'+hit.season+'E'+hit.episode:''),'muted'));
-   const link=node('a',hit.kind==='catalog'?'Titelseite öffnen':'Quelle öffnen');link.href=hit.url;link.target='_blank';link.rel='noopener noreferrer';row.append(link);box.append(row);
+   const key=hit.kind==='catalog'?hit.title.normalize('NFKD').toLowerCase().trim()+'|'+hit.mediaType:hit.url;
+   if(!groups.has(key))groups.set(key,[]);
+   groups.get(key).push(hit);
+  }
+  for(const hits of groups.values()){
+   const hit=hits[0],row=node('div','','sourceEntry');
+   row.append(node('strong',hit.title||'Suchtreffer'));
+   row.append(node('small',hits.map(h=>h.siteLabel).join(' · ')+' · '+(hit.kind==='catalog'?'Katalogtreffer':'Medienlink')+(hit.mediaType?' · '+({series:'Serie',movie:'Film',episode:'Episode',title:'Titel'}[hit.mediaType]||''):'')+(hit.season!=null&&hit.episode!=null?' · S'+hit.season+'E'+hit.episode:''),'muted'));
+   for(const source of hits){
+    const link=node('a',hits.length>1?source.siteLabel+' öffnen':(source.kind==='catalog'?'Titelseite öffnen':'Quelle öffnen'));
+    link.href=source.url;link.target='_blank';link.rel='noopener noreferrer';row.append(link);
+   }
+   if(hit.kind==='catalog'){
+    const details=node('details');const summary=node('summary','Serien-/Filmdetails');details.append(summary);
+    if(hit.year)details.append(node('p','Jahr: '+hit.year));
+    if(hit.aliases?.length)details.append(node('p','Alternative Titel: '+hit.aliases.join(' · ')));
+    details.append(node('p','Quellen: '+[...new Set(hits.map(h=>h.siteLabel))].join(', ')));
+    details.append(node('p','Diese Ansicht zeigt erkannte Katalogdaten, noch keine vollständige Staffel- und Episodenliste.','muted'));
+    row.append(details);
+   }
+   box.append(row);
   }
   for(const error of data.errors)box.append(node('p',error.siteLabel+': '+error.error,'muted'));
   for(const warning of data.warnings||[])box.append(node('p',warning.siteLabel+': '+warning.message,'muted'));

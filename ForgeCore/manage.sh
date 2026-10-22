@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 cd "$(dirname "$0")"
 umask 077
-VERSION=1.2.0
+VERSION=1.2.1
 BACKUP_ROOT="$(pwd)/backups"
 die(){ echo "[ForgeCore] $*" >&2; exit 1; }
 log(){ echo "[ForgeCore] $*"; }
