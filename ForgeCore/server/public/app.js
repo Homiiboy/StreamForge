@@ -17,7 +17,7 @@ function showView(view){for(const v of ['library','tasks','settings','system'])$
 async function startup(){
  try{const me=await api('/api/me');csrf=me.csrf||'';$('#connection').textContent='Verbunden';
   $('#setup').hidden=me.configured;$('#login').hidden=!me.configured||me.authenticated;$('#app').hidden=!me.authenticated;
-  if(me.authenticated)await refreshLibrary();
+  if(me.authenticated){await refreshLibrary();await refreshSiteCatalog();}
  }catch(e){$('#connection').textContent='Server nicht erreichbar';notify(e.message,true);}
 }
 $('#setupForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/setup',{method:'POST',body:{password:$('#setupPassword').value}});$('#setupPassword').value='';notify('Einrichtung abgeschlossen. Bitte anmelden.');await startup();}catch(err){notify(err.message,true);}});
@@ -374,4 +374,36 @@ $('#backupRestore').addEventListener('click',async()=>{
   notify(`${result.media} Projekte und ${result.episodes} Episoden wiederhergestellt.`);
   $('#backupFile').value='';await refreshLibrary();
  }catch(err){notify('Backup nicht importiert: '+err.message,true);}
+});
+
+async function refreshSiteCatalog(){
+ const sites=(await api('/api/search-sites')).items,box=$('#siteList');box.replaceChildren();
+ const adapters=[{id:'auto',label:'Automatisch'},...(await api('/api/source-adapters')).items];
+ for(const site of sites){
+  const row=node('div','','sourceEntry');row.append(node('strong',site.label),node('small',site.url,'muted'));
+  const select=node('select');select.setAttribute('aria-label','Websiteadapter '+site.label);
+  for(const a of adapters){const opt=node('option',a.label);opt.value=a.id;select.append(opt);}select.value=site.adapter_id;
+  row.append(select,action('Adapter speichern',async()=>{await api('/api/search-sites/'+site.id,{method:'PATCH',body:{adapterId:select.value}});notify('Adapter gespeichert.');}));
+  row.append(action(site.enabled?'Deaktivieren':'Aktivieren',async()=>{await api('/api/search-sites/'+site.id,{method:'PATCH',body:{enabled:!site.enabled}});await refreshSiteCatalog();}));
+  row.append(action('Entfernen',async()=>{if(!confirm('Diese Website entfernen?'))return;await api('/api/search-sites/'+site.id,{method:'DELETE'});await refreshSiteCatalog();},'danger'));
+  box.append(row);
+ }
+ if(!sites.length)box.append(node('p','Noch keine Websites hinterlegt.','muted'));
+}
+$('#siteAddForm').addEventListener('submit',async e=>{e.preventDefault();try{
+ await api('/api/search-sites',{method:'POST',body:{url:$('#siteUrl').value,label:$('#siteLabel').value}});
+ $('#siteUrl').value='';$('#siteLabel').value='';await refreshSiteCatalog();notify('Website gespeichert.');
+}catch(error){notify(error.message,true);}});
+$('#siteSearchForm').addEventListener('submit',async e=>{e.preventDefault();
+ const box=$('#siteSearchResults');box.replaceChildren(node('p','Suche läuft …','muted'));
+ try{
+  const data=await api('/api/site-search',{method:'POST',body:{query:$('#siteQuery').value}});
+  box.replaceChildren(node('p',data.results.length+' Treffer · '+data.checked+' Websites geprüft · '+data.errors.length+' Fehler','muted'));
+  for(const hit of data.results){
+   const row=node('div','','sourceEntry');row.append(node('strong',hit.title||'Medienlink'),node('small',hit.siteLabel+(hit.season!==null?' · S'+hit.season+'E'+hit.episode:''),'muted'));
+   const link=node('a','Quelle öffnen');link.href=hit.url;link.target='_blank';link.rel='noopener noreferrer';row.append(link);box.append(row);
+  }
+  for(const error of data.errors)box.append(node('p',error.siteLabel+': '+error.error,'muted'));
+  if(!data.results.length)box.append(node('p','Keine passenden Medienlinks gefunden; weitere Website-Adapter sind geplant.','muted'));
+ }catch(error){box.replaceChildren();notify(error.message,true);}
 });

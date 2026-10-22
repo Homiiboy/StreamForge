@@ -77,6 +77,10 @@
 
 Das verbindliche Prüfprotokoll steht unter [ACCEPTANCE-v1.0.0.md](./ACCEPTANCE-v1.0.0.md). Die v1.0.0-Versionsnummer bedeutet **nicht**, dass die Prüfung auf deiner Hardware bereits bestanden wurde.
 
+## Phase 9 – Source Automation (nach v1.0.0, in Entwicklung)
+
+**Erste Implementierungsstufe:** Website-Katalog unabhängig von Medienprojekten, manuelle Adapterwahl und read-only Suchabfrage über unterstützte Medienlinks. Eine Suche lädt keine Inhalte herunter. Für vollständige Suchfunktionen nach dem Sonarr/Radarr-Vorbild fehlen noch seitenbezogene Suchadapter, Treffer-zu-Projekt-Zuordnung, Prioritäten, Freigabe- und automatische Überwachungsregeln.
+
 ## Anforderungen für den späteren stabilen Betrieb
 
 **v1.0.0** ist erst geplant, wenn ForgeCore auf einer unterstützten ZimaOS-Installation Filme und Serien von technisch unterstützten, berechtigt nutzbaren Quellen vollständig verwalten kann und Installation, Updates, Sicherheit, Jellyfin-Export und Recovery praktisch überprüft sind.

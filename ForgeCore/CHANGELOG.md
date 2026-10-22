@@ -1,5 +1,14 @@
 # ForgeCore – Changelog
 
+## Phase 9 – globale Website-Suche (Entwicklungsstand nach v1.0.0)
+
+- Globale Liste autorisierter Websites unabhängig von Medienprojekten, aktivierbar/deaktivierbar und mit vorhandenen vertrauenswürdigen Adaptern.
+- Authentifizierte, schreibgeschützte Suche nach passenden Medienlinks auf bis zu 20 aktivierten Seiten; pro Website Fehlerisolierung und Trefferbegrenzung.
+- Neue Website-Verwaltung in der Weboberfläche; Links können manuell geöffnet werden, keine automatischen Downloads.
+- SQLite-Migration und JSON-Backup-Unterstützung; wiederhergestellte Websites sind aus Sicherheitsgründen zunächst deaktiviert.
+- Einschränkungen: keine Suchformular-Steuerung auf Drittseiten, keine JS-Website-Ausführung, keine beliebige Online-Volltextsuche. ZimaOS-Hardwaretest steht aus.
+
+
 ## Connector v1.8.11
 
 - Sechs Jellyfin-Zielkategorien mit Vorschlag und manueller Auswahl, bestehende Bibliotheksordner bleiben erhalten.
