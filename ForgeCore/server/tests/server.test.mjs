@@ -160,7 +160,7 @@ test('0.0.9 database migrates in-place to 0.1.9 without losing existing media',a
   let db=openDatabase(file);
   const now=new Date().toISOString(),id='123e4567-e89b-12d3-a456-426614174000';
   db.prepare('INSERT INTO media(id,kind,title,created_at,updated_at) VALUES(?,?,?,?,?)').run(id,'movie','Interstellar',now,now);
-  db.exec('DROP TABLE transfer_jobs; DROP TABLE source_items; DROP TABLE sources; PRAGMA user_version=3');
+  db.exec('DROP TABLE transfer_jobs; DROP TABLE source_items; DROP TABLE sources; DROP TABLE search_sites; PRAGMA user_version=3');
   db.close();
   db=openDatabase(file);
   assert.equal(db.prepare('PRAGMA user_version').get().user_version,10);
