@@ -12,6 +12,7 @@ import {checkMediaRoot,previewLibrary} from './library.mjs';
 import {JobQueue} from './queue.mjs';
 import {TransferQueue} from './transfer-queue.mjs';
 import {SourceAutomation} from './source-automation.mjs';
+import {validateSearchSite,searchSites} from './site-search.mjs';
 import {parseWebUrl} from './source-security.mjs';
 import {analyzeSource,SOURCE_ADAPTERS,selectSourceAdapter} from './source-adapters.mjs';
 import {saveJellyfin,getJellyfinStatus,jellyfinTest,jellyfinRefresh} from './jellyfin.mjs';
@@ -242,6 +243,32 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     return response(res,200,applyReconciliation(db,reconcilePreview(db,items)));
    }
 
+   // Phase 9: global website catalog and read-only cross-site search.
+   if(path==='/api/search-sites'){
+    if(method==='GET')return response(res,200,{items:rows(db,'SELECT * FROM search_sites ORDER BY label COLLATE NOCASE')});
+    if(method==='POST'){
+     const v=validateSearchSite(await readJson(req)),id=newId(),now=utc();
+     try{db.prepare('INSERT INTO search_sites(id,url,label,adapter_id,enabled,created_at,updated_at) VALUES(?,?,?,?,?,?,?)').run(id,v.url,v.label,v.adapterId,v.enabled?1:0,now,now);}
+     catch(e){if(e.code==='ERR_SQLITE_ERROR')fail('Website bereits gespeichert',409);throw e;}
+     return response(res,201,{item:one(db,'SELECT * FROM search_sites WHERE id=?',id)});
+    }
+   }
+   const siteMatch=path.match(/^\/api\/search-sites\/([0-9a-f-]{36})$/);
+   if(siteMatch){
+    const id=idCheck(siteMatch[1]),site=one(db,'SELECT * FROM search_sites WHERE id=?',id);
+    if(!site)fail('Website nicht gefunden',404);
+    if(method==='DELETE'){db.prepare('DELETE FROM search_sites WHERE id=?').run(id);return response(res,200,{ok:true});}
+    if(method==='PATCH'){
+     const b=await readJson(req),v=validateSearchSite({url:b.url??site.url,label:b.label??site.label,adapterId:b.adapterId??site.adapter_id,enabled:b.enabled===undefined?!!site.enabled:b.enabled});
+     try{db.prepare('UPDATE search_sites SET url=?,label=?,adapter_id=?,enabled=?,updated_at=? WHERE id=?').run(v.url,v.label,v.adapterId,v.enabled?1:0,utc(),id);}
+     catch(e){if(e.code==='ERR_SQLITE_ERROR')fail('Website bereits gespeichert',409);throw e;}
+     return response(res,200,{item:one(db,'SELECT * FROM search_sites WHERE id=?',id)});
+    }
+   }
+   if(path==='/api/site-search'&&method==='POST'){
+    const b=await readJson(req);
+    return response(res,200,await searchSites(db,b.query,{...(sourceFetch?{fetcher:sourceFetch}:{})}));
+   }
    if(path==='/api/source-adapters'&&method==='GET')
     return response(res,200,{items:SOURCE_ADAPTERS});
 
@@ -373,9 +400,10 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     if(backup.sources!==undefined&&!Array.isArray(backup.sources))fail('Invalid source backup');
     if(backup.source_items!==undefined&&!Array.isArray(backup.source_items))fail('Invalid discovered-item backup');
     if(backup.source_automation!==undefined&&!Array.isArray(backup.source_automation))fail('Invalid automation backup');
-    if(backup.media.length>10000||backup.episodes.length>200000||backup.config.length>100||(backup.sources?.length||0)>20000||(backup.source_items?.length||0)>100000||(backup.source_automation?.length||0)>20000)fail('Backup exceeds safety limits');
+    if(backup.search_sites!==undefined&&!Array.isArray(backup.search_sites))fail('Invalid website catalog backup');
+    if(backup.media.length>10000||backup.episodes.length>200000||backup.config.length>100||(backup.sources?.length||0)>20000||(backup.source_items?.length||0)>100000||(backup.source_automation?.length||0)>20000||(backup.search_sites?.length||0)>1000)fail('Backup exceeds safety limits');
     transaction(db,()=>{
-     db.exec('DELETE FROM source_check_events; DELETE FROM source_automation; DELETE FROM transfer_jobs; DELETE FROM source_items; DELETE FROM sources; DELETE FROM jobs; DELETE FROM episodes; DELETE FROM media; DELETE FROM config;');
+     db.exec('DELETE FROM search_sites; DELETE FROM source_check_events; DELETE FROM source_automation; DELETE FROM transfer_jobs; DELETE FROM source_items; DELETE FROM sources; DELETE FROM jobs; DELETE FROM episodes; DELETE FROM media; DELETE FROM config;');
      for(const media of backup.media){
       const m=mediaInput(media);idCheck(media.id);
       db.prepare('INSERT INTO media(id,kind,title,year,external_id,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').run(media.id,m.kind,m.title,m.year,m.external_id,m.notes,utc(),utc());
@@ -403,6 +431,11 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
       const p=automation.configure(policy.source_id,{enabled:false,autoQueue:!!policy.auto_queue,autoAddEpisodes:!!policy.auto_add_episodes,intervalMinutes:policy.interval_minutes,maxPerCheck:policy.max_per_check});
       // Backups never silently reactivate unattended downloads after restore.
      }
+     for(const site of backup.search_sites||[]){
+      idCheck(site.id);
+      const v=validateSearchSite({url:site.url,label:site.label,adapterId:site.adapter_id,enabled:false});
+      db.prepare('INSERT INTO search_sites(id,url,label,adapter_id,enabled,created_at,updated_at) VALUES(?,?,?,?,0,?,?)').run(site.id,v.url,v.label,v.adapterId,utc(),utc());
+     }
      for(const item of backup.config){
       if(!['jellyfin_url','library_label','preferred_language','transfer_schedule'].includes(item.key))continue;
       if(item.key==='transfer_schedule'){try{setSchedule(db,JSON.parse(String(item.value)));}catch{fail('Invalid transfer schedule in backup');}continue;}
@@ -425,7 +458,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     return response(res,200,{items:rows(db,'SELECT id,category,description,created_at FROM transfer_events WHERE transfer_id=? ORDER BY id DESC LIMIT 150',job)});
    }
    if(path==='/api/backup/export'&&method==='GET'){
-    const data={format:'forgecore-export-v1',version:APP_VERSION,createdAt:utc(),media:rows(db,'SELECT * FROM media'),episodes:rows(db,'SELECT * FROM episodes'),config:rows(db,"SELECT * FROM config WHERE key!='jellyfin_api_key'"),sources:rows(db,'SELECT * FROM sources'),source_items:rows(db,'SELECT * FROM source_items'),source_automation:rows(db,'SELECT * FROM source_automation')};
+    const data={format:'forgecore-export-v1',version:APP_VERSION,createdAt:utc(),media:rows(db,'SELECT * FROM media'),episodes:rows(db,'SELECT * FROM episodes'),config:rows(db,"SELECT * FROM config WHERE key!='jellyfin_api_key'"),sources:rows(db,'SELECT * FROM sources'),source_items:rows(db,'SELECT * FROM source_items'),source_automation:rows(db,'SELECT * FROM source_automation'),search_sites:rows(db,'SELECT * FROM search_sites')};
     return response(res,200,data,{'content-disposition':'attachment; filename="forgecore-backup.json"'});
    }
    if(path.startsWith('/api/'))fail('Unknown endpoint',404);
