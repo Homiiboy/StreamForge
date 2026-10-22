@@ -421,6 +421,25 @@ $('#siteSearchForm').addEventListener('submit',async e=>{e.preventDefault();
     if(hit.aliases?.length)details.append(node('p','Alternative Titel: '+hit.aliases.join(' · ')));
     details.append(node('p','Quellen: '+[...new Set(hits.map(h=>h.siteLabel))].join(', ')));
     details.append(node('p','Diese Ansicht zeigt erkannte Katalogdaten, noch keine vollständige Staffel- und Episodenliste.','muted'));
+    const panel=node('div','','items');
+    details.append(action('Staffeln & Episoden auslesen',async()=>{
+     panel.replaceChildren(node('p','Katalogseite wird geprüft …','muted'));
+     const inspected=await api('/api/catalog/inspect',{method:'POST',body:{siteId:hit.siteId,url:hit.url,title:hit.title}});
+     panel.replaceChildren(node('p',inspected.notice,'muted'));
+     panel.append(node('p','Erkannte Staffeln: '+(inspected.seasons.join(', ')||'keine')+' · Erkannte Episoden: '+inspected.episodes.length+' · ForgeCore-Projekt: '+(inspected.mediaId?'vorhanden':'nicht angelegt')));
+     const list=node('div','','items');
+     for(const ep of inspected.episodes){
+      const entry=node('div','','episode');entry.append(node('strong','S'+String(ep.season).padStart(2,'0')+'E'+String(ep.episode).padStart(2,'0')));
+      entry.append(node('span',(ep.title||'Episode')+' · ForgeCore: '+ep.forgecoreStatus,'muted'));list.append(entry);
+     }
+     panel.append(list);
+     panel.append(action('Mit Jellyfin vergleichen (nur Vorschau)',async()=>{
+      const data=await api('/api/catalog/jellyfin-preview',{method:'POST',body:{title:inspected.title,episodes:inspected.episodes.map(x=>({season:x.season,episode:x.episode}))}});
+      panel.append(node('p','Jellyfin: '+data.matched+' von '+inspected.episodes.length+' erkannten Episoden vorhanden · '+data.foundInJellyfin+' Episoden im geprüften Inventar. Es wurden keine Daten verändert.'));
+      for(const item of data.items)panel.append(node('p','S'+String(item.season).padStart(2,'0')+'E'+String(item.episode).padStart(2,'0')+': '+(item.inJellyfin?'in Jellyfin gefunden':'nicht im abgefragten Inventar'),'muted'));
+     }));
+    }));
+    details.append(panel);
     row.append(details);
    }
    box.append(row);

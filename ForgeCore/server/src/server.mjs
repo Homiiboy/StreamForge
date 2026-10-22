@@ -13,6 +13,7 @@ import {JobQueue} from './queue.mjs';
 import {TransferQueue} from './transfer-queue.mjs';
 import {SourceAutomation} from './source-automation.mjs';
 import {validateSearchSite,searchSites} from './site-search.mjs';
+import {inspectCatalog,catalogJellyfinPreview} from './catalog-inspect.mjs';
 import {parseWebUrl} from './source-security.mjs';
 import {analyzeSource,SOURCE_ADAPTERS,selectSourceAdapter} from './source-adapters.mjs';
 import {saveJellyfin,getJellyfinStatus,jellyfinTest,jellyfinRefresh} from './jellyfin.mjs';
@@ -22,7 +23,7 @@ import {downloadSubtitle,normalizeLanguage} from './subtitles.mjs';
 import {operationalStatus,diagnosticEvents} from './operations.mjs';
 
 export const APP_NAME='ForgeCore';
-export const APP_VERSION='1.2.1';
+export const APP_VERSION='1.3.0';
 const staticDir=resolve(dirname(fileURLToPath(import.meta.url)),'../public');
 const MAX_BODY=64*1024;
 const limitText=(v,max=150)=>typeof v==='string'?v.trim().slice(0,max):'';
@@ -268,6 +269,14 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
    if(path==='/api/site-search'&&method==='POST'){
     const b=await readJson(req);
     return response(res,200,await searchSites(db,b.query,{...(sourceFetch?{fetcher:sourceFetch}:{})}));
+   }
+   if(path==='/api/catalog/inspect'&&method==='POST'){
+    const body=await readJson(req);
+    return response(res,200,await inspectCatalog(db,body,{...(sourceFetch?{fetcher:sourceFetch}:{})}));
+   }
+   if(path==='/api/catalog/jellyfin-preview'&&method==='POST'){
+    const body=await readJson(req);
+    return response(res,200,await catalogJellyfinPreview(db,body,{...(jellyfinFetch?{fetcher:jellyfinFetch}:{})}));
    }
    if(path==='/api/source-adapters'&&method==='GET')
     return response(res,200,{items:SOURCE_ADAPTERS});
