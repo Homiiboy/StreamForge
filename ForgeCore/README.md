@@ -1,5 +1,10 @@
 # ForgeCore
 
+## V1.1.1 – Netzwerkfix für Website-Suche
+
+Korrigiert die DNS-Pinning-Callback-Antwort für Node.js 22, wenn HTTP `lookup` mit `all:true` aufruft. Der Fehler `Invalid IP address: undefined` ist damit behoben, während SSRF-Abwehr, IP-Pinning und Redirect-Neuprüfung erhalten bleiben. Websites können unabhängig davon Such-URLs/Strukturänderungen oder Schutzmaßnahmen haben. Paket bleibt ein Prerelease bis zum Praxistest auf ZimaOS.
+
+
 ## ForgeCore v1.1.0 – Phase 9 Source Automation (Testversion)
 
 Die neue **Website-Suche** unter Bibliothek erlaubt das Speichern unterstützter Websites, das Konfigurieren einer optionalen Suchadresse wie `https://example.org/search?q={query}`, das automatische Durchsuchen von passenden Titelseiten und das Anzeigen der direkt erkannten Mediendateien. Die Suche verwendet ausschließlich unterstützte HTML-Links, fragt keine Logins ab und startet keine Downloads automatisch. Suche und Dateiexport sind weiterhin getrennt.

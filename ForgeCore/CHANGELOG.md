@@ -1,5 +1,13 @@
 # ForgeCore – Changelog
 
+## v1.1.1 – DNS-Pinning-Korrektur
+
+- Node.js HTTP-`lookup` unterstützt `options.all=true` korrekt und bekommt geprüfte Adresse/Familie als Array statt als Einzeladresse.
+- IP-Pinning, URL-Validierung und SSRF-Schutz unverändert; neue Tests für IPv4 und IPv6 mit beiden Callback-Signaturen.
+- Behebt die bei der praktischen Website-Suche beobachtete Fehlermeldung `Invalid IP address: undefined`.
+
+
+
 ## v1.1.0 – Testversion: Website-Suche / Phase 9
 
 - Globale Websiteverwaltung mit aktiviert/deaktiviert, Adapterwahl und optionaler URL-Suchvorlage mit `{query}`.

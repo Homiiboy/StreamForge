@@ -4,7 +4,7 @@ import {mkdtemp,mkdir,readFile,rm,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import http from 'node:http';
-import {isPublicIP,authorizeUrl,safeFetch} from '../src/source-security.mjs';
+import {isPublicIP,authorizeUrl,safeFetch,pinnedLookup} from '../src/source-security.mjs';
 import {parseHls,parseDash,parseHtmlLinks,analyzeSource} from '../src/source-adapters.mjs';
 import {safePublish,downloadMedia,fetchManifest} from '../src/media-download.mjs';
 
@@ -82,4 +82,14 @@ test('safePublish reuses existing Staffel and preserves episode files',async()=>
   assert.equal(saved.path,'Movies/Interstellar (2014)/Interstellar (2014).mp4');
   await assert.rejects(safePublish(from,root,{kind:'movie',title:'Interstellar',year:2014}),/already exists|EEXIST/);
  }finally{await rm(root,{recursive:true,force:true})}
+});
+
+
+test('pinned DNS callback supports Node 22 single and all-address lookup',async()=>{
+ const v4=pinnedLookup('93.184.215.14',4);
+ assert.deepEqual(await new Promise((resolve,reject)=>v4('example.org',{all:true},(error,records)=>error?reject(error):resolve(records))),[{address:'93.184.215.14',family:4}]);
+ assert.deepEqual(await new Promise((resolve,reject)=>v4('example.org',{},(error,address,family)=>error?reject(error):resolve({address,family}))),{address:'93.184.215.14',family:4});
+ const v6=pinnedLookup('2606:4700:4700::1111',6);
+ assert.deepEqual(await new Promise((resolve,reject)=>v6('example.org',{all:true},(error,records)=>error?reject(error):resolve(records))),[{address:'2606:4700:4700::1111',family:6}]);
+ assert.throws(()=>pinnedLookup(undefined,4),/Invalid pinned DNS address/);
 });

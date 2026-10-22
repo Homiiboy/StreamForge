@@ -22,6 +22,15 @@ export async function authorizeUrl(raw,{allowPrivate=false,lookup=dns.lookup}={}
  if(!ips.length||ips.some(x=>!allowPrivate&&!isPublicIP(x.address)))throw Error('Private or non-public address is blocked');
  return {url:u,ip:ips[0].address,family:ips[0].family};
 }
+/** Honor Node's dns.lookup callback contract for single and all-address callers. */
+export function pinnedLookup(ip,family){
+ if(!isIP(ip)||isIP(ip)!==family)throw Error('Invalid pinned DNS address');
+ return (_hostname,options,callback)=>{
+  if(typeof options==='function'){callback=options;options={};}
+  if(options?.all)callback(null,[{address:ip,family}]);
+  else callback(null,ip,family);
+ };
+}
 /** Requests connect to the already verified IP, preserving Host and SNI; redirects get reauthorized. */
 export async function safeStream(raw,{maxBytes=48*1024*1024,timeout=15000,allowPrivate=false,lookup=dns.lookup,redirects=3,onChunk=async()=>{},signal}={}){
  let current=raw;
@@ -30,7 +39,7 @@ export async function safeStream(raw,{maxBytes=48*1024*1024,timeout=15000,allowP
   const {url,ip,family}=await authorizeUrl(current,{allowPrivate,lookup});
   const library=url.protocol==='https:'?https:http;
   const response=await new Promise((resolve,reject)=>{
-   const req=library.request(url,{method:'GET',lookup:(_host,_opts,cb)=>cb(null,ip,family),headers:{'user-agent':'ForgeCore/0.1.9 (authorized-source-client)','accept':'application/vnd.apple.mpegurl,application/dash+xml,text/html,video/*,*/*;q=0.5','accept-encoding':'identity'},timeout},resolve);
+   const req=library.request(url,{method:'GET',lookup:pinnedLookup(ip,family),headers:{'user-agent':'ForgeCore/0.1.9 (authorized-source-client)','accept':'application/vnd.apple.mpegurl,application/dash+xml,text/html,video/*,*/*;q=0.5','accept-encoding':'identity'},timeout},resolve);
    const abort=()=>req.destroy(Error('Source request aborted'));
    signal?.addEventListener('abort',abort,{once:true});
    req.once('error',reject);req.once('timeout',()=>req.destroy(Error('Source request timed out')));
