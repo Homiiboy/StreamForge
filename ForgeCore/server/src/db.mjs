@@ -48,7 +48,8 @@ CREATE INDEX IF NOT EXISTS idx_source_check_events_source ON source_check_events
 `ALTER TABLE sources ADD COLUMN adapter_id TEXT NOT NULL DEFAULT 'auto';
 CREATE TABLE IF NOT EXISTS jellyfin_sync_events(id INTEGER PRIMARY KEY AUTOINCREMENT,checked_at TEXT NOT NULL,matched INTEGER NOT NULL,updated INTEGER NOT NULL,unmatched INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_jellyfin_sync_events_checked ON jellyfin_sync_events(checked_at);`,
-`CREATE TABLE IF NOT EXISTS search_sites(id TEXT PRIMARY KEY,url TEXT NOT NULL UNIQUE,label TEXT NOT NULL,adapter_id TEXT NOT NULL DEFAULT 'auto',enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0,1)),created_at TEXT NOT NULL,updated_at TEXT NOT NULL);`
+`CREATE TABLE IF NOT EXISTS search_sites(id TEXT PRIMARY KEY,url TEXT NOT NULL UNIQUE,label TEXT NOT NULL,adapter_id TEXT NOT NULL DEFAULT 'auto',enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0,1)),created_at TEXT NOT NULL,updated_at TEXT NOT NULL);`,
+`ALTER TABLE search_sites ADD COLUMN search_template TEXT NOT NULL DEFAULT '';`
 ];
 export const utc=()=>new Date().toISOString();
 export function openDatabase(path=':memory:'){
