@@ -11,6 +11,7 @@ const episodePattern=/(?:^|[\/_.-])s(\d{1,3})[._-]*e(\d{1,4})(?:[\/_.-]|$)/i;
 const explicitPattern=/(?:^|\/)(?:season|staffel)[-_/ ]*(\d{1,3})\/(?:episode|folge)[-_/ ]*(\d{1,4})(?:\/|$)/i;
 export function episodeFromUrl(url){
  let path;try{path=new URL(url).pathname}catch{return null}
+ if(/(?:^|\/)(?:comments?|kommentare?|forum|forums|discussion|diskussion|support|hilfe|blog|posts?)(?:\/|$)/i.test(path))return null;
  const match=path.match(episodePattern)||path.match(explicitPattern);
  if(!match)return null;
  const season=Number(match[1]),episode=Number(match[2]);

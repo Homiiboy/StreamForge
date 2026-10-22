@@ -39,7 +39,7 @@ test('catalog inspection requires login, saved site, same origin, and never muta
   const site=(await req('/api/search-sites','POST',{label:'Demo',url:'https://example.org/'})).data.item;
   request.siteId=site.id;
   assert.equal((await req('/api/catalog/inspect','POST',{...request,url:'https://other.example/series/slugterra'})).status,400);
-  assert.equal((await req('/api/catalog/inspect','POST',{...request,url:'https://example.org/comments/foo'})).status,200);
+  assert.equal((await req('/api/catalog/inspect','POST',{...request,url:'https://example.org/comments/foo'})).status,400);
   const result=await req('/api/catalog/inspect','POST',request);
   assert.equal(result.status,200,JSON.stringify(result.data));
   assert.equal(result.data.episodes.length,1);
