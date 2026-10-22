@@ -401,10 +401,11 @@ $('#siteSearchForm').addEventListener('submit',async e=>{e.preventDefault();
   const data=await api('/api/site-search',{method:'POST',body:{query:$('#siteQuery').value}});
   box.replaceChildren(node('p',data.results.length+' Treffer · '+data.checked+' Websites geprüft · '+data.errors.length+' Fehler','muted'));
   for(const hit of data.results){
-   const row=node('div','','sourceEntry');row.append(node('strong',hit.title||'Medienlink'),node('small',hit.siteLabel+(hit.season!==null?' · S'+hit.season+'E'+hit.episode:''),'muted'));
-   const link=node('a','Quelle öffnen');link.href=hit.url;link.target='_blank';link.rel='noopener noreferrer';row.append(link);box.append(row);
+   const row=node('div','','sourceEntry');row.append(node('strong',hit.title||'Suchtreffer'),node('small',hit.siteLabel+' · '+(hit.kind==='catalog'?'Katalogtreffer': 'Medienlink')+(hit.mediaType?' · '+({series:'Serie',movie:'Film',episode:'Episode',title:'Titel'}[hit.mediaType]||''):'')+(hit.season!=null&&hit.episode!=null?' · S'+hit.season+'E'+hit.episode:''),'muted'));
+   const link=node('a',hit.kind==='catalog'?'Titelseite öffnen':'Quelle öffnen');link.href=hit.url;link.target='_blank';link.rel='noopener noreferrer';row.append(link);box.append(row);
   }
   for(const error of data.errors)box.append(node('p',error.siteLabel+': '+error.error,'muted'));
-  if(!data.results.length)box.append(node('p','Keine passenden Medienlinks gefunden; weitere Website-Adapter sind geplant.','muted'));
+  for(const warning of data.warnings||[])box.append(node('p',warning.siteLabel+': '+warning.message,'muted'));
+  if(!data.results.length)box.append(node('p','Keine passenden Titel oder Medienlinks gefunden. Für eine echte Titelsuche eine Suchadresse mit {query} hinterlegen.','muted'));
  }catch(error){box.replaceChildren();notify(error.message,true);}
 });

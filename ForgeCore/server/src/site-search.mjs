@@ -45,33 +45,54 @@ export function detailCandidates(html,base,term,{max=5}={}){
  }
  return out;
 }
+/**
+ * Read-only catalog search. Catalog entries are not download URLs.
+ * A per-site search template is required when the site's entry page does not
+ * expose matching title links; no speculative crawling or script execution.
+ */
+function catalogHit(candidate,site,query){
+ const path=new URL(candidate.url).pathname;
+ const label=String(candidate.title||'').replace(/\\s+/g,' ').trim().slice(0,140);
+ const match=(label+' '+path).match(/(?:S(\\d{1,3})[\\s._-]*E(\\d{1,4})|(?:Staffel|Season)[\\s._-]*(\\d{1,3})[\\s._-]*(?:Folge|Episode)[\\s._-]*(\\d{1,4}))/i);
+ const season=match?Number(match[1]||match[3]):null,episode=match?Number(match[2]||match[4]):null;
+ const isEpisode=season!==null&&episode!==null;
+ const type=isEpisode?'episode':/\\b(?:film|movie|kino)\\b/i.test(path)?'movie':/\\b(?:series|serie|shows|staffel|season|anime)\\b/i.test(path)?'series':'title';
+ return {url:candidate.url,title:label||query,kind:'catalog',mediaType:type,season,episode,siteId:site.id,siteLabel:site.label};
+}
 export async function searchSites(db,query,{fetcher=safeFetch}={}){
- const q=normalizeSearchTerm(query),sites=db.prepare('SELECT id,url,label,adapter_id,search_template FROM search_sites WHERE enabled=1 ORDER BY label COLLATE NOCASE LIMIT 20').all(),results=[],errors=[];
+ const q=normalizeSearchTerm(query),sites=db.prepare('SELECT id,url,label,adapter_id,search_template FROM search_sites WHERE enabled=1 ORDER BY label COLLATE NOCASE LIMIT 20').all(),results=[],errors=[],warnings=[];
  for(const site of sites){
   try{
    const start=site.search_template?site.search_template.replaceAll('{query}',encodeURIComponent(q)):site.url;
    const response=await fetcher(start,{maxBytes:2*1024*1024,timeout:12000});
    const finalUrl=response.url,body=response.body.toString('utf8');
    const analysis=await analyzeSource(finalUrl,{adapter:site.adapter_id,fetcher:async(url,opts)=>url===finalUrl?response:fetcher(url,opts)});
-   let matches=matchItems(analysis.items,q);
-   // Follow only matching same-origin title links, never a whole website.
-   if(analysis.kind==='html'&&matches.length===0){
-    for(const detail of detailCandidates(body,finalUrl,q)){
-     try{
-      const page=await analyzeSource(detail.url,{adapter:site.adapter_id,fetcher});
-      const unique=new Set(matches.map(x=>x.url));
-      for(const item of page.items||[]){
-       if(typeof item.url!=='string'||unique.has(item.url))continue;
-       unique.add(item.url);
-       matches.push({url:item.url,title:(item.title||detail.title).slice(0,140),season:item.season??null,episode:item.episode??null,detailUrl:detail.url});
-       if(matches.length>=100)break;
-      }
-     }catch(err){errors.push({siteId:site.id,siteLabel:site.label,error:'Detailseite: '+String(err?.message||err).slice(0,140)})}
-     if(matches.length>=100)break;
-    }
+   const media=matchItems(analysis.items,q).map(x=>({...x,kind:'media',siteId:site.id,siteLabel:site.label}));
+   const catalog=analysis.kind==='html'?detailCandidates(body,finalUrl,q,{max:15}):[];
+   const seen=new Set(media.map(x=>x.url));
+   // Fetch at most five same-origin candidate pages. Never browse unrelated URLs.
+   for(const detail of catalog.slice(0,5)){
+    try{
+     const page=await analyzeSource(detail.url,{adapter:site.adapter_id,fetcher});
+     const linked=page.items||[];
+     for(const item of linked){
+      if(typeof item.url!=='string'||seen.has(item.url))continue;
+      // Media on a selected detail page belongs to the matched title even
+      // when its file is only named "episode-1.mp4".
+      seen.add(item.url);
+      media.push({url:item.url,title:(item.title||detail.title).slice(0,140),season:item.season??null,episode:item.episode??null,detailUrl:detail.url,kind:'media',siteId:site.id,siteLabel:site.label});
+      if(media.length>=100)break;
+     }
+    }catch(err){errors.push({siteId:site.id,siteLabel:site.label,error:'Detailseite: '+String(err?.message||err).slice(0,140)})}
+    if(media.length>=100)break;
    }
-   for(const hit of matches)results.push({...hit,siteId:site.id,siteLabel:site.label});
+   for(const item of media)results.push(item);
+   // If media was found on a title page, avoid displaying the same link twice.
+   for(const item of catalog){
+    if(!seen.has(item.url))results.push(catalogHit(item,site,q));
+   }
+   if(!site.search_template&&catalog.length===0&&media.length===0)warnings.push({siteId:site.id,siteLabel:site.label,message:'Kein passender Titel auf der Startseite. Prüfe die Suchadresse mit {query}.'});
   }catch(e){errors.push({siteId:site.id,siteLabel:site.label,error:String(e?.message||e).slice(0,160)})}
  }
- return {query:q,checked:sites.length,results:results.slice(0,200),errors,moreResults:results.length>200};
+ return {query:q,checked:sites.length,results:results.slice(0,200),errors,warnings,moreResults:results.length>200};
 }

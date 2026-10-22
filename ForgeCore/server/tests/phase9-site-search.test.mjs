@@ -68,3 +68,29 @@ test('site template searches same-origin detail page only, without queueing',asy
   assert.equal((await req('/api/transfers')).data.items.length,0);
  }finally{await app.close()}
 });
+
+test('catalog results surface title pages without direct media links',async()=>{
+ const {searchSites}=await import('../src/site-search.mjs');
+ const sites=[{id:'catalog-1',url:'https://example.org/catalog',label:'Demo',adapter_id:'auto',search_template:'https://example.org/search?q={query}'}];
+ const db={prepare:()=>({all:()=>sites})};
+ const requests=[];
+ const fetcher=async url=>{
+  requests.push(url);
+  return {url,body:Buffer.from(url.includes('/search?')?'<a href="/series/slugterra" title="Slugterra">Slugterra</a><a href="https://other.example/series/slugterra">Slugterra</a>':'<h1>Slugterra</h1><a href="/staffel-1">Staffel 1</a>')};
+ };
+ const data=await searchSites(db,'Slugterra',{fetcher});
+ assert.equal(data.checked,1);
+ assert.equal(data.errors.length,0);
+ assert.equal(data.results.length,1,JSON.stringify(data.results));
+ assert.equal(data.results[0].kind,'catalog');
+ assert.equal(data.results[0].mediaType,'series');
+ assert.equal(data.results[0].url,'https://example.org/series/slugterra');
+ assert.ok(!requests.some(u=>u.includes('other.example')));
+});
+test('catalog search informs user when site has no configured search URL',async()=>{
+ const {searchSites}=await import('../src/site-search.mjs');
+ const db={prepare:()=>({all:()=>[{id:'a',url:'https://example.org/',label:'Homepage',adapter_id:'auto',search_template:''}]})};
+ const out=await searchSites(db,'One Piece',{fetcher:async url=>({url,body:Buffer.from('<a href="/news">News</a>')})});
+ assert.equal(out.results.length,0);
+ assert.match(out.warnings[0].message,/Suchadresse/);
+});
