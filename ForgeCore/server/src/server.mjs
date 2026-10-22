@@ -248,7 +248,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     if(method==='GET')return response(res,200,{items:rows(db,'SELECT * FROM search_sites ORDER BY label COLLATE NOCASE')});
     if(method==='POST'){
      const v=validateSearchSite(await readJson(req)),id=newId(),now=utc();
-     try{db.prepare('INSERT INTO search_sites(id,url,label,adapter_id,enabled,created_at,updated_at) VALUES(?,?,?,?,?,?,?)').run(id,v.url,v.label,v.adapterId,v.enabled?1:0,now,now);}
+     try{db.prepare('INSERT INTO search_sites(id,url,label,adapter_id,enabled,search_template,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').run(id,v.url,v.label,v.adapterId,v.enabled?1:0,v.searchTemplate,now,now);}
      catch(e){if(e.code==='ERR_SQLITE_ERROR')fail('Website bereits gespeichert',409);throw e;}
      return response(res,201,{item:one(db,'SELECT * FROM search_sites WHERE id=?',id)});
     }
@@ -259,8 +259,8 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     if(!site)fail('Website nicht gefunden',404);
     if(method==='DELETE'){db.prepare('DELETE FROM search_sites WHERE id=?').run(id);return response(res,200,{ok:true});}
     if(method==='PATCH'){
-     const b=await readJson(req),v=validateSearchSite({url:b.url??site.url,label:b.label??site.label,adapterId:b.adapterId??site.adapter_id,enabled:b.enabled===undefined?!!site.enabled:b.enabled});
-     try{db.prepare('UPDATE search_sites SET url=?,label=?,adapter_id=?,enabled=?,updated_at=? WHERE id=?').run(v.url,v.label,v.adapterId,v.enabled?1:0,utc(),id);}
+     const b=await readJson(req),v=validateSearchSite({url:b.url??site.url,label:b.label??site.label,adapterId:b.adapterId??site.adapter_id,searchTemplate:b.searchTemplate??site.search_template,enabled:b.enabled===undefined?!!site.enabled:b.enabled});
+     try{db.prepare('UPDATE search_sites SET url=?,label=?,adapter_id=?,enabled=?,search_template=?,updated_at=? WHERE id=?').run(v.url,v.label,v.adapterId,v.enabled?1:0,v.searchTemplate,utc(),id);}
      catch(e){if(e.code==='ERR_SQLITE_ERROR')fail('Website bereits gespeichert',409);throw e;}
      return response(res,200,{item:one(db,'SELECT * FROM search_sites WHERE id=?',id)});
     }
@@ -433,8 +433,8 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
      }
      for(const site of backup.search_sites||[]){
       idCheck(site.id);
-      const v=validateSearchSite({url:site.url,label:site.label,adapterId:site.adapter_id,enabled:false});
-      db.prepare('INSERT INTO search_sites(id,url,label,adapter_id,enabled,created_at,updated_at) VALUES(?,?,?,?,0,?,?)').run(site.id,v.url,v.label,v.adapterId,utc(),utc());
+      const v=validateSearchSite({url:site.url,label:site.label,adapterId:site.adapter_id,searchTemplate:site.search_template||'',enabled:false});
+      db.prepare('INSERT INTO search_sites(id,url,label,adapter_id,enabled,search_template,created_at,updated_at) VALUES(?,?,?,?,0,?,?,?)').run(site.id,v.url,v.label,v.adapterId,v.searchTemplate,utc(),utc());
      }
      for(const item of backup.config){
       if(!['jellyfin_url','library_label','preferred_language','transfer_schedule'].includes(item.key))continue;
