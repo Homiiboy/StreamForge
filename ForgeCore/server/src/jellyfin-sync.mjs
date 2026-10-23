@@ -44,7 +44,7 @@ export function recentJellyfinSync(db){return rows(db,'SELECT * FROM jellyfin_sy
  * child episodes. Prevents whole-library pagination from hiding later seasons
  * and never assigns a special from an unrelated series to this title.
  */
-export async function jellyfinSeriesInventory(db,title,{fetcher,maxPages=10}={}){
+export async function jellyfinSeriesInventory(db,title,{fetcher,maxPages=20}={}){
  const desired=norm(title);
  if(desired.length<2||desired.length>140)throw Object.assign(Error('Invalid series name'),{status:400});
  const creds=credentials(db),series=[];

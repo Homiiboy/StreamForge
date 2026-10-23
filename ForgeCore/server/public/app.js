@@ -428,11 +428,24 @@ $('#siteSearchForm').addEventListener('submit',async e=>{e.preventDefault();
      panel.replaceChildren(node('p',inspected.notice,'muted'));
      panel.append(node('p','Erkannte Staffeln: '+(inspected.seasons.join(', ')||'keine')+' · Erkannte Episoden: '+inspected.episodes.length+' · ForgeCore-Projekt: '+(inspected.mediaId?'vorhanden':'nicht angelegt')));
      panel.append(node('p','Geprüfte Seiten: '+inspected.checkedSeasonPages+' · Quellen-Episoden pro Staffel: '+inspected.sourceCounts.map(x=>(x.season===0?'Specials':'Staffel '+x.season)+': '+x.episodes).join(' · '),'muted'));
+     panel.append(node('p','Specials auf Quellseite: '+inspected.specialsState+(inspected.truncated?' · ACHTUNG: Quellenliste hat das maximale Ausleselimit erreicht.':''),'muted'));
      for(const item of inspected.seasonErrors)panel.append(node('p','Staffel '+item.season+': '+item.error,'muted'));
      const list=node('div','','items');
-     for(const ep of inspected.episodes){
-      const entry=node('div','','episode');entry.append(node('strong','S'+String(ep.season).padStart(2,'0')+'E'+String(ep.episode).padStart(2,'0')));
-      entry.append(node('span',(ep.title||'Episode')+' · ForgeCore: '+ep.forgecoreStatus,'muted'));list.append(entry);
+     for(const season of [...new Set(inspected.episodes.map(ep=>ep.season))]){
+      const group=node('details');group.append(node('summary',(season===0?'Specials':'Staffel '+season)+' · '+inspected.episodes.filter(ep=>ep.season===season).length+' Episoden'));
+      // Populate the long lists only on demand, keeping One Piece usable.
+      let rendered=false;
+      group.addEventListener('toggle',()=>{
+       if(!group.open||rendered)return;
+       rendered=true;
+       for(const ep of inspected.episodes.filter(ep=>ep.season===season)){
+        const entry=node('div','','episode');
+        entry.append(node('strong','S'+String(ep.season).padStart(2,'0')+'E'+String(ep.episode).padStart(2,'0')));
+        entry.append(node('span',(ep.title||'Episode')+' · ForgeCore: '+ep.forgecoreStatus,'muted'));
+        group.append(entry);
+       }
+      });
+      list.append(group);
      }
      panel.append(list);
      panel.append(action('Serienübersicht: Quelle + Jellyfin',async()=>{

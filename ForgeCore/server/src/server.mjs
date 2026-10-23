@@ -276,11 +276,11 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     return response(res,200,await inspectCatalog(db,body,{...(sourceFetch?{fetcher:sourceFetch}:{})}));
    }
    if(path==='/api/catalog/jellyfin-preview'&&method==='POST'){
-    const body=await readJson(req);
+    const body=await readJson(req,512*1024);
     return response(res,200,await catalogJellyfinPreview(db,body,{...(jellyfinFetch?{fetcher:jellyfinFetch}:{})}));
    }
    if(path==='/api/catalog/series-overview'&&method==='POST'){
-    const body=await readJson(req);
+    const body=await readJson(req,512*1024);
     return response(res,200,await seriesOverview(db,body,{...(jellyfinFetch?{fetcher:jellyfinFetch}:{})}));
    }
    if(path==='/api/catalog/import-jellyfin'&&method==='POST'){

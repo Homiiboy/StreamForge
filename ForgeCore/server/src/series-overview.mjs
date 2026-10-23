@@ -6,7 +6,7 @@ const normalize=v=>String(v||'').normalize('NFKD').toLowerCase().replace(/[\u030
 const error=(message,status=400)=>{throw Object.assign(Error(message),{status})};
 const key=e=>e.season+':'+e.episode;
 function validate(title,sourceEpisodes){
- if(typeof title!=='string'||title.trim().length<2||title.trim().length>140||!Array.isArray(sourceEpisodes)||sourceEpisodes.length>200)error('Ungültige Serienübersicht');
+ if(typeof title!=='string'||title.trim().length<2||title.trim().length>140||!Array.isArray(sourceEpisodes)||sourceEpisodes.length>2500)error('Ungültige Serienübersicht');
  const entries=new Map();
  for(const e of sourceEpisodes){
   if(!e||!Number.isInteger(e.season)||e.season<0||e.season>999||!Number.isInteger(e.episode)||e.episode<0||e.episode>9999)error('Ungültige Episodendaten');
