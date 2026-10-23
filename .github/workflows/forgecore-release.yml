@@ -32,7 +32,7 @@ jobs:
         run: |
           VERSION=$(node -p "require('./ForgeCore/server/package.json').version")
           TAG="forgecore-v${VERSION}"
-          test "$VERSION" = "1.3.3"
+          test "$VERSION" = "1.3.4"
           mkdir -p dist
           zip -qr "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
             ForgeCore/server ForgeCore/compose.yaml ForgeCore/.env.example ForgeCore/install.sh ForgeCore/manage.sh \
@@ -42,5 +42,5 @@ jobs:
               --title "ForgeCore ${VERSION} – Catalog Title Search" \
               --prerelease \
               --target "$GITHUB_SHA" \
-              --notes "ForgeCore v1.3.3 – Testversion mit read-only Staffel- und Episodeninspektion sowie Jellyfin-Abgleichvorschau. Automatische End-to-End-Suche und unattended Downloads noch nicht fertig. ZimaOS-Hardwaretests ausstehend."
+              --notes "ForgeCore v1.3.4 – Testversion mit read-only Staffel- und Episodeninspektion sowie Jellyfin-Abgleichvorschau. Automatische End-to-End-Suche und unattended Downloads noch nicht fertig. ZimaOS-Hardwaretests ausstehend."
           fi
