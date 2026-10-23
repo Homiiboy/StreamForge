@@ -433,6 +433,31 @@ $('#siteSearchForm').addEventListener('submit',async e=>{e.preventDefault();
       entry.append(node('span',(ep.title||'Episode')+' · ForgeCore: '+ep.forgecoreStatus,'muted'));list.append(entry);
      }
      panel.append(list);
+     panel.append(action('Serienübersicht: Quelle + Jellyfin',async()=>{
+      const overview=await api('/api/catalog/series-overview',{method:'POST',body:{title:inspected.title,episodes:inspected.episodes.map(e=>({season:e.season,episode:e.episode,title:e.title}))}});
+      const display=node('div','','items');display.append(node('h3','Gemeinsame Serienübersicht: '+overview.title));
+      const summary=overview.summary;
+      display.append(node('p','Episoden (bekannter Ausschnitt): '+summary.total+' · Jellyfin: '+summary.inJellyfin+' · Quelle: '+summary.onSource+' · Beides: '+summary.onBoth+' · Nur Quelle: '+summary.sourceOnly+' · Nur Jellyfin: '+summary.jellyfinOnly));
+      const progress=node('progress');progress.max=Math.max(1,summary.total);progress.value=summary.inJellyfin;progress.setAttribute('aria-label','In Jellyfin bestätigte Episoden im bekannten Ausschnitt');display.append(progress);
+      display.append(node('p',overview.notice,'muted'));
+      for(const season of overview.seasons){
+       const section=node('details');section.open=overview.seasons.length===1;
+       section.append(node('summary','Staffel '+season));
+       for(const ep of overview.episodes.filter(e=>e.season===season)){
+        const line=node('div','','episode');
+        line.append(node('strong','S'+String(ep.season).padStart(2,'0')+'E'+String(ep.episode).padStart(2,'0')));
+        line.append(node('span',(ep.title||'Ohne Titel')+' · '+(ep.jellyfin?'In Jellyfin':'Nicht im geprüften Jellyfin-Inventar')+' · '+(ep.source?'Quelle erkannt':'Nicht auf geprüfter Quellseite')+' · ForgeCore: '+ep.forgecoreStatus,'muted'));
+        section.append(line);
+       }
+       display.append(section);
+      }
+      display.append(action('Jellyfin-Serie in ForgeCore übernehmen',async()=>{
+       if(!confirm('Serie und in Jellyfin bestätigte Episoden als ForgeCore-Projekt übernehmen? Bestehende Einträge bleiben unverändert.'))return;
+       const outcome=await api('/api/catalog/import-jellyfin',{method:'POST',body:{title:inspected.title,confirm:'IMPORT_JELLYFIN_SERIES'}});
+       notify((outcome.created?'Projekt angelegt. ':'Projekt aktualisiert. ')+outcome.added+' Episoden übernommen.');await refreshLibrary();
+      }));
+      panel.append(display);
+     }));
      panel.append(action('Mit Jellyfin vergleichen (nur Vorschau)',async()=>{
       const data=await api('/api/catalog/jellyfin-preview',{method:'POST',body:{title:inspected.title,episodes:inspected.episodes.map(x=>({season:x.season,episode:x.episode}))}});
       panel.append(node('p','Jellyfin: '+data.matched+' von '+inspected.episodes.length+' erkannten Episoden vorhanden · '+data.foundInJellyfin+' Episoden im geprüften Inventar. Es wurden keine Daten verändert.'));

@@ -1,11 +1,19 @@
 # ForgeCore
 
-## v1.3.0 – Staffel- und Episodenvorschau (Prerelease)
+## v1.3.1 – Gemeinsame Serienübersicht und Jellyfin-Import
+
+- Vereinte, nach Staffel sortierte Episodenansicht aus Quelle, Jellyfin und bestehenden ForgeCore-Einträgen. Fortschritt bezieht sich ausdrücklich nur auf den bekannten Ausschnitt und ist **keine Vollständigkeitsgarantie**.
+- Manuelle Übernahme der in Jellyfin tatsächlich vorhandenen Episoden in ForgeCore mit expliziter Bestätigung. Vorhandene Projekte und Episodenstatus bleiben erhalten; keine Jellyfin-Dateien werden geändert.
+- Keine neue Datenbankmigration und keine automatischen Downloads. Maximal 1.000 Jellyfin-Episoden werden abgefragt.
+- Cloudflare DNS bleibt in der Compose-Datei enthalten.
+
+
+## v1.3.1 – Staffel- und Episodenvorschau (Prerelease)
 
 Aus Katalogtreffern lassen sich unterstützte Staffel- und Episoden-URLs inspizieren. Nur eindeutige Nummern in URL-Pfaden werden als Episoden erkannt; dies ist **keine vollständige Staffeldatenbank**. Bekannte ForgeCore-Episodenstatus werden lesend angezeigt. Auf ausdrücklichen Klick kann die Anzeige mit höchstens 1.000 Jellyfin-Episoden verglichen werden. Es werden weder Jellyfin-Dateien noch ForgeCore-Status geändert. Eine fehlende Folge in dieser Vorschau beweist nicht, dass die Folge nicht existiert. Cloudflare-DNS bleibt in der Compose-YAML enthalten.
 
 
-## v1.3.0 – Verbesserte Katalogsuche
+## v1.3.1 – Verbesserte Katalogsuche
 
 - Kommentar-, Forums-, Support- und Hilfeseiten werden nicht mehr als Serientreffer angezeigt.
 - HTML-Zeichen werden entschlüsselt; alternative Titel bleiben separat und Ergebnisse werden nach Titelnähe sortiert.
@@ -14,13 +22,13 @@ Aus Katalogtreffern lassen sich unterstützte Staffel- und Episoden-URLs inspizi
 - Keine neue Datenbankmigration; keine Downloads oder Sicherheitsausnahmen.
 
 
-## V1.3.0 – Titelsuche und Katalogerkennung
+## V1.3.1 – Titelsuche und Katalogerkennung
 
 Die Website-Suche meldet jetzt auch Titel- und Detailseiten als **Katalogtreffer**, wenn noch kein direkter Medienlink vorliegt. Auf bis zu fünf passenden Detailseiten werden vorhandene Medienlinks analysiert; die Ergebnisliste kennzeichnet Katalogtreffer getrennt von Medienlinks. Eine pro Website hinterlegte Suchadresse mit `{query}` ist für Seiten mit eigener Suche entscheidend. Keine universelle Volltextsuche, keine Umgehung von Schutzmaßnahmen und keine automatische Warteschlangenaktion. Weitere Website-spezifische Adapter werden später benötigt.
 
 
 
-## V1.3.0 – Netzwerkfix für Website-Suche
+## V1.3.1 – Netzwerkfix für Website-Suche
 
 Korrigiert die DNS-Pinning-Callback-Antwort für Node.js 22, wenn HTTP `lookup` mit `all:true` aufruft. Der Fehler `Invalid IP address: undefined` ist damit behoben, während SSRF-Abwehr, IP-Pinning und Redirect-Neuprüfung erhalten bleiben. Websites können unabhängig davon Such-URLs/Strukturänderungen oder Schutzmaßnahmen haben. Paket bleibt ein Prerelease bis zum Praxistest auf ZimaOS.
 
