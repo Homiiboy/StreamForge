@@ -57,3 +57,28 @@ test('linked season navigation stays on the configured origin',async()=>{
  const html='<a href="/series/demo/staffel-1">One</a><a href="/series/demo/staffel-2">Two</a><a href="https://unrelated.example/series/demo/staffel-3">Three</a>';
  assert.deepEqual(linkedSeasons(html,'https://example.org/series/demo').map(x=>x.season),[1,2]);
 });
+
+test('long series catalog keeps more than 200 episodes and checks linked season zero',async()=>{
+ const {openDatabase}=await import('../src/db.mjs');
+ const {inspectCatalog,inspectCatalogHtml,linkedSeasons}=await import('../src/catalog-inspect.mjs');
+ const slug='https://example.org/series/one-piece';
+ const seasons=Array.from({length:24},(_,n)=>'<a href="/series/one-piece/staffel-'+n+'">Staffel '+n+'</a>').join('');
+ const page=n=>Array.from({length:n===0?3:51},(_,j)=>'<a href="/season/'+n+'/episode/'+(j+1)+'">Episode '+(j+1)+'</a>').join('');
+ const fetcher=async url=>({url,body:Buffer.from(url===slug?seasons+page(1):page(Number(url.match(/staffel-(\d+)/)?.[1]||1)))});
+ const db=openDatabase(':memory:');
+ try{
+  db.prepare('INSERT INTO search_sites(id,url,label,adapter_id,enabled,search_template,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').run('long','https://example.org/','Example','auto',1,'','now','now');
+  const outcome=await inspectCatalog(db,{siteId:'long',url:slug,title:'One Piece'},{fetcher});
+  assert.equal(outcome.episodes.length,23*51+3);
+  assert.equal(outcome.checkedSeasonPages,25);
+  assert.equal(outcome.sourceCounts.find(x=>x.season===0).episodes,3);
+  assert.equal(outcome.truncated,false);
+  assert.equal(outcome.specialsState,'erkannt');
+ }finally{db.close()}
+});
+test('catalog truncation only reports true when the cap is reached',async()=>{
+ const {inspectCatalogHtml,MAX_CATALOG_EPISODES}=await import('../src/catalog-inspect.mjs');
+ const make=n=>Array.from({length:n},(_,i)=>'<a href="/season/1/episode/'+(i+1)+'">E'+(i+1)+'</a>').join('');
+ assert.equal(inspectCatalogHtml(make(250),'https://example.org/series/long').truncated,false);
+ assert.equal(inspectCatalogHtml(make(MAX_CATALOG_EPISODES),'https://example.org/series/long').truncated,true);
+});
