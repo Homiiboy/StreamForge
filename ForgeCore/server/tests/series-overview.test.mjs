@@ -19,7 +19,7 @@ test('overview unifies source, Jellyfin and tracked episodes without inventing g
 });
 test('confirmed import is idempotent and preserves manually changed statuses',async()=>{
  const db=openDatabase(':memory:');
- const fetcher=async()=>({ok:true,json:async()=>({Items:jellyfin,TotalRecordCount:jellyfin.length})});
+ const fetcher=async url=>({ok:true,json:async()=>url.includes('IncludeItemTypes=Series')?{Items:[{Type:'Series',Name:'Slugterra',Id:'abcdef1234567890'}],TotalRecordCount:1}:{Items:jellyfin.filter(x=>x.SeriesName==='Slugterra').map(x=>({...x,SeriesId:'abcdef1234567890'})),TotalRecordCount:2}});
  db.prepare('INSERT INTO config(key,value) VALUES(?,?)').run('jellyfin_url','http://127.0.0.1:8097');
  db.prepare('INSERT INTO config(key,value) VALUES(?,?)').run('jellyfin_api_key','test-token-123456');
  try{
@@ -33,5 +33,28 @@ test('confirmed import is idempotent and preserves manually changed statuses',as
   assert.equal(second.created,false);assert.equal(second.added,0);
   assert.equal(db.prepare('SELECT status FROM episodes WHERE id=?').get(row.id).status,'ignored');
   assert.equal(db.prepare('SELECT count(*) AS total FROM media').get().total,1);
+ }finally{db.close()}
+});
+
+test('different series specials are excluded and specials default to hidden',()=>{
+ const db=openDatabase(':memory:');
+ try{
+  const content=[{Type:'Episode',SeriesName:'Slugterra',SeriesId:'abcdef1234567890',ParentIndexNumber:1,IndexNumber:1,Name:'A'},{Type:'Episode',SeriesName:'Slugterra',SeriesId:'abcdef1234567890',ParentIndexNumber:0,IndexNumber:1,Name:'Special'}];
+  const result=buildSeriesOverview(db,'Slugterra',[],content);
+  assert.equal(result.summary.inJellyfin,1);
+  assert.ok(!result.seasons.includes(0));
+  assert.equal(buildSeriesOverview(db,'Slugterra',[],content,{includeSpecials:true}).summary.inJellyfin,2);
+ }finally{db.close()}
+});
+test('series scoped Jellyfin read rejects ambiguous series and unrelated series IDs',async()=>{
+ const {jellyfinSeriesInventory}=await import('../src/jellyfin-sync.mjs');
+ const db=openDatabase(':memory:');
+ db.prepare('INSERT INTO config(key,value) VALUES(?,?)').run('jellyfin_url','http://127.0.0.1:8097');
+ db.prepare('INSERT INTO config(key,value) VALUES(?,?)').run('jellyfin_api_key','test-token-123456');
+ try{
+  const fetcher=async url=>({ok:true,json:async()=>url.includes('IncludeItemTypes=Series')?{Items:[{Id:'abcdef1234567890',Type:'Series',Name:'Slugterra'}],TotalRecordCount:1}:{Items:[{Type:'Episode',SeriesId:'deadbeef99999999',ParentIndexNumber:0,IndexNumber:1},{Type:'Episode',SeriesId:'abcdef1234567890',ParentIndexNumber:3,IndexNumber:1}],TotalRecordCount:2}});
+  const result=await jellyfinSeriesInventory(db,'Slugterra',{fetcher});
+  assert.equal(result.items.length,1);
+  assert.equal(result.specials,0);
  }finally{db.close()}
 });

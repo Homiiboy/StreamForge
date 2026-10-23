@@ -436,11 +436,12 @@ $('#siteSearchForm').addEventListener('submit',async e=>{e.preventDefault();
      }
      panel.append(list);
      panel.append(action('Serienübersicht: Quelle + Jellyfin',async()=>{
-      const overview=await api('/api/catalog/series-overview',{method:'POST',body:{title:inspected.title,episodes:inspected.episodes.map(e=>({season:e.season,episode:e.episode,title:e.title}))}});
+      const overview=await api('/api/catalog/series-overview',{method:'POST',body:{title:inspected.title,episodes:inspected.episodes.map(e=>({season:e.season,episode:e.episode,title:e.title})),includeSpecials:false}});
       const display=node('div','','items');display.append(node('h3','Gemeinsame Serienübersicht: '+overview.title));
       const summary=overview.summary;
       display.append(node('p','Episoden (bekannter Ausschnitt): '+summary.total+' · Jellyfin: '+summary.inJellyfin+' · Quelle: '+summary.onSource+' · Beides: '+summary.onBoth+' · Nur Quelle: '+summary.sourceOnly+' · Nur Jellyfin: '+summary.jellyfinOnly));
       const progress=node('progress');progress.max=Math.max(1,summary.total);progress.value=summary.inJellyfin;progress.setAttribute('aria-label','In Jellyfin bestätigte Episoden im bekannten Ausschnitt');display.append(progress);
+      display.append(node('p','Specials (Staffel 0) sind ausgeblendet: '+overview.hiddenSpecials+' Einträge der ausgewählten Jellyfin-Serie. Specials anderer Serien werden nicht einbezogen.','muted'));
       display.append(node('p',overview.notice,'muted'));
       for(const season of overview.seasons){
        const section=node('details');section.open=overview.seasons.length===1;

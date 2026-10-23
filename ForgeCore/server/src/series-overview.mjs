@@ -1,5 +1,5 @@
 import {randomUUID} from 'node:crypto';
-import {jellyfinInventory} from './jellyfin-sync.mjs';
+import {jellyfinSeriesInventory} from './jellyfin-sync.mjs';
 import {utc,transaction} from './db.mjs';
 
 const normalize=v=>String(v||'').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
@@ -14,14 +14,15 @@ function validate(title,sourceEpisodes){
  }
  return {title:title.trim(),sourceEpisodes:[...entries.values()]};
 }
-export function buildSeriesOverview(db,title,sourceEpisodes,inventory){
- const {title:clean,sourceEpisodes:source}=validate(title,sourceEpisodes);
+export function buildSeriesOverview(db,title,sourceEpisodes,inventory,{includeSpecials=false}={}){
+ const {title:clean,sourceEpisodes:validated}=validate(title,sourceEpisodes);
+ const source=validated.filter(item=>includeSpecials||item.season!==0);
  const wanted=normalize(clean);
  const jellyfin=new Map();
  for(const item of inventory){
   if(item?.Type!=='Episode'||normalize(item.SeriesName)!==wanted||!Number.isInteger(item.ParentIndexNumber)||!Number.isInteger(item.IndexNumber))continue;
   const season=item.ParentIndexNumber,episode=item.IndexNumber;
-  if(season<0||season>999||episode<0||episode>9999)continue;
+  if(season<0||season>999||episode<0||episode>9999||(!includeSpecials&&season===0))continue;
   jellyfin.set(season+':'+episode,{season,episode,title:String(item.Name||'').slice(0,140)});
  }
  const project=db.prepare("SELECT id,title FROM media WHERE kind='series'").all().find(item=>normalize(item.title)===wanted);
@@ -29,21 +30,21 @@ export function buildSeriesOverview(db,title,sourceEpisodes,inventory){
  const combined=new Map();
  for(const e of source)combined.set(key(e),{season:e.season,episode:e.episode,source:true,jellyfin:false,title:e.title,forgecoreStatus:'not-tracked'});
  for(const e of jellyfin.values()){const k=key(e),current=combined.get(k)||{season:e.season,episode:e.episode,source:false,jellyfin:false,title:e.title,forgecoreStatus:'not-tracked'};current.jellyfin=true;if(!current.title)current.title=e.title;combined.set(k,current)}
- for(const e of tracked){const k=key(e),current=combined.get(k)||{season:e.season,episode:e.episode,source:false,jellyfin:false,title:e.title,forgecoreStatus:'not-tracked'};current.forgecoreStatus=e.status;if(!current.title)current.title=e.title;combined.set(k,current)}
+ for(const e of tracked.filter(e=>includeSpecials||e.season!==0)){const k=key(e),current=combined.get(k)||{season:e.season,episode:e.episode,source:false,jellyfin:false,title:e.title,forgecoreStatus:'not-tracked'};current.forgecoreStatus=e.status;if(!current.title)current.title=e.title;combined.set(k,current)}
  const episodes=[...combined.values()].sort((a,b)=>a.season-b.season||a.episode-b.episode);
  return {title:clean,mediaId:project?.id||null,seasons:[...new Set(episodes.map(e=>e.season))],episodes,summary:{total:episodes.length,inJellyfin:episodes.filter(e=>e.jellyfin).length,onSource:episodes.filter(e=>e.source).length,onBoth:episodes.filter(e=>e.source&&e.jellyfin).length,sourceOnly:episodes.filter(e=>e.source&&!e.jellyfin).length,jellyfinOnly:episodes.filter(e=>e.jellyfin&&!e.source).length,tracked:episodes.filter(e=>e.forgecoreStatus!=='not-tracked').length},complete:false,notice:'Die Übersicht vereinigt nur bestätigte Einträge aus der untersuchten Seite, Jellyfin und ForgeCore. Fehlende Einträge beweisen nicht, dass Episoden fehlen.'};
 }
-export async function seriesOverview(db,{title,episodes},{fetcher}={}){
+export async function seriesOverview(db,{title,episodes,includeSpecials=false},{fetcher}={}){
  validate(title,episodes);
- const inventory=await jellyfinInventory(db,fetcher?{fetcher}:{});
- return buildSeriesOverview(db,title,episodes,inventory);
+ const scoped=await jellyfinSeriesInventory(db,title,fetcher?{fetcher}:{});
+ return {...buildSeriesOverview(db,title,episodes,scoped.items,{includeSpecials:includeSpecials===true}),jellyfinSeriesId:scoped.seriesId,hiddenSpecials:includeSpecials?0:scoped.specials};
 }
 /** Only explicit project import; never modifies Jellyfin or existing episode statuses. */
 export async function importJellyfinSeries(db,{title,confirm},{fetcher}={}){
  if(confirm!=='IMPORT_JELLYFIN_SERIES')error('Bestätigung erforderlich');
  if(typeof title!=='string'||title.trim().length<2||title.trim().length>140)error('Ungültiger Serientitel');
- const inventory=await jellyfinInventory(db,fetcher?{fetcher}:{});
- const overview=buildSeriesOverview(db,title,[],inventory);
+ const scoped=await jellyfinSeriesInventory(db,title,fetcher?{fetcher}:{});
+ const overview=buildSeriesOverview(db,title,[],scoped.items);
  if(!overview.summary.inJellyfin)error('Keine passende Jellyfin-Serie gefunden',404);
  const now=utc(),id=overview.mediaId||randomUUID();let added=0;
  transaction(db,()=>{

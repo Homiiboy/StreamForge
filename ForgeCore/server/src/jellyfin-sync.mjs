@@ -38,3 +38,36 @@ export function applyReconciliation(db,preview){
  return {updated,matched:preview.matched,unmatched:preview.unmatched};
 }
 export function recentJellyfinSync(db){return rows(db,'SELECT * FROM jellyfin_sync_events ORDER BY id DESC LIMIT 20')}
+
+/**
+ * Fetch a single Jellyfin Series by its real item ID, then enumerate its
+ * child episodes. Prevents whole-library pagination from hiding later seasons
+ * and never assigns a special from an unrelated series to this title.
+ */
+export async function jellyfinSeriesInventory(db,title,{fetcher,maxPages=10}={}){
+ const desired=norm(title);
+ if(desired.length<2||desired.length>140)throw Object.assign(Error('Invalid series name'),{status:400});
+ const creds=credentials(db),series=[];
+ for(let i=0;i<5;i++){
+  const data=await jellyfinRequest(creds,'/Items?Recursive=true&IncludeItemTypes=Series&StartIndex='+i*200+'&Limit=200',{fetcher});
+  if(!Array.isArray(data.Items))throw Error('Unexpected Jellyfin series response');
+  series.push(...data.Items.filter(s=>s.Type==='Series'&&norm(s.Name)===desired&&/^[0-9a-f]{8,64}$/i.test(String(s.Id||''))));
+  if(data.Items.length<200||data.TotalRecordCount<=((i+1)*200))break;
+ }
+ if(series.length>1)throw Object.assign(Error('Mehrere Jellyfin-Serien mit diesem Namen gefunden. Bitte Serien-ID eindeutig zuordnen.'),{status:409});
+ if(!series.length)return {seriesId:null,items:[],specials:0};
+ const id=series[0].Id,items=[];
+ for(let i=0;i<maxPages;i++){
+  const path='/Items?ParentId='+id+'&Recursive=true&IncludeItemTypes=Episode&StartIndex='+i*200+'&Limit=200';
+  const page=await jellyfinRequest(creds,path,{fetcher});
+  if(!Array.isArray(page.Items))throw Error('Unexpected Jellyfin episode response');
+  for(const item of page.Items){
+   // A real Jellyfin series identity is mandatory. Entries from other
+   // series, or without verifiable parent identity, are excluded.
+   if(item.Type==='Episode'&&String(item.SeriesId||'').toLowerCase()===id.toLowerCase())items.push(item);
+  }
+  if(page.Items.length<200||page.TotalRecordCount<=((i+1)*200))break;
+  if(i===maxPages-1)throw Object.assign(Error('Jellyfin-Serieninventar ist zu groß oder unvollständig'),{status:409});
+ }
+ return {seriesId:id,items,specials:items.filter(item=>item.ParentIndexNumber===0).length};
+}

@@ -31,7 +31,7 @@ export function saveJellyfin(db,input){
 export async function jellyfinRequest({url,apiKey},path,{method='GET',fetcher,timeout=8000}={}){
  const base=new URL(url);
  if(!['http:','https:'].includes(base.protocol)||base.username||base.password||base.pathname!=='/')fail('Invalid Jellyfin origin');
- if(!['/System/Info','/Library/Refresh'].includes(path)&&!/^\/Items\?Recursive=true&IncludeItemTypes=(?:Episode|Movie|Series)(?:&StartIndex=\d{1,5})?(?:&Limit=\d{1,3})?$/.test(path))fail('Unsupported Jellyfin operation');
+ if(!['/System/Info','/Library/Refresh'].includes(path)&&!/^\/Items\?(?:(?:ParentId=[0-9a-fA-F]{8,64}&)?Recursive=true&IncludeItemTypes=(?:Episode|Movie|Series))(?:&StartIndex=\d{1,5})?(?:&Limit=\d{1,3})?$/.test(path))fail('Unsupported Jellyfin operation');
  const target=new URL(path.slice(1),base.href);
  if(fetcher){
   const response=await fetcher(target.href,{method,headers:{'X-Emby-Token':apiKey},redirect:'error'});

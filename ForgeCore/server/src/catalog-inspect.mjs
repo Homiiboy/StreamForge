@@ -1,5 +1,5 @@
 import {parseWebUrl,safeFetch} from './source-security.mjs';
-import {jellyfinInventory} from './jellyfin-sync.mjs';
+import {jellyfinSeriesInventory} from './jellyfin-sync.mjs';
 
 const norm=value=>String(value||'').normalize('NFKD').toLowerCase().replace(/[\u0300-\u036f]/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 const text=value=>String(value||'').replace(/<[^>]*>/g,' ').replace(/&(#x[0-9a-f]+|#[0-9]+|amp|quot|apos|nbsp);/gi,(all,s)=>{
@@ -100,6 +100,6 @@ export async function catalogJellyfinPreview(db,{title,episodes},{fetcher}={}){
   if(!Number.isInteger(e.season)||e.season<0||e.season>999||!Number.isInteger(e.episode)||e.episode<0||e.episode>9999)fail('Ungültige Episodennummer');
   return {season:e.season,episode:e.episode};
  });
- const inventory=await jellyfinInventory(db,fetcher?{fetcher}:{});
- return compareCatalogWithJellyfin(title,normalized,inventory);
+ const scoped=await jellyfinSeriesInventory(db,title,fetcher?{fetcher}:{});
+ return {...compareCatalogWithJellyfin(title,normalized.filter(e=>e.season!==0),scoped.items.filter(e=>e.ParentIndexNumber!==0)),seriesId:scoped.seriesId,hiddenSpecials:scoped.specials};
 }
