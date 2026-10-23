@@ -20,6 +20,8 @@ test('overview unifies source, Jellyfin and tracked episodes without inventing g
 test('confirmed import is idempotent and preserves manually changed statuses',async()=>{
  const db=openDatabase(':memory:');
  const fetcher=async()=>({ok:true,json:async()=>({Items:jellyfin,TotalRecordCount:jellyfin.length})});
+ db.prepare('INSERT INTO config(key,value) VALUES(?,?)').run('jellyfin_url','http://127.0.0.1:8097');
+ db.prepare('INSERT INTO config(key,value) VALUES(?,?)').run('jellyfin_api_key','test-token-123456');
  try{
   await assert.rejects(importJellyfinSeries(db,{title:'Slugterra',confirm:'NO'},{fetcher}),/Bestätigung/);
   assert.equal(db.prepare('SELECT count(*) AS total FROM media').get().total,0);
