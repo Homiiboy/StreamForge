@@ -56,18 +56,45 @@ export async function jellyfinSeriesInventory(db,title,{fetcher,maxPages=10}={})
  }
  if(series.length>1)throw Object.assign(Error('Mehrere Jellyfin-Serien mit diesem Namen gefunden. Bitte Serien-ID eindeutig zuordnen.'),{status:409});
  if(!series.length)return {seriesId:null,items:[],specials:0};
- const id=series[0].Id,items=[];
+ const id=series[0].Id,items=[],pageSize=200;
+ // Prefer the series-scoped query, but several Jellyfin builds reject
+ // ParentId with Recursive=true. Fall back to paged episodes filtered by
+ // the already resolved SeriesId, never by episode title or season alone.
+ let useGlobal=false;
+ const seen=new Set();
  for(let i=0;i<maxPages;i++){
-  const path='/Items?ParentId='+id+'&Recursive=true&IncludeItemTypes=Episode&StartIndex='+i*200+'&Limit=200';
-  const page=await jellyfinRequest(creds,path,{fetcher});
+  const path=(useGlobal?'/Items?Recursive=true&IncludeItemTypes=Episode':'/Items?ParentId='+id+'&Recursive=true&IncludeItemTypes=Episode')+'&StartIndex='+i*pageSize+'&Limit='+pageSize;
+  let page;
+  try{page=await jellyfinRequest(creds,path,{fetcher})}
+  catch(e){
+   if(!useGlobal&&i===0){useGlobal=true;i=-1;continue}
+   throw e;
+  }
   if(!Array.isArray(page.Items))throw Error('Unexpected Jellyfin episode response');
   for(const item of page.Items){
-   // A real Jellyfin series identity is mandatory. Entries from other
-   // series, or without verifiable parent identity, are excluded.
-   if(item.Type==='Episode'&&String(item.SeriesId||'').toLowerCase()===id.toLowerCase())items.push(item);
+   if(item.Type!=='Episode'||String(item.SeriesId||'').toLowerCase()!==id.toLowerCase())continue;
+   const episodeId=String(item.Id||item.SeriesId+':'+item.ParentIndexNumber+':'+item.IndexNumber);
+   if(seen.has(episodeId))continue;
+   seen.add(episodeId);items.push(item);
   }
-  if(page.Items.length<200||page.TotalRecordCount<=((i+1)*200))break;
+  if(page.Items.length<pageSize||page.TotalRecordCount<=((i+1)*pageSize))break;
   if(i===maxPages-1)throw Object.assign(Error('Jellyfin-Serieninventar ist zu groß oder unvollständig'),{status:409});
+ }
+ // Some servers respond 200 with no child episodes to the scoped query.
+ // Retry a bounded, full-library enumeration with strict SeriesId filtering.
+ if(items.length===0&&!useGlobal){
+  for(let i=0;i<maxPages;i++){
+   const page=await jellyfinRequest(creds,'/Items?Recursive=true&IncludeItemTypes=Episode&StartIndex='+i*pageSize+'&Limit='+pageSize,{fetcher});
+   if(!Array.isArray(page.Items))throw Error('Unexpected Jellyfin episode response');
+   for(const item of page.Items){
+    if(item.Type!=='Episode'||String(item.SeriesId||'').toLowerCase()!==id.toLowerCase())continue;
+    const episodeId=String(item.Id||item.SeriesId+':'+item.ParentIndexNumber+':'+item.IndexNumber);
+    if(seen.has(episodeId))continue;
+    seen.add(episodeId);items.push(item);
+   }
+   if(page.Items.length<pageSize||page.TotalRecordCount<=((i+1)*pageSize))break;
+   if(i===maxPages-1)throw Object.assign(Error('Jellyfin-Inventar überschreitet die sichere Seitenbegrenzung'),{status:409});
+  }
  }
  return {seriesId:id,items,specials:items.filter(item=>item.ParentIndexNumber===0).length};
 }
