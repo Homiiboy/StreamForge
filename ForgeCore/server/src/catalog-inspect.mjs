@@ -8,6 +8,7 @@ const text=value=>String(value||'').replace(/<[^>]*>/g,' ').replace(/&(#x[0-9a-f
 }).replace(/\s+/g,' ').trim();
 const fail=m=>{throw Object.assign(Error(m),{status:400})};
 const episodePattern=/(?:^|[\/_.-])s(\d{1,3})[._-]*e(\d{1,4})(?:[\/_.-]|$)/i;
+export const MAX_CATALOG_EPISODES=2500;
 const explicitPattern=/(?:^|\/)(?:season|staffel)[-_/ ]*(\d{1,3})\/(?:episode|folge)[-_/ ]*(\d{1,4})(?:\/|$)/i;
 export function episodeFromUrl(url){
  let path;try{path=new URL(url).pathname}catch{return null}
@@ -32,9 +33,9 @@ export function inspectCatalogHtml(html,base){
   seasons.add(ep.season);
   const key=ep.season+':'+ep.episode;
   if(!episodes.has(key))episodes.set(key,{...ep,title:text(m[2]).slice(0,140),url:url.href});
-  if(episodes.size>=200)break;
+  if(episodes.size>=MAX_CATALOG_EPISODES)break;
  }
- return {seasons:[...seasons].filter(x=>x<=999).sort((a,b)=>a-b).slice(0,100),episodes:[...episodes.values()].sort((a,b)=>a.season-b.season||a.episode-b.episode),truncated:episodes.size>=200};
+ return {seasons:[...seasons].filter(x=>x<=999).sort((a,b)=>a-b).slice(0,100),episodes:[...episodes.values()].sort((a,b)=>a.season-b.season||a.episode-b.episode),truncated:episodes.size>=MAX_CATALOG_EPISODES};
 }
 export function linkedSeasons(html,base){
  const baseUrl=new URL(base),out=new Map();
@@ -44,9 +45,9 @@ export function linkedSeasons(html,base){
   if(link.origin!==baseUrl.origin||link.search||link.hash)continue;
   const n=link.pathname.match(/(?:^|\/)(?:season|staffel)[-_\/]*(\d{1,3})(?:\/|$)/i);
   if(!n)continue;
-  const season=Number(n[1]);if(season<1||season>100)continue;
+  const season=Number(n[1]);if(season<0||season>100)continue;
   out.set(season,link.href);
-  if(out.size>=20)break;
+  if(out.size>=40)break;
  }
  return [...out].sort((a,b)=>a[0]-b[0]).map(([season,url])=>({season,url}));
 }
@@ -64,6 +65,7 @@ export async function inspectCatalog(db,{siteId,url,title},{fetcher=safeFetch}={
  const html=response.body.toString('utf8');
  const parsed=inspectCatalogHtml(html,final.href);
  const navigation=linkedSeasons(html,final.href),all=[...parsed.episodes],errors=[],visited=new Set([final.href]);
+ let anyTruncated=parsed.truncated;
  for(const link of navigation){
   if(visited.has(link.url))continue;
   visited.add(link.url);
@@ -71,12 +73,13 @@ export async function inspectCatalog(db,{siteId,url,title},{fetcher=safeFetch}={
    const extra=await fetcher(link.url,{maxBytes:2*1024*1024,timeout:12000});
    if(parseWebUrl(extra.url).origin!==root.origin)throw Error('Cross-origin season redirect');
    const part=inspectCatalogHtml(extra.body.toString('utf8'),extra.url);
-   all.push(...part.episodes);parsed.seasons.push(...part.seasons);
+   all.push(...part.episodes);parsed.seasons.push(...part.seasons);anyTruncated=anyTruncated||part.truncated;
   }catch(e){errors.push({season:link.season,error:String(e.message||e).slice(0,120)})}
  }
  const merged=new Map();
  for(const e of all)merged.set(e.season+':'+e.episode,e);
- parsed.episodes=[...merged.values()].sort((a,b)=>a.season-b.season||a.episode-b.episode).slice(0,200);
+ parsed.episodes=[...merged.values()].sort((a,b)=>a.season-b.season||a.episode-b.episode).slice(0,MAX_CATALOG_EPISODES);
+ anyTruncated=anyTruncated||merged.size>MAX_CATALOG_EPISODES;
  parsed.seasons=[...new Set([...parsed.seasons,...navigation.map(x=>x.season)])].sort((a,b)=>a-b);
 
  const exact=norm(title);
@@ -84,7 +87,7 @@ export async function inspectCatalog(db,{siteId,url,title},{fetcher=safeFetch}={
  const known=media?db.prepare('SELECT season,episode,title,status FROM episodes WHERE media_id=? ORDER BY season,episode LIMIT 1000').all(media.id):[];
  const knownKey=new Map(known.map(x=>[x.season+':'+x.episode,x]));
  const episodes=parsed.episodes.map(x=>({...x,forgecoreStatus:knownKey.get(x.season+':'+x.episode)?.status||'not-tracked'}));
- return {title:title.trim(),siteLabel:site.label,url:final.href,checkedSeasonPages:visited.size,seasonErrors:errors,sourceCounts:parsed.seasons.map(season=>({season,episodes:parsed.episodes.filter(e=>e.season===season).length})),mediaId:media?.id||null,seasons:[...new Set([...parsed.seasons,...known.map(e=>e.season)])].sort((a,b)=>a-b),episodes,knownEpisodes:known,truncated:parsed.truncated,notice:'Nur direkt anhand von URL-Mustern belegte Episoden werden erkannt. Unvollständige Staffellisten sind möglich.'};
+ return {title:title.trim(),siteLabel:site.label,url:final.href,checkedSeasonPages:visited.size,seasonErrors:errors,sourceCounts:parsed.seasons.map(season=>({season,episodes:parsed.episodes.filter(e=>e.season===season).length})),mediaId:media?.id||null,seasons:[...new Set([...parsed.seasons,...known.map(e=>e.season)])].sort((a,b)=>a-b),episodes,knownEpisodes:known,truncated:anyTruncated,specialsState:parsed.episodes.some(e=>e.season===0)?'erkannt':navigation.some(n=>n.season===0)?'keine belegten Episoden':'nicht auf untersuchten Seiten nachgewiesen',notice:'Nur belegte Episoden-URLs werden gezählt. Nicht erkannte Specials oder Staffeln gelten nicht automatisch als nicht vorhanden.'};
 }
 export function compareCatalogWithJellyfin(title,episodes,inventory){
  const needle=norm(title),have=new Map();
@@ -95,7 +98,7 @@ export function compareCatalogWithJellyfin(title,episodes,inventory){
  return {foundInJellyfin:have.size,matched:episodes.filter(x=>have.has(x.season+':'+x.episode)).length,items:episodes.map(x=>({season:x.season,episode:x.episode,inJellyfin:have.has(x.season+':'+x.episode)}))};
 }
 export async function catalogJellyfinPreview(db,{title,episodes},{fetcher}={}){
- if(typeof title!=='string'||title.length<2||title.length>140||!Array.isArray(episodes)||episodes.length>200)fail('Ungültige Jellyfin-Vorschau');
+ if(typeof title!=='string'||title.length<2||title.length>140||!Array.isArray(episodes)||episodes.length>MAX_CATALOG_EPISODES)fail('Ungültige Jellyfin-Vorschau');
  const normalized=episodes.map(e=>{
   if(!Number.isInteger(e.season)||e.season<0||e.season>999||!Number.isInteger(e.episode)||e.episode<0||e.episode>9999)fail('Ungültige Episodennummer');
   return {season:e.season,episode:e.episode};
