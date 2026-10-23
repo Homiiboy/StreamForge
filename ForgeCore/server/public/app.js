@@ -395,6 +395,81 @@ $('#siteAddForm').addEventListener('submit',async e=>{e.preventDefault();try{
  await api('/api/search-sites',{method:'POST',body:{url:$('#siteUrl').value,label:$('#siteLabel').value,searchTemplate:$('#siteSearchTemplate').value}});
  $('#siteUrl').value='';$('#siteLabel').value='';$('#siteSearchTemplate').value='';await refreshSiteCatalog();notify('Website gespeichert.');
 }catch(error){notify(error.message,true);}});
+
+const isDirectMediaUrl=url=>{try{return /\.(?:mp4|m4v|m3u8|mpd)$/i.test(new URL(url).pathname)}catch{return false}};
+/** Existing transfer queue only; no external player streams or automatic download. */
+function directListingDownload(container,{url,title,season=null,episode=null,mediaType='title'}){
+ if(!isDirectMediaUrl(url))return;
+ const picker=node('div','','sourceEntry');
+ const start=action('Download auswählen',async()=>{
+  picker.replaceChildren();
+  const projects=(await api('/api/media')).items;
+  const type=(season!=null&&episode!=null||mediaType==='series'||mediaType==='episode')?'series':'movie';
+  const options=projects.filter(item=>item.kind===type);
+  const project=node('select');project.setAttribute('aria-label','Medienprojekt');
+  for(const item of options){const opt=node('option',item.title);opt.value=item.id;project.append(opt)}
+  const create=node('option','+ Neues '+(type==='series'?'Serien':'Film')+'projekt erstellen');create.value='new';project.append(create);
+  const matched=options.find(item=>item.title.toLowerCase().trim()===title.toLowerCase().trim());
+  project.value=matched?.id||'new';
+  picker.append(node('p','Download zuordnen: '+title+' · nur direkte, ungeschützte Medien-URL','muted'),project);
+  const episodeNumber=type==='series'?node('input'):null;
+  const seasonNumber=type==='series'?node('input'):null;
+  if(type==='series'){
+   for(const [input,value,label] of [[seasonNumber,season,'Staffel'],[episodeNumber,episode,'Episode']]){
+    input.type='number';input.min='0';input.max=label==='Staffel'?'999':'9999';
+    input.placeholder=label;input.value=value==null?'':String(value);
+    input.setAttribute('aria-label',label);picker.append(input);
+   }
+  }
+  picker.append(action('Download in Warteschlange',async()=>{
+   if(!confirm('Diese direkte Medienadresse zum Download vormerken? Nur bei eigenen oder rechtmäßig zum Download freigegebenen Quellen bestätigen.'))return;
+   let mediaId=project.value;
+   if(mediaId==='new'){
+    const label=prompt('Titel des neuen '+(type==='series'?'Serien':'Film')+'projekts:',title);
+    if(!label||!label.trim())return;
+    const created=await api('/api/media',{method:'POST',body:{kind:type,title:label.trim()}});
+    mediaId=created.item.id;
+   }
+   let episodeId=null;
+   if(type==='series'){
+    const sn=Number(seasonNumber.value),en=Number(episodeNumber.value);
+    if(!seasonNumber.value||!episodeNumber.value||!Number.isInteger(sn)||sn<0||!Number.isInteger(en)||en<0)throw Error('Gültige Staffel- und Episodennummer erforderlich');
+    const current=(await api('/api/media/'+mediaId+'/episodes')).items;
+    let ep=current.find(e=>e.season===sn&&e.episode===en);
+    if(ep?.status==='available'||ep?.status==='ignored')throw Error('Episode als vorhanden/ignoriert markiert – kein erneuter Download.');
+    if(!ep){const created=await api('/api/media/'+mediaId+'/episodes',{method:'POST',body:{season:sn,episode:en,title:'Folge '+en}});ep=created.item}
+    episodeId=ep.id;
+   }
+   const saved=(await api('/api/media/'+mediaId+'/sources')).items;
+   let source=saved.find(x=>x.url===url);
+   if(!source)source=(await api('/api/media/'+mediaId+'/sources',{method:'POST',body:{url,label:'Direktlink aus der Website-Suche'}})).item;
+   const job=await api('/api/transfers',{method:'POST',body:{mediaId,sourceId:source.id,episodeId}});
+   notify('Download '+job.item.id.slice(0,8)+' vorgemerkt. Fortschritt unter Aufgaben → Stream-Downloads.');
+   await refreshLibrary();
+   picker.replaceChildren(node('p','Download vorgemerkt – unter Aufgaben verfolgen.','muted'));
+  }));
+ });
+ container.append(start,picker);
+}
+function playerInspectionButton(container,siteId,url,{showDirect=false,title='',season=null,episode=null,mediaType='episode'}={}){
+ const details=node('div','','items');
+ container.append(action('Player prüfen',async()=>{
+  details.replaceChildren(node('p','PlayerBridge untersucht die Episodenseite …','muted'));
+  const found=await api('/api/playerbridge/inspect',{method:'POST',body:{siteId,url}});
+  details.replaceChildren(node('p',found.counts.external+' externe Player · '+found.counts.direct+' direkte Medienlinks','muted'));
+  for(const host of found.players){
+   const line=node('div','','sourceEntry');
+   line.append(node('strong',host.hoster+' · '+(host.kind==='player'?'Externer Player':'Direkte Medienquelle')));
+   const link=node('a','Link öffnen');link.href=host.url;link.target='_blank';link.rel='noopener noreferrer';line.append(link);
+   if(host.kind==='direct'&&showDirect)directListingDownload(line,{url:host.url,title,season,episode,mediaType});
+   details.append(line);
+  }
+  if(!found.players.length)details.append(node('p','Keine öffentlich im HTML verlinkten Player gefunden. Kein direkter Download verfügbar.','muted'));
+  details.append(node('p',found.notice,'muted'));
+ }));
+ container.append(details);
+}
+
 $('#siteSearchForm').addEventListener('submit',async e=>{e.preventDefault();
  const box=$('#siteSearchResults');box.replaceChildren(node('p','Suche läuft …','muted'));
  try{
@@ -414,6 +489,7 @@ $('#siteSearchForm').addEventListener('submit',async e=>{e.preventDefault();
    for(const source of hits){
     const link=node('a',hits.length>1?source.siteLabel+' öffnen':(source.kind==='catalog'?'Titelseite öffnen':'Quelle öffnen'));
     link.href=source.url;link.target='_blank';link.rel='noopener noreferrer';row.append(link);
+    if(source.kind==='media')directListingDownload(row,{url:source.url,title:hit.title,season:source.season,episode:source.episode,mediaType:hit.mediaType});
    }
    if(hit.kind==='catalog'){
     const details=node('details');const summary=node('summary','Serien-/Filmdetails');details.append(summary);
@@ -421,6 +497,7 @@ $('#siteSearchForm').addEventListener('submit',async e=>{e.preventDefault();
     if(hit.aliases?.length)details.append(node('p','Alternative Titel: '+hit.aliases.join(' · ')));
     details.append(node('p','Quellen: '+[...new Set(hits.map(h=>h.siteLabel))].join(', ')));
     details.append(node('p','Diese Ansicht zeigt erkannte Katalogdaten, noch keine vollständige Staffel- und Episodenliste.','muted'));
+    if(hit.mediaType==='movie'||hit.mediaType==='episode')playerInspectionButton(details,hit.siteId,hit.url,{showDirect:true,title:hit.title,season:hit.season,episode:hit.episode,mediaType:hit.mediaType});
     const panel=node('div','','items');
     details.append(action('Staffeln & Episoden auslesen',async()=>{
      panel.replaceChildren(node('p','Katalogseite wird geprüft …','muted'));
@@ -442,6 +519,7 @@ $('#siteSearchForm').addEventListener('submit',async e=>{e.preventDefault();
         const entry=node('div','','episode');
         entry.append(node('strong','S'+String(ep.season).padStart(2,'0')+'E'+String(ep.episode).padStart(2,'0')));
         entry.append(node('span',(ep.title||'Episode')+' · ForgeCore: '+ep.forgecoreStatus,'muted'));
+        playerInspectionButton(entry,hit.siteId,ep.url,{showDirect:true,title:inspected.title,season:ep.season,episode:ep.episode,mediaType:'series'});
         group.append(entry);
        }
       });
