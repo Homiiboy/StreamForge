@@ -36,6 +36,20 @@ export function inspectCatalogHtml(html,base){
  }
  return {seasons:[...seasons].filter(x=>x<=999).sort((a,b)=>a-b).slice(0,100),episodes:[...episodes.values()].sort((a,b)=>a.season-b.season||a.episode-b.episode),truncated:episodes.size>=200};
 }
+export function linkedSeasons(html,base){
+ const baseUrl=new URL(base),out=new Map();
+ for(const m of String(html).matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)){
+  const raw=m[1].match(/\bhref\s*=\s*["']([^"']+)["']/i)?.[1];if(!raw)continue;
+  let link;try{link=new URL(raw.replace(/&amp;/g,'&'),base)}catch{continue}
+  if(link.origin!==baseUrl.origin||link.search||link.hash)continue;
+  const n=link.pathname.match(/(?:^|\/)(?:season|staffel)[-_\/]*(\d{1,3})(?:\/|$)/i);
+  if(!n)continue;
+  const season=Number(n[1]);if(season<1||season>100)continue;
+  out.set(season,link.href);
+  if(out.size>=20)break;
+ }
+ return [...out].sort((a,b)=>a[0]-b[0]).map(([season,url])=>({season,url}));
+}
 /** Only URLs belonging to an enabled, saved site can be inspected. */
 export async function inspectCatalog(db,{siteId,url,title},{fetcher=safeFetch}={}){
  if(typeof siteId!=='string'||typeof url!=='string'||typeof title!=='string'||title.trim().length<2||title.length>140)fail('Ungültige Kataloganfrage');
@@ -49,12 +63,28 @@ export async function inspectCatalog(db,{siteId,url,title},{fetcher=safeFetch}={
  if(final.origin!==root.origin)fail('Weiterleitung auf andere Website nicht zulässig');
  const html=response.body.toString('utf8');
  const parsed=inspectCatalogHtml(html,final.href);
+ const navigation=linkedSeasons(html,final.href),all=[...parsed.episodes],errors=[],visited=new Set([final.href]);
+ for(const link of navigation){
+  if(visited.has(link.url))continue;
+  visited.add(link.url);
+  try{
+   const extra=await fetcher(link.url,{maxBytes:2*1024*1024,timeout:12000});
+   if(parseWebUrl(extra.url).origin!==root.origin)throw Error('Cross-origin season redirect');
+   const part=inspectCatalogHtml(extra.body.toString('utf8'),extra.url);
+   all.push(...part.episodes);parsed.seasons.push(...part.seasons);
+  }catch(e){errors.push({season:link.season,error:String(e.message||e).slice(0,120)})}
+ }
+ const merged=new Map();
+ for(const e of all)merged.set(e.season+':'+e.episode,e);
+ parsed.episodes=[...merged.values()].sort((a,b)=>a.season-b.season||a.episode-b.episode).slice(0,200);
+ parsed.seasons=[...new Set([...parsed.seasons,...navigation.map(x=>x.season)])].sort((a,b)=>a-b);
+
  const exact=norm(title);
  const media=db.prepare("SELECT id,title FROM media WHERE kind='series'").all().find(m=>norm(m.title)===exact);
  const known=media?db.prepare('SELECT season,episode,title,status FROM episodes WHERE media_id=? ORDER BY season,episode LIMIT 1000').all(media.id):[];
  const knownKey=new Map(known.map(x=>[x.season+':'+x.episode,x]));
  const episodes=parsed.episodes.map(x=>({...x,forgecoreStatus:knownKey.get(x.season+':'+x.episode)?.status||'not-tracked'}));
- return {title:title.trim(),siteLabel:site.label,url:final.href,mediaId:media?.id||null,seasons:[...new Set([...parsed.seasons,...known.map(e=>e.season)])].sort((a,b)=>a-b),episodes,knownEpisodes:known,truncated:parsed.truncated,notice:'Nur direkt anhand von URL-Mustern belegte Episoden werden erkannt. Unvollständige Staffellisten sind möglich.'};
+ return {title:title.trim(),siteLabel:site.label,url:final.href,checkedSeasonPages:visited.size,seasonErrors:errors,sourceCounts:parsed.seasons.map(season=>({season,episodes:parsed.episodes.filter(e=>e.season===season).length})),mediaId:media?.id||null,seasons:[...new Set([...parsed.seasons,...known.map(e=>e.season)])].sort((a,b)=>a-b),episodes,knownEpisodes:known,truncated:parsed.truncated,notice:'Nur direkt anhand von URL-Mustern belegte Episoden werden erkannt. Unvollständige Staffellisten sind möglich.'};
 }
 export function compareCatalogWithJellyfin(title,episodes,inventory){
  const needle=norm(title),have=new Map();
