@@ -427,6 +427,8 @@ $('#siteSearchForm').addEventListener('submit',async e=>{e.preventDefault();
      const inspected=await api('/api/catalog/inspect',{method:'POST',body:{siteId:hit.siteId,url:hit.url,title:hit.title}});
      panel.replaceChildren(node('p',inspected.notice,'muted'));
      panel.append(node('p','Erkannte Staffeln: '+(inspected.seasons.join(', ')||'keine')+' · Erkannte Episoden: '+inspected.episodes.length+' · ForgeCore-Projekt: '+(inspected.mediaId?'vorhanden':'nicht angelegt')));
+     panel.append(node('p','Geprüfte Seiten: '+inspected.checkedSeasonPages+' · Quellen-Episoden pro Staffel: '+inspected.sourceCounts.map(x=>(x.season===0?'Specials':'Staffel '+x.season)+': '+x.episodes).join(' · '),'muted'));
+     for(const item of inspected.seasonErrors)panel.append(node('p','Staffel '+item.season+': '+item.error,'muted'));
      const list=node('div','','items');
      for(const ep of inspected.episodes){
       const entry=node('div','','episode');entry.append(node('strong','S'+String(ep.season).padStart(2,'0')+'E'+String(ep.episode).padStart(2,'0')));
@@ -442,7 +444,7 @@ $('#siteSearchForm').addEventListener('submit',async e=>{e.preventDefault();
       display.append(node('p',overview.notice,'muted'));
       for(const season of overview.seasons){
        const section=node('details');section.open=overview.seasons.length===1;
-       section.append(node('summary','Staffel '+season));
+       section.append(node('summary',season===0?'Specials (Staffel 0)':'Staffel '+season));
        for(const ep of overview.episodes.filter(e=>e.season===season)){
         const line=node('div','','episode');
         line.append(node('strong','S'+String(ep.season).padStart(2,'0')+'E'+String(ep.episode).padStart(2,'0')));

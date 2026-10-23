@@ -51,3 +51,9 @@ test('catalog inspection requires login, saved site, same origin, and never muta
   assert.equal(preview.status,409);
  }finally{await app.close()}
 });
+
+test('linked season navigation stays on the configured origin',async()=>{
+ const {linkedSeasons}=await import('../src/catalog-inspect.mjs');
+ const html='<a href="/series/demo/staffel-1">One</a><a href="/series/demo/staffel-2">Two</a><a href="https://unrelated.example/series/demo/staffel-3">Three</a>';
+ assert.deepEqual(linkedSeasons(html,'https://example.org/series/demo').map(x=>x.season),[1,2]);
+});
