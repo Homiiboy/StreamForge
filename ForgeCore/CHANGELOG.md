@@ -1,6 +1,13 @@
 # ForgeCore – Changelog
 
-## v1.3.1 – Gemeinsame Staffelübersicht und kontrollierter Import
+## v1.3.2 – Staffel-Navigation
+
+- Begrenzte Same-Origin-Auswertung verlinkter Staffelseiten und Zusammenführung der Episoden.
+- Staffelweise Quellenzählung, getrennte Specials und individuelle Fehlerhinweise.
+- Keine destruktiven Aktionen oder automatischen Downloads.
+
+
+## v1.3.2 – Gemeinsame Staffelübersicht und kontrollierter Import
 
 - Quelle/Jellyfin/ForgeCore-Episoden vereinigt, pro Staffel gruppiert und vorsichtig klassifiziert.
 - Fortschrittsanzeige für den bekannten Ausschnitt.
@@ -8,7 +15,7 @@
 - DNS-Konfiguration unverändert enthalten.
 
 
-## v1.3.1 – Katalog-Inspektion und Jellyfin-Vorschau
+## v1.3.2 – Katalog-Inspektion und Jellyfin-Vorschau
 
 - Authentifizierte, lesende Kataloginspektion für gespeicherte und aktive Websites; Same-Origin-Validierung.
 - Staffel-/Episodenerkennung nur aus expliziten URL-Mustern, maximal 200 Episoden.
@@ -18,7 +25,7 @@
 - DNS-Konfiguration (1.1.1.1 und 1.0.0.1) dauerhaft im Compose-Paket.
 
 
-## v1.3.1 – Titelqualität und Treffergruppierung
+## v1.3.2 – Titelqualität und Treffergruppierung
 
 - Diskussionen und Kommentare als falsche Serien- und Episodentreffer herausgefiltert.
 - HTML-Entities dekodiert, alternative Titel separiert, Suchtreffer nach Titelnähe sortiert.
@@ -26,7 +33,7 @@
 - Bestehende API-/Queue-Verträge und Sicherheitsgrenzen erhalten; Tests ergänzt.
 
 
-## v1.3.1 – Katalogsuche und Titelerkennung (Prerelease)
+## v1.3.2 – Katalogsuche und Titelerkennung (Prerelease)
 
 - Titel- und Detailseiten aus HTML-Suchergebnissen erscheinen als eigene Katalogtreffer, auch ohne direkte Mediendateien.
 - Begrenzte Analyse von bis zu fünf passenden, gleichursprünglichen Detailseiten; Medienlinks werden separat gekennzeichnet.
@@ -35,7 +42,7 @@
 
 
 
-## v1.3.1 – DNS-Pinning-Korrektur
+## v1.3.2 – DNS-Pinning-Korrektur
 
 - Node.js HTTP-`lookup` unterstützt `options.all=true` korrekt und bekommt geprüfte Adresse/Familie als Array statt als Einzeladresse.
 - IP-Pinning, URL-Validierung und SSRF-Schutz unverändert; neue Tests für IPv4 und IPv6 mit beiden Callback-Signaturen.
