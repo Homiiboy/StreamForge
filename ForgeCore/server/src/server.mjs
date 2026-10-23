@@ -13,6 +13,7 @@ import {JobQueue} from './queue.mjs';
 import {TransferQueue} from './transfer-queue.mjs';
 import {SourceAutomation} from './source-automation.mjs';
 import {validateSearchSite,searchSites} from './site-search.mjs';
+import {inspectPlayerPage} from './player-bridge.mjs';
 import {inspectCatalog,catalogJellyfinPreview} from './catalog-inspect.mjs';
 import {seriesOverview,importJellyfinSeries} from './series-overview.mjs';
 import {parseWebUrl} from './source-security.mjs';
@@ -270,6 +271,10 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
    if(path==='/api/site-search'&&method==='POST'){
     const b=await readJson(req);
     return response(res,200,await searchSites(db,b.query,{...(sourceFetch?{fetcher:sourceFetch}:{})}));
+   }
+   if(path==='/api/playerbridge/inspect'&&method==='POST'){
+    const data=await readJson(req);
+    return response(res,200,await inspectPlayerPage(db,data,{...(sourceFetch?{fetcher:sourceFetch}:{})}));
    }
    if(path==='/api/catalog/inspect'&&method==='POST'){
     const body=await readJson(req);
