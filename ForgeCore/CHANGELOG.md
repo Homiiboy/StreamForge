@@ -1,6 +1,14 @@
 # ForgeCore – Changelog
 
-## v1.3.5 – Lange Serien und Specials
+## v1.5.0 – PlayerBridge und Listen-Download
+
+- Read-only-PlayerBridge: externe Player und direkte Medienlinks differenziert; begrenzte Same-Origin-Inspektion.
+- Buttons für Playerprüfung an Episoden- und Filmtreffern, Downloadplanung bei unterstützten direkten Medien-URLs.
+- Projekt-/Episodenzuordnung und explizite Bestätigung nutzen vorhandene Transfer-Queue; bereits verfügbare oder ignorierte Folgen werden nicht eingeplant.
+- Regressionstests zu Linkklassifizierung und Domain-Grenzen; keine Hoster-Stream-Extraktion und keine Änderung an Jellyfin.
+
+
+## v1.5.0 – Lange Serien und Specials
 
 - 2.500 statt 200 Quellenepisoden, bis zu 40 Staffel-URLs.
 - Explicit Staffel-0-Navigation und ehrliche Specials-Erkennungsanzeige.
@@ -9,7 +17,7 @@
 - DNS und Jellyfin-Serien-ID-Schutz bleiben erhalten.
 
 
-## v1.3.5 – Jellyfin-Abgleich: API-Fallback
+## v1.5.0 – Jellyfin-Abgleich: API-Fallback
 
 - Unterstützt Jellyfin-Server, die `ParentId`-Episodenabfragen ablehnen oder leer zurückliefern.
 - Strikte `SeriesId`-Prüfung auch beim begrenzten Fallback über globale Episodenseiten.
@@ -17,7 +25,7 @@
 - Zwei neue Regressionstests für den Fehlerpfad.
 
 
-## v1.3.5 – Jellyfin-Serienidentität und Specials
+## v1.5.0 – Jellyfin-Serienidentität und Specials
 
 - Zuerst Jellyfin-Serie auflösen, dann nur deren Episoden anhand `SeriesId` übernehmen.
 - Serieneigene Episoden über `ParentId` seitenweise abrufen; keine globale 1.000-Einträge-Verdrängung.
@@ -26,14 +34,14 @@
 - Jellyfin-Medien bleiben unverändert; DNS weiterhin im Compose-Paket.
 
 
-## v1.3.5 – Staffel-Navigation
+## v1.5.0 – Staffel-Navigation
 
 - Begrenzte Same-Origin-Auswertung verlinkter Staffelseiten und Zusammenführung der Episoden.
 - Staffelweise Quellenzählung, getrennte Specials und individuelle Fehlerhinweise.
 - Keine destruktiven Aktionen oder automatischen Downloads.
 
 
-## v1.3.5 – Gemeinsame Staffelübersicht und kontrollierter Import
+## v1.5.0 – Gemeinsame Staffelübersicht und kontrollierter Import
 
 - Quelle/Jellyfin/ForgeCore-Episoden vereinigt, pro Staffel gruppiert und vorsichtig klassifiziert.
 - Fortschrittsanzeige für den bekannten Ausschnitt.
@@ -41,7 +49,7 @@
 - DNS-Konfiguration unverändert enthalten.
 
 
-## v1.3.5 – Katalog-Inspektion und Jellyfin-Vorschau
+## v1.5.0 – Katalog-Inspektion und Jellyfin-Vorschau
 
 - Authentifizierte, lesende Kataloginspektion für gespeicherte und aktive Websites; Same-Origin-Validierung.
 - Staffel-/Episodenerkennung nur aus expliziten URL-Mustern, maximal 200 Episoden.
@@ -51,7 +59,7 @@
 - DNS-Konfiguration (1.1.1.1 und 1.0.0.1) dauerhaft im Compose-Paket.
 
 
-## v1.3.5 – Titelqualität und Treffergruppierung
+## v1.5.0 – Titelqualität und Treffergruppierung
 
 - Diskussionen und Kommentare als falsche Serien- und Episodentreffer herausgefiltert.
 - HTML-Entities dekodiert, alternative Titel separiert, Suchtreffer nach Titelnähe sortiert.
@@ -59,7 +67,7 @@
 - Bestehende API-/Queue-Verträge und Sicherheitsgrenzen erhalten; Tests ergänzt.
 
 
-## v1.3.5 – Katalogsuche und Titelerkennung (Prerelease)
+## v1.5.0 – Katalogsuche und Titelerkennung (Prerelease)
 
 - Titel- und Detailseiten aus HTML-Suchergebnissen erscheinen als eigene Katalogtreffer, auch ohne direkte Mediendateien.
 - Begrenzte Analyse von bis zu fünf passenden, gleichursprünglichen Detailseiten; Medienlinks werden separat gekennzeichnet.
@@ -68,7 +76,7 @@
 
 
 
-## v1.3.5 – DNS-Pinning-Korrektur
+## v1.5.0 – DNS-Pinning-Korrektur
 
 - Node.js HTTP-`lookup` unterstützt `options.all=true` korrekt und bekommt geprüfte Adresse/Familie als Array statt als Einzeladresse.
 - IP-Pinning, URL-Validierung und SSRF-Schutz unverändert; neue Tests für IPv4 und IPv6 mit beiden Callback-Signaturen.
