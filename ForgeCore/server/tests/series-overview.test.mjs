@@ -58,3 +58,38 @@ test('series scoped Jellyfin read rejects ambiguous series and unrelated series 
   assert.equal(result.specials,0);
  }finally{db.close()}
 });
+
+test('comparison fallback tolerates rejected ParentId queries but filters by SeriesId',async()=>{
+ const {jellyfinSeriesInventory}=await import('../src/jellyfin-sync.mjs');
+ const db=openDatabase(':memory:');
+ db.prepare('INSERT INTO config(key,value) VALUES(?,?)').run('jellyfin_url','http://127.0.0.1:8097');
+ db.prepare('INSERT INTO config(key,value) VALUES(?,?)').run('jellyfin_api_key','test-token-123456');
+ const requested=[];
+ const fetcher=async url=>{
+  requested.push(url);
+  if(url.includes('IncludeItemTypes=Series'))return {ok:true,json:async()=>({Items:[{Type:'Series',Name:'Slugterra',Id:'abcdef1234567890'}],TotalRecordCount:1})};
+  if(url.includes('ParentId='))return {ok:false,status:400};
+  return {ok:true,json:async()=>({Items:[{Type:'Episode',SeriesId:'deadbeef12345678',ParentIndexNumber:0,IndexNumber:1},{Type:'Episode',SeriesId:'abcdef1234567890',ParentIndexNumber:3,IndexNumber:1}],TotalRecordCount:2})};
+ };
+ try{
+  const result=await jellyfinSeriesInventory(db,'Slugterra',{fetcher});
+  assert.equal(result.items.length,1);
+  assert.equal(result.items[0].ParentIndexNumber,3);
+  assert.ok(requested.some(x=>x.includes('ParentId=')));
+  assert.ok(requested.some(x=>x.includes('IncludeItemTypes=Episode')&&!x.includes('ParentId=')));
+ }finally{db.close()}
+});
+test('comparison fallback tolerates empty scoped response',async()=>{
+ const {jellyfinSeriesInventory}=await import('../src/jellyfin-sync.mjs');
+ const db=openDatabase(':memory:');
+ db.prepare('INSERT INTO config(key,value) VALUES(?,?)').run('jellyfin_url','http://127.0.0.1:8097');
+ db.prepare('INSERT INTO config(key,value) VALUES(?,?)').run('jellyfin_api_key','test-token-123456');
+ const fetcher=async url=>({ok:true,json:async()=>url.includes('IncludeItemTypes=Series')
+  ?{Items:[{Type:'Series',Name:'Slugterra',Id:'abcdef1234567890'}],TotalRecordCount:1}
+  :url.includes('ParentId=')?{Items:[],TotalRecordCount:0}
+  :{Items:[{Type:'Episode',SeriesId:'abcdef1234567890',ParentIndexNumber:3,IndexNumber:1}],TotalRecordCount:1}});
+ try{
+  const result=await jellyfinSeriesInventory(db,'Slugterra',{fetcher});
+  assert.equal(result.items.length,1);
+ }finally{db.close()}
+});
