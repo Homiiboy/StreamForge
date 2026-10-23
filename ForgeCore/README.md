@@ -1,21 +1,30 @@
 # ForgeCore
 
-## V1.3.4 – Jellyfin-Vergleich wiederhergestellt
+## V1.3.5 – Umfangreiche Serienkataloge
+
+- Quellseitige Episodenobergrenze von 200 auf 2.500 erweitert; bis zu 40 explizit verlinkte Staffelseiten (inkl. Staffel 0) können berücksichtigt werden.
+- Episodenansicht lädt Staffellisten erst beim Öffnen; große Serien bleiben bedienbar.
+- Vergleichs- und Serienübersicht-Antworten erlauben maximal 2.500 übergebene Episoden bei begrenztem Request-Body von 512 KiB.
+- Specials werden nur dann als Quellenepisoden ausgewiesen, wenn Staffel 0 und ihre Episoden ausdrücklich aus den Seiten hervorgehen; ansonsten Status „nicht nachgewiesen“. Kein automatisches Erfinden fehlender Folgen.
+- Jellyfin-Serieninventar kann bis zu 20 Seiten mit je 200 Einträgen für die identifizierte Serie lesen. DNS-Konfiguration unverändert enthalten.
+
+
+## V1.3.5 – Jellyfin-Vergleich wiederhergestellt
 
 Die per-Serien-ID abgesicherte Jellyfin-Episodenabfrage hat nun eine begrenzte Ersatzabfrage, wenn Jellyfin `ParentId` nicht unterstützt oder für eine Serie keine Kindfolgen zurückliefert. Der Ersatzweg lässt ausschließlich Episoden mit eindeutig übereinstimmender `SeriesId` zu. Specials bleiben standardmäßig ausgeblendet, und weder Medien noch Status werden verändert. Regressionstests prüfen HTTP 400 und leere Kindfolgen-Antworten.
 
 
-## v1.3.4 – Seriengenauer Jellyfin-Abgleich
+## v1.3.5 – Seriengenauer Jellyfin-Abgleich
 
 Die Vorschau löst nun die konkrete Jellyfin-Serie anhand ihres Jellyfin-Serienobjekts auf und ruft ausschließlich dessen Episoden ab. Jede Folge muss dieselbe `SeriesId` tragen. Dadurch werden Einträge anderer Serien verworfen und spätere Staffeln nicht durch die 1.000-Element-Grenze der gesamten Bibliothek verdrängt. Staffel 0/Specials ist in der Serienübersicht standardmäßig ausgeblendet und wird beim Projektimport nicht übernommen. Die Vorschau meldet, wie viele Specials der tatsächlich zugeordneten Serie ausgeblendet wurden; vorhandene ForgeCore-Status und Jellyfin-Dateien bleiben unberührt.
 
 
-## v1.3.4 – Staffel-Navigation
+## v1.3.5 – Staffel-Navigation
 
 Bei Katalog-Titeln werden bis zu 20 ausdrücklich verlinkte Staffelseiten derselben Website separat gelesen. Die Episoden werden zusammengeführt und doppelte Einträge entfernt. Staffel 0 wird getrennt als Specials angezeigt. Die Oberfläche zeigt die Anzahl der geprüften Seiten und Quellenepisoden pro Staffel. Bei dynamischen Staffelinhalten ohne sichtbare Links ist noch ein weiterer Adapter nötig; keine Downloads oder Jellyfin-Änderungen.
 
 
-## v1.3.4 – Gemeinsame Serienübersicht und Jellyfin-Import
+## v1.3.5 – Gemeinsame Serienübersicht und Jellyfin-Import
 
 - Vereinte, nach Staffel sortierte Episodenansicht aus Quelle, Jellyfin und bestehenden ForgeCore-Einträgen. Fortschritt bezieht sich ausdrücklich nur auf den bekannten Ausschnitt und ist **keine Vollständigkeitsgarantie**.
 - Manuelle Übernahme der in Jellyfin tatsächlich vorhandenen Episoden in ForgeCore mit expliziter Bestätigung. Vorhandene Projekte und Episodenstatus bleiben erhalten; keine Jellyfin-Dateien werden geändert.
@@ -23,12 +32,12 @@ Bei Katalog-Titeln werden bis zu 20 ausdrücklich verlinkte Staffelseiten dersel
 - Cloudflare DNS bleibt in der Compose-Datei enthalten.
 
 
-## v1.3.4 – Staffel- und Episodenvorschau (Prerelease)
+## v1.3.5 – Staffel- und Episodenvorschau (Prerelease)
 
 Aus Katalogtreffern lassen sich unterstützte Staffel- und Episoden-URLs inspizieren. Nur eindeutige Nummern in URL-Pfaden werden als Episoden erkannt; dies ist **keine vollständige Staffeldatenbank**. Bekannte ForgeCore-Episodenstatus werden lesend angezeigt. Auf ausdrücklichen Klick kann die Anzeige mit höchstens 1.000 Jellyfin-Episoden verglichen werden. Es werden weder Jellyfin-Dateien noch ForgeCore-Status geändert. Eine fehlende Folge in dieser Vorschau beweist nicht, dass die Folge nicht existiert. Cloudflare-DNS bleibt in der Compose-YAML enthalten.
 
 
-## v1.3.4 – Verbesserte Katalogsuche
+## v1.3.5 – Verbesserte Katalogsuche
 
 - Kommentar-, Forums-, Support- und Hilfeseiten werden nicht mehr als Serientreffer angezeigt.
 - HTML-Zeichen werden entschlüsselt; alternative Titel bleiben separat und Ergebnisse werden nach Titelnähe sortiert.
@@ -37,13 +46,13 @@ Aus Katalogtreffern lassen sich unterstützte Staffel- und Episoden-URLs inspizi
 - Keine neue Datenbankmigration; keine Downloads oder Sicherheitsausnahmen.
 
 
-## V1.3.4 – Titelsuche und Katalogerkennung
+## V1.3.5 – Titelsuche und Katalogerkennung
 
 Die Website-Suche meldet jetzt auch Titel- und Detailseiten als **Katalogtreffer**, wenn noch kein direkter Medienlink vorliegt. Auf bis zu fünf passenden Detailseiten werden vorhandene Medienlinks analysiert; die Ergebnisliste kennzeichnet Katalogtreffer getrennt von Medienlinks. Eine pro Website hinterlegte Suchadresse mit `{query}` ist für Seiten mit eigener Suche entscheidend. Keine universelle Volltextsuche, keine Umgehung von Schutzmaßnahmen und keine automatische Warteschlangenaktion. Weitere Website-spezifische Adapter werden später benötigt.
 
 
 
-## V1.3.4 – Netzwerkfix für Website-Suche
+## V1.3.5 – Netzwerkfix für Website-Suche
 
 Korrigiert die DNS-Pinning-Callback-Antwort für Node.js 22, wenn HTTP `lookup` mit `all:true` aufruft. Der Fehler `Invalid IP address: undefined` ist damit behoben, während SSRF-Abwehr, IP-Pinning und Redirect-Neuprüfung erhalten bleiben. Websites können unabhängig davon Such-URLs/Strukturänderungen oder Schutzmaßnahmen haben. Paket bleibt ein Prerelease bis zum Praxistest auf ZimaOS.
 
