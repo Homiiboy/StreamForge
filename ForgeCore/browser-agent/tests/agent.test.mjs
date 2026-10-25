@@ -21,7 +21,7 @@ test('browser media candidate is restricted to direct 2xx HTTPS playback file UR
  assert.equal(mediaCandidate({url:'http://media.example/video.m3u8',status:200}),null);
 });
 test('isolated chromium agent captures runtime video network responses without clicking popups',async()=>{
- const listeners={},frame={evaluate:async()=>1};
+ const listeners={};let times=0;const frame={evaluate:async()=>++times===1?1:0};
  let closed=false,continued=0;
  const page={
   on:(event,cb)=>{listeners[event]=cb;},
