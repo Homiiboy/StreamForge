@@ -95,3 +95,41 @@ test('v1.4.4 episode planning never queues streams and honors Jellyfin and exist
   await assert.rejects(()=>applyDiscoverEpisodePlan(db,{id:319,season:1,episodes:[44],confirm:'ADD_MISSING'},{token:'fake-token',fetcher:tmdb,jellyfinFetch:jf}),/nicht in TMDB/);
  }finally{db.close()}
 });
+
+
+test('v1.4.1-v1.4.4 authenticated API, CSRF, backup and non-destructive planning',async()=>{
+ const {createApp}=await import('../src/server.mjs');
+ const app=createApp({dbPath:':memory:',startWorker:false,staticFiles:false,tmdbToken:'fake-token',discoverFetch:tmdb,tvmazeFetch:tvmaze});
+ await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));
+ const base='http://127.0.0.1:'+app.server.address().port;
+ let cookie='',csrf='';
+ const send=async(path,method='GET',body,csrfEnabled=true)=>{
+  const headers={'x-forgecore-request':'1'};
+  if(body!==undefined)headers['content-type']='application/json';
+  if(cookie)headers.cookie=cookie;
+  if(csrfEnabled&&csrf)headers['x-forgecore-csrf']=csrf;
+  const r=await fetch(base+path,{method,headers,body:body===undefined?undefined:JSON.stringify(body)});
+  if(r.headers.get('set-cookie'))cookie=r.headers.get('set-cookie').split(';')[0];
+  const data=await r.json();if(data.csrf)csrf=data.csrf;
+  return {status:r.status,data};
+ };
+ try{
+  assert.equal((await send('/api/discover/watchlist')).status,401);
+  assert.equal((await send('/api/setup','POST',{password:'strong password for discover api'})).status,201);
+  assert.equal((await send('/api/auth/login','POST',{password:'strong password for discover api'})).status,200);
+  assert.equal((await send('/api/discover/detail?kind=tv&id=319')).data.tvmaze.matched,true);
+  assert.equal((await send('/api/discover/season?id=319&season=0')).data.episodes.length,1);
+  assert.equal((await send('/api/discover/watchlist','POST',{kind:'tv',id:319},false)).status,403);
+  assert.equal((await send('/api/discover/watchlist','POST',{kind:'tv',id:319,monitored:true})).status,201);
+  assert.equal((await send('/api/discover/watchlist')).data.items[0].monitored,true);
+  const overview=await send('/api/discover/plan?id=319&season=1');
+  assert.equal(overview.data.episodes.length,3);
+  assert.equal((await send('/api/discover/plan/apply','POST',{id:319,season:1,episodes:[2],confirm:'ADD_MISSING'})).data.added,1);
+  assert.equal(app.db.prepare('SELECT count(*) AS n FROM transfer_jobs').get().n,0);
+  const exportResult=await send('/api/backup/export');
+  assert.equal(exportResult.data.discover_watchlist.length,1);
+  assert.equal((await send('/api/backup/import','POST',{...exportResult.data,confirm:'REPLACE'})).status,200);
+  assert.equal((await send('/api/discover/watchlist')).data.items[0].monitored,false);
+  assert.equal((await send('/api/discover/watchlist','DELETE',{kind:'tv',id:319})).data.removed,true);
+ }finally{await app.close()}
+});
