@@ -55,7 +55,7 @@ export function mediaCandidate({url,contentType,status}={}){
 }
 export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
  resolver=lookup,browserFactory=()=>chromium.launch({headless:true,chromiumSandbox:true,
-  args:['--disable-dev-shm-usage','--autoplay-policy=no-user-gesture-required']}),
+  args:['--disable-dev-shm-usage','--autoplay-policy=no-user-gesture-required','--force-webrtc-ip-handling-policy=disable_non_proxied_udp']}),
  sleep=ms=>new Promise(ok=>setTimeout(ok,ms))
 }={}){
  const target=await validatePublicUrl(url,{resolver});
@@ -66,6 +66,8 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
  try{
   context=await browser.newContext({acceptDownloads:false,ignoreHTTPSErrors:false,serviceWorkers:'block',javaScriptEnabled:true,
    permissions:[],viewport:{width:1280,height:720},locale:'de-DE'});
+  // Network interception must cover WebSockets too; they do not pass through HTTP routing.
+  if(typeof context.routeWebSocket==='function')await context.routeWebSocket('**/*',socket=>socket.close());
   await context.route('**/*',async route=>{
    const u=route.request().url();
    if(!/^https:\/\//i.test(u)){blocked++;return route.abort().catch(()=>{})}
