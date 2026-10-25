@@ -7,10 +7,10 @@ Da main bereits ForgeCore v1.5.0 enthält, wird der historische v1.4.0-Funktions
 | Meilenstein | Funktion | Status |
 | --- | --- | --- |
 | v1.4.0 | TMDB-Katalogsuche, Trends, Titelkarten und Übernahme in die Bibliothek | Implementiert im Entwicklungsbranch; CI/Hardware offen |
-| v1.4.1 | TMDB-Detailansicht, Anbieter und TVmaze-Metadaten | Geplant |
-| v1.4.2 | Jellyfin-Bestandsabgleich direkt in Discover | Geplant |
-| v1.4.3 | Serverseitige Merkliste und freiwillige Überwachung | Geplant |
-| v1.4.4 | Staffelauswahl, Episodenauswahl und Fehlfolgenplanung | Geplant |
+| v1.4.1 | TMDB-Detailansicht, Anbieter und TVmaze-Metadaten | Implementiert im Entwicklungsbranch; CI/Hardware offen |
+| v1.4.2 | Jellyfin-Bestandsabgleich direkt in Discover | Implementiert; eindeutige Serien-ID und manuell ausgelöste Prüfung |
+| v1.4.3 | Serverseitige Merkliste und freiwillige Überwachung | Implementiert; SQLite, sechsstündliche Checks, deduplizierte Hinweise |
+| v1.4.4 | Staffelauswahl, Episodenauswahl und Fehlfolgenplanung | Implementiert; keine automatischen Downloads |
 | v1.5.0 | PlayerBridge | Bereits vorhanden; wird beim Discover-Merge bewahrt |
 
 TMDB-/JustWatch-Streamingverfügbarkeit ist keine Downloadberechtigung. Downloads dürfen nur über unterstützte, autorisierte direkte Mediendateien erfolgen.
