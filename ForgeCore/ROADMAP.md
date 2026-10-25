@@ -1,5 +1,13 @@
 # ForgeCore – Entwicklungsroadmap
 
+## v1.6.2 – Discover-Katalogdiagnose (implementiert)
+
+- Erkanntes Titel-/Episodenangebot ohne Direktdownload separat anzeigen
+- Für eindeutig zugeordnete Seiten vorhandene PlayerBridge öffnen
+- Keine falschen Aussagen zur Verfügbarkeit deutscher Synchronfassungen
+- ZimaOS-Livetest mit gespeicherten Quellen ausstehend
+
+
 ## v1.6.1 – Host-Konfiguration schützen (umgesetzt)
 
 - Sicherer ZIP-Updater `upgrade.sh`, kein Überschreiben privater `.env`.
