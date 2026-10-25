@@ -15,6 +15,8 @@ import {SourceAutomation} from './source-automation.mjs';
 import {validateSearchSite,searchSites} from './site-search.mjs';
 import {inspectPlayerPage} from './player-bridge.mjs';
 import {discoverCatalog,discoverDetail,hasDiscoverToken} from './discover.mjs';
+import {discoverMetadata,discoverSeason,validKind,validId,validSeason} from './discover-metadata.mjs';
+import {discoverWatchlist,watchlistSave,watchlistRemove,watchlistMonitor,discoverJellyfinPreview,discoverEpisodePlan,applyDiscoverEpisodePlan,checkDiscoverRadar} from './discover-state.mjs';
 import {inspectCatalog,catalogJellyfinPreview} from './catalog-inspect.mjs';
 import {seriesOverview,importJellyfinSeries} from './series-overview.mjs';
 import {parseWebUrl} from './source-security.mjs';
@@ -56,8 +58,8 @@ function response(res,status,data,headers={}){
  res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','x-frame-options':'DENY',...headers});
  res.end(JSON.stringify(data));
 }
-function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'v1-release-pending-hardware-validation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,sourceAutomation:true,jellyfinApi:true,sourceAdapterSelection:true,operations:true,discover:true,lifecycleBackup:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
-export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,download,subtitleFetch,jellyfinFetch,discoverFetch,tmdbToken=process.env.FORGECORE_TMDB_TOKEN,automationInterval=60000}={}){
+function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'v1-release-pending-hardware-validation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,sourceAutomation:true,jellyfinApi:true,sourceAdapterSelection:true,operations:true,discover:true,discoverDetails:true,discoverJellyfin:true,discoverWatchlist:true,discoverEpisodePlan:true,lifecycleBackup:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
+export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,download,subtitleFetch,jellyfinFetch,discoverFetch,tvmazeFetch,tmdbToken=process.env.FORGECORE_TMDB_TOKEN,automationInterval=60000}={}){
  const db=openDatabase(dbPath);
  const queue=new JobQueue(db,{mediaRoot});
  const transfers=new TransferQueue(db,{mediaRoot,...(download?{download}:{})});
@@ -66,6 +68,11 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
   void cleanOldStaging(process.env.FORGECORE_STAGING_ROOT||'/data',db).catch(error=>process.stderr.write('Recovery cleanup warning: '+error.message+'\n'));
   queue.start();transfers.start();automation.start();
  }
+ const radarParams={token:tmdbToken,...(discoverFetch?{fetcher:discoverFetch}:{}),...(tvmazeFetch?{tvmazeFetch}:{})};
+ let radarTask=null;
+ const runRadar=()=>radarTask||(radarTask=checkDiscoverRadar(db,radarParams).finally(()=>{radarTask=null;}));
+ const radarTimer=startWorker&&hasDiscoverToken(tmdbToken)?setInterval(()=>{void runRadar().catch(e=>process.stderr.write('Discover radar: '+e.message+'\n'));},6*60*60*1000):null;
+ radarTimer?.unref();
  const authAttempts=new Map();
  const gate=(req)=>{
   const origin=req.headers.origin;
@@ -113,6 +120,31 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     return response(res,200,{configured:hasDiscoverToken(tmdbToken),source:'TMDB',region:'AT',language:'de-DE'});
    if(path==='/api/discover'&&method==='GET')
     return response(res,200,await discoverCatalog({token:tmdbToken,query:url.searchParams.get('q')||'',kind:url.searchParams.get('kind')||'all',...(discoverFetch?{fetcher:discoverFetch}:{})}));
+   // v1.4.1 – extended metadata and explicit per-season listing.
+   const discoverOpts={token:tmdbToken,...(discoverFetch?{fetcher:discoverFetch}:{}),...(tvmazeFetch?{tvmazeFetch}:{})};
+   if(path==='/api/discover/detail'&&method==='GET')
+    return response(res,200,await discoverMetadata({...discoverOpts,kind:url.searchParams.get('kind'),id:url.searchParams.get('id')}));
+   if(path==='/api/discover/season'&&method==='GET')
+    return response(res,200,await discoverSeason({...discoverOpts,id:url.searchParams.get('id'),season:url.searchParams.get('season')}));
+   // v1.4.2 – independent, read-only Jellyfin preview; no inventory mutation.
+   if(path==='/api/discover/jellyfin'&&method==='GET')
+    return response(res,200,await discoverJellyfinPreview(db,{kind:url.searchParams.get('kind'),id:url.searchParams.get('id')},{...discoverOpts,jellyfinFetch}));
+   // v1.4.3 – SQLite watchlist and an opt-in, deduplicated radar.
+   if(path==='/api/discover/watchlist'&&method==='GET')
+    return response(res,200,{items:discoverWatchlist(db)});
+   if(path==='/api/discover/watchlist'&&method==='POST')
+    return response(res,201,await watchlistSave(db,await readJson(req),discoverOpts));
+   if(path==='/api/discover/watchlist'&&method==='DELETE')
+    return response(res,200,watchlistRemove(db,await readJson(req)));
+   if(path==='/api/discover/watchlist/monitor'&&method==='PATCH')
+    return response(res,200,watchlistMonitor(db,await readJson(req)));
+   if(path==='/api/discover/radar/check'&&method==='POST')
+    return response(res,200,await runRadar());
+   // v1.4.4 – episode status planning only, never enqueue unauthorized streams.
+   if(path==='/api/discover/plan'&&method==='GET')
+    return response(res,200,await discoverEpisodePlan(db,{id:url.searchParams.get('id'),season:url.searchParams.get('season')},{...discoverOpts,jellyfinFetch}));
+   if(path==='/api/discover/plan/apply'&&method==='POST')
+    return response(res,200,await applyDiscoverEpisodePlan(db,await readJson(req),{...discoverOpts,jellyfinFetch}));
    if(path==='/api/discover/add'&&method==='POST'){
     const body=await readJson(req);
     const detail=await discoverDetail({token:tmdbToken,id:body.id,kind:body.kind,...(discoverFetch?{fetcher:discoverFetch}:{})});
@@ -511,7 +543,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
   }catch(err){response(res,Number(err?.status)||500,{error:Number(err?.status)?err.message:'Internal server error'});}
  };
  const server=http.createServer((req,res)=>{handler(req,res).catch(()=>{if(!res.headersSent)response(res,500,{error:'Internal server error'});else res.destroy();});});
- return {db,queue,transfers,automation,server,close:async()=>{queue.stop();await automation.stop();await transfers.stop();await new Promise(resolve=>server.listening?server.close(resolve):resolve());db.close();}};
+ return {db,queue,transfers,automation,server,close:async()=>{if(radarTimer)clearInterval(radarTimer);if(radarTask)await radarTask.catch(()=>{});queue.stop();await automation.stop();await transfers.stop();await new Promise(resolve=>server.listening?server.close(resolve):resolve());db.close();}};
 }
 export function createServer(){return createApp().server;}
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
