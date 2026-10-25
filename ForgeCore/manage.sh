@@ -3,16 +3,20 @@
 set -Eeuo pipefail
 cd "$(dirname "$0")"
 umask 077
-VERSION=1.5.0
+VERSION=1.6.1
 BACKUP_ROOT="$(pwd)/backups"
 die(){ echo "[ForgeCore] $*" >&2; exit 1; }
 log(){ echo "[ForgeCore] $*"; }
 preflight(){
  command -v docker >/dev/null || die "Docker is missing."
  docker compose version >/dev/null 2>&1 || die "Docker Compose v2 is required."
- if [ ! -f .env ]; then
-  cp .env.example .env
-  die "Configured .env template; set FORGECORE_MEDIA_HOST_PATH, then retry."
+ if [ ! -f .env ] || [ -L .env ]; then
+  if [ "${1:-}" = install ] && [ ! -e .env ] && [ ! -L .env ]; then
+   cp .env.example .env
+   chmod 600 .env
+   die "Configured .env template; set FORGECORE_MEDIA_HOST_PATH and TMDB token, then retry."
+  fi
+  die "Existing .env missing or unsafe; refusing to recreate private configuration."
  fi
  local media
  media="$(sed -n 's/^FORGECORE_MEDIA_HOST_PATH=//p' .env | tail -n 1)"
@@ -43,6 +47,11 @@ snapshot(){
  local old_image="$1" volume="$2" target="$3"
  mkdir -p "$BACKUP_ROOT"; chmod 700 "$BACKUP_ROOT"
  mkdir -m 700 "$target"
+ # Preserve local-only API credentials in the private snapshot.
+ [ -f .env ] && [ ! -L .env ] || die "Private .env missing or unsafe."
+ cp -p -- .env "$target/.env"
+ chmod 600 "$target/.env"
+ (cd "$target" && sha256sum .env > .env.sha256)
  printf '%s\n' "$old_image" > "$target/image-id"
  printf '%s\n' "$volume" > "$target/data-volume"
  docker run --rm --user 0 -v "$volume:/data:ro" -v "$target:/backup" "$old_image" sh -c 'cd /data && tar -czf /backup/data.tar.gz .'
@@ -78,7 +87,7 @@ case "${1:-help}" in
   docker compose ps
   ;;
  install)
-  preflight
+  preflight install
   [ -z "$(cid)" ] || die "Existing installation: use update."
   docker compose up -d --build forgecore
   id="$(cid)";[ -n "$id" ] && healthy "$id" || die "Install healthcheck failed."

@@ -31,7 +31,7 @@ jobs:
           npm test
           npm run check
       - name: Validate ZimaOS installer shell
-        run: bash -n ForgeCore/install.sh ForgeCore/manage.sh
+        run: bash -n ForgeCore/install.sh ForgeCore/manage.sh ForgeCore/upgrade.sh
       - name: Validate Docker Compose
         run: docker compose -f ForgeCore/compose.yaml config --quiet
       - name: Build ForgeCore image
