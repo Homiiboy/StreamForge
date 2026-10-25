@@ -35,15 +35,15 @@ jobs:
         run: |
           VERSION=$(node -p "require('./ForgeCore/server/package.json').version")
           TAG="forgecore-v${VERSION}"
-          test "$VERSION" = "1.6.2"
+          test "$VERSION" = "1.7.0"
           mkdir -p dist
           zip -qr "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
-            ForgeCore/server ForgeCore/compose.yaml ForgeCore/.env.example ForgeCore/install.sh ForgeCore/manage.sh ForgeCore/upgrade.sh \
+            ForgeCore/server ForgeCore/browser-agent ForgeCore/compose.yaml ForgeCore/.env.example ForgeCore/install.sh ForgeCore/manage.sh ForgeCore/upgrade.sh \
             ForgeCore/README.md ForgeCore/ROADMAP.md ForgeCore/CHANGELOG.md ForgeCore/ACCEPTANCE-v1.0.0.md
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
-              --title "ForgeCore ${VERSION} – Geschützter TMDB-Token bei Updates" \
+              --title "ForgeCore ${VERSION} – Autonome Browser-Erkennung für unterstützte Streams" \
               --prerelease \
               --target "$GITHUB_SHA" \
-              --notes "ForgeCore v1.6.2: Discover zeigt erkannte Katalog- und Episodenseiten getrennt von direkten Mediendateien und ermöglicht die bestehende PlayerBridge für eindeutige Episodenseiten. Fehlende direkte Downloads werden nicht als fehlende deutsche Synchronfassung bezeichnet. ZimaOS-Hardware-Abnahme ausstehend."
+              --notes "ForgeCore v1.7.0: optional isolierter Chromium-Agent (Playwright) beobachtet dynamische HLS-/DASH-/MP4-Anfragen für bestätigte Episodenseiten ohne Connector; deutsche Tonspur und ausdrücklicher Download werden weiterhin serverseitig geprüft. Zum Starten: sudo docker compose --profile browser up -d --build. Kein DRM-/CAPTCHA-Bypass. ZimaOS-Live-Prüfung ausstehend."
           fi
