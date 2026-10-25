@@ -113,3 +113,26 @@ test('v1.6.0 authenticated Discover download endpoints require CSRF and explicit
   assert.equal(db2.prepare('SELECT count(*) n FROM transfer_jobs').get().n,1);
  }finally{await app.close()}
 });
+
+
+test('v1.6.2 distinguishes episode catalogue hits from downloadable media and unknown German language',async()=>{
+ const {db}=seeded();
+ const page='https://licensed.example/anime/stream/one-piece/staffel-1/episode-49';
+ const catalogFetch=async url=>({url,body:Buffer.from(url.includes('/search?')?
+  '<html><a href="'+page+'">One Piece Folge 49</a></html>':
+  '<html><h1>One Piece</h1><iframe src="https://example-player.invalid/embed/49"></iframe></html>')});
+ try{
+  const first=await discoverDownloadSources(db,{kind:'tv',id:319,season:1,episode:49},{...opts,sourceFetch:catalogFetch});
+  assert.equal(first.results.length,0);
+  assert.equal(first.catalogHits.length,1,JSON.stringify(first));
+  assert.equal(first.catalogHits[0].exactEpisode,true);
+  assert.equal(first.catalogHits[0].season,1);
+  assert.equal(first.catalogHits[0].episode,49);
+  assert.match(first.notice,/Katalogseiten gefunden/);
+  assert.doesNotMatch(first.notice,/Gibt es noch nicht auf Deutsch/);
+  const other=await discoverDownloadSources(db,{kind:'tv',id:319,season:1,episode:50},{...opts,sourceFetch:catalogFetch});
+  assert.equal(other.catalogHits.length,1);
+  assert.equal(other.catalogHits[0].exactEpisode,false);
+  assert.equal(other.results.length,0);
+ }finally{db.close()}
+});

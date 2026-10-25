@@ -1,5 +1,14 @@
 # ForgeCore – Changelog
 
+## v1.6.2 – Discover zeigt Katalogtreffer getrennt von Direktlinks
+
+- Diagnose der gespeicherten Webseiten: gefundene Titel-/Episodenseiten werden neben den unterstützten direkten Medienlinks angezeigt.
+- Für eindeutig zugeordnete Episodenseiten kann die bestehende PlayerBridge auf Knopfdruck externe Player prüfen; keine Extraktion von Hosterstreams.
+- Fehlender Direktlink wird nicht länger als Beweis für eine fehlende deutsche Synchronfassung ausgegeben.
+- Einzelne Website-Fehler und fehlende Suchadressen werden in der Discover-Detailansicht sichtbar.
+- Regressionstest zur URL-Struktur `staffel-1/episode-49` und zur exakten Episodenzuordnung.
+
+
 ## v1.6.1 – Dauerhafter Schutz lokaler Zugangsdaten
 
 - ZIP-Upgrader verweigert Archive mit `.env`, unsicheren Pfaden und Symlinks; vorherige Konfiguration bleibt erhalten.

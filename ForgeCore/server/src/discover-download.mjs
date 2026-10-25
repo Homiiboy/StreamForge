@@ -43,11 +43,24 @@ export async function discoverDownloadSources(db,raw,{token,discoverFetch,source
    language:inspection.state,languageReason:inspection.reason||'Deutsch in der Playlist ausgewiesen',
    canAttempt:inspection.state==='german'||inspection.state==='unverified'});
  }
+ // Show site/catalogue evidence separately from downloadable direct media.
+ // Title-only matches do not prove the requested episode exists, nor that audio is German.
+ const catalogHits=searches.results.filter(item=>item.kind==='catalog').slice(0,40).map(item=>({
+  url:item.url,title:item.title,siteId:item.siteId,siteLabel:item.siteLabel,mediaType:item.mediaType,
+  season:item.season,episode:item.episode,
+  exactEpisode:request.kind==='tv'&&item.season===request.season&&item.episode===request.episode,
+  exactMovie:request.kind==='movie'&&item.mediaType==='movie'
+ }));
+ const sites=[...new Map(catalogHits.map(item=>[item.siteId,item.siteLabel])).entries()].map(([id,label])=>({id,label}));
  const project=mediaFor(db,request);
+ let notice;
+ if(results.some(r=>r.language==='german'))notice='Deutsch in einer direkten Medien-Playlist gekennzeichnet. Endgültige Prüfung vor dem Jellyfin-Import.';
+ else if(results.some(r=>r.language==='unverified'))notice='Direkte Medienlinks gefunden, aber die deutsche Tonspur ist nicht bestätigt. Sprachprüfung erforderlich.';
+ else if(catalogHits.length)notice='Katalogseiten gefunden, aber kein geeigneter direkter Medienlink für diesen Titel und diese Episode. Ob eine deutsche Fassung verfügbar ist, ist unbekannt.';
+ else notice='Keine passenden direkten Quellen gefunden. Das ist kein Nachweis, dass es den Titel oder die deutsche Fassung nicht gibt. Suchadressen und Websites prüfen.';
  return {title:detail.title,kind:request.kind,season:request.season,episode:request.episode,mediaId:project?.id||null,
-  checkedSites:searches.checked,results,errors:searches.errors.slice(0,10),warnings:searches.warnings.slice(0,10),
-  germanOnly:true,notice:results.some(r=>r.language==='german')?'Deutsche Tonspur laut Playlist vorhanden. Endgültige Prüfung vor Jellyfin-Import.':
-   NOT_GERMAN+' – keine bestätigte deutsche Quelle gefunden. Quellen ohne Sprachangabe können nur unter Vorbehalt geprüft werden.'};
+  checkedSites:searches.checked,results,catalogHits,matchedSites:sites,errors:searches.errors.slice(0,10),
+  warnings:searches.warnings.slice(0,10),germanOnly:true,notice};
 }
 export async function queueDiscoverDownload(db,transfers,raw,{token,discoverFetch,sourceFetch,languageFetch,jellyfinFetch}={}){
  const request=validateRequest(raw);

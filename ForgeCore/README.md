@@ -1,5 +1,14 @@
 # ForgeCore
 
+## v1.6.2 – Website-Treffer in Discover sichtbar
+
+Die deutschsprachige Download-Suche trennt jetzt **Katalogtreffer** (Serien-, Film- und Episodenseiten) von **direkten Mediendateien**. Findet die Website nur eine Episodenseite mit einem externen Player, ist das ein erkannter Katalogtreffer – noch kein Downloadlink und kein deutscher Audiosprachnachweis. Bei einer eindeutig passenden Episodenseite steht „Externe Player prüfen“ zur Verfügung; die PlayerBridge listet Wiedergabelinks und ggf. direkt unterstützte Medienlinks. Sie extrahiert keine geschützten oder extern gehosteten Streams.
+
+**Test:** Discover → One Piece → Staffel/Folge → „Deutsche Quelle suchen“. Prüfe die eingeblendeten Website-Treffer, etwaige Fehler und die PlayerBridge-Ausgabe. Die Meldung „Keine direkte Downloadquelle“ bedeutet nicht „Keine deutsche Fassung“.
+
+**Installation:** Für Updates von v1.6.1 nutze `sudo bash upgrade.sh /tmp/ForgeCore-v1.6.2-ZimaOS.zip`, nachdem das ZIP von GitHub Releases geladen wurde. Das Skript behält die lokale `.env` mit TMDB-Token bei.
+
+
 ## v1.6.1 – TMDB-Token über Updates hinweg behalten
 
 Die persönliche Konfiguration ist nur in der lokalen, nicht eingecheckten `.env` gespeichert. Der TMDB Read Access Token muss dort nur einmal eingetragen werden.
