@@ -28,7 +28,7 @@ while IFS= read -r path; do
   */.env|*/.env/*|*/backups/*|*/.git/*|*/.ssh/*|*/.env.local|*/.env.production) die "ZIP contains protected configuration" ;;
  esac
  case "$path" in
-  ForgeCore/|ForgeCore/server|ForgeCore/server/*|ForgeCore/compose.yaml|ForgeCore/.env.example|ForgeCore/install.sh|ForgeCore/manage.sh|ForgeCore/upgrade.sh|ForgeCore/README.md|ForgeCore/ROADMAP.md|ForgeCore/CHANGELOG.md|ForgeCore/ACCEPTANCE-v1.0.0.md) ;;
+  ForgeCore/|ForgeCore/server|ForgeCore/server/*|ForgeCore/browser-agent|ForgeCore/browser-agent/*|ForgeCore/compose.yaml|ForgeCore/.env.example|ForgeCore/install.sh|ForgeCore/manage.sh|ForgeCore/upgrade.sh|ForgeCore/README.md|ForgeCore/ROADMAP.md|ForgeCore/CHANGELOG.md|ForgeCore/ACCEPTANCE-v1.0.0.md) ;;
   *) die "ZIP contains an unexpected file path" ;;
  esac
  n=$((n+1))

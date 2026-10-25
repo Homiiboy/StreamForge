@@ -34,9 +34,20 @@ jobs:
         run: bash -n ForgeCore/install.sh ForgeCore/manage.sh ForgeCore/upgrade.sh
       - name: Validate Docker Compose
         run: docker compose -f ForgeCore/compose.yaml config --quiet
+      - name: Test isolated Browser-Agent
+        working-directory: ForgeCore/browser-agent
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm test
+          npm run check
       - name: Build ForgeCore image
         run: docker build -t forgecore:test ForgeCore/server
 
+      - name: Build isolated Chromium image
+        run: docker build -t forgecore-browser:test ForgeCore/browser-agent
+      - name: Chromium sandbox integration test
+        run: |
+          docker run --rm --user pwuser --security-opt seccomp=./ForgeCore/browser-agent/seccomp_profile.json --cap-drop ALL --cap-add SYS_CHROOT --shm-size=512m forgecore-browser:test node src/self-test.mjs
       - name: Smoke test Docker HTTP service
         run: |
           docker run --detach --name forgecore-ci --read-only --tmpfs /tmp --tmpfs /data:rw,uid=1000,gid=1000 -p 127.0.0.1:18787:8787 forgecore:test

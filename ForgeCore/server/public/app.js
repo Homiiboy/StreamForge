@@ -827,14 +827,19 @@ async function renderDiscoverSources(host,request){
    titles.append(node('h4','Website- und Episodentreffer ('+catalogs.length+')'));
    titles.append(node('p','Diese Treffer sind Katalog-/Wiedergabeseiten, keine Download-Dateien. Sie beweisen weder eine deutsche Tonspur noch die Downloadberechtigung.','hint'));
    const relevant=catalogs.filter(x=>x.exactEpisode||x.exactMovie||x.mediaType==='title'||x.mediaType==='series');
+   let firstExactRow=null,firstExactHit=null;
    for(const hit of relevant.slice(0,12)){
     const row=node('article','','discoverSourceResult');
+    if(!firstExactRow&&(hit.exactEpisode||hit.exactMovie)){firstExactRow=row;firstExactHit=hit;}
     const name=hit.exactEpisode?'Genau diese Episode im Katalog':hit.exactMovie?'Filmseite gefunden':'Titel-/Serienseite gefunden · Episode nicht bestätigt';
     row.append(node('strong',hit.siteLabel),node('span',name,'discoverLanguageStatus'));
     row.append(node('small',hit.title||'', 'muted'));
     const actions=node('div','','actionrow');
     const link=node('a','Seite öffnen','outline');link.href=hit.url;link.target='_blank';link.rel='noopener noreferrer';actions.append(link);
     if(hit.exactEpisode||hit.exactMovie){
+     actions.append(action('Browser-Agent: Stream selbst erkennen',async()=>{
+      await showBrowserAgentResults(row,request,hit);
+     }));
      actions.append(action('Externe Player prüfen',async()=>{
       const checked=await api('/api/playerbridge/inspect',{method:'POST',body:{siteId:hit.siteId,url:hit.url}});
       row.querySelector('.discoverPlayerCheck')?.remove();
@@ -852,6 +857,18 @@ async function renderDiscoverSources(host,request){
    }
    if(!relevant.length)titles.append(node('p','Treffer vorhanden, aber nicht eindeutig dieser Episode zugeordnet.','hint'));
    area.append(titles);
+   // A deliberate Discover source search is permission to run one bounded browser
+   // observation for one exact catalogue episode. No automatic download/queueing.
+   if(!data.results.length&&firstExactRow&&firstExactHit){
+    try{
+     const agentStatus=await api('/api/browser-agent/status');
+     if(agentStatus.online&&!agentStatus.busy){
+      await showBrowserAgentResults(firstExactRow,request,firstExactHit);
+     }else if(!agentStatus.online){
+      titles.append(node('p','Chromium-Agent nicht aktiviert. Bei Bedarf auf ZimaOS das Compose-Profil browser starten.','hint'));
+     }
+    }catch(error){titles.append(node('p','Automatische Browseranalyse: '+error.message,'hint'));}
+   }
   }
   if(!data.results.length){
    area.append(node('p','Keine direkte Downloadquelle nachgewiesen. Die deutsche Verfügbarkeit ist unbekannt.','discoverSourceNotice'));
@@ -911,4 +928,49 @@ async function refreshRadarDashboard(){
   list.append(row);
  }
  if(!data.items.length)list.append(node('p','Noch keine überwachten Titel.','muted'));
+}
+
+
+// v1.7.0 – Independent Chromium observation on the ZimaOS host (no connector required).
+async function showBrowserAgentResults(row,request,hit){
+ let root=row.querySelector('.browserAgentResults');
+ if(!root){root=node('section','','browserAgentResults');row.append(root);}
+ root.replaceChildren(node('p','Chromium lädt die passende Seite und beobachtet Medienanfragen …','muted'));
+ try{
+  const status=await api('/api/browser-agent/status');
+  if(!status.online)throw Error('Browser-Agent ist nicht gestartet. Auf ZimaOS: sudo docker compose --profile browser up -d --build');
+  if(status.busy)throw Error('Browser-Agent bearbeitet noch eine andere Medienanalyse.');
+  const result=await api('/api/discover/browser-scan',{method:'POST',body:{
+   ...request,siteId:hit.siteId,url:hit.url,confirm:'SCAN_MEDIA'
+  }});
+  root.replaceChildren(node('h4','Browser-Agent – '+result.sources.length+' Medienanfragen erkannt'));
+  root.append(node('p','Chromium hat '+result.playAttempts+' HTML5-Video(s) gestartet · '+result.blockedRequests+' gesperrte Browser-Anfragen.','hint'));
+  root.append(node('p',result.notice||'', 'muted'));
+  for(const warning of result.warning||[])root.append(node('p',warning,'hint'));
+  for(const candidate of result.sources){
+   const card=node('article','','discoverSourceResult');
+   const language=candidate.language==='german'?'Deutsch laut Manifest':
+     candidate.language==='not-german'?'Nicht Deutsch':
+     candidate.language==='unverified'?'Audiosprache nicht bestätigt':'Nicht unterstützt';
+   card.append(node('strong',candidate.host+' · '+candidate.format.toUpperCase()));
+   card.append(node('span',language,'discoverLanguageStatus '+candidate.language));
+   card.append(node('small',candidate.reason||'','muted'));
+   if(candidate.canQueue)card.append(action(candidate.language==='german'?'Download planen':'Download mit Deutschprüfung versuchen',async()=>{
+    const unknown=candidate.language==='unverified';
+    const question=unknown?'Der Browser hat eine Medienadresse beobachtet, aber Deutsch ist noch nicht bestätigt. Nur nach erfolgreicher deutscher Sprachprüfung nach Jellyfin übernehmen?':
+       'Deutsche Audiospur in Playlist ausgewiesen. Download verbindlich planen?';
+    if(!confirm(question))return;
+    if(request.kind==='tv'){
+     await api('/api/discover/add',{method:'POST',body:{kind:'tv',id:request.id}});
+     await api('/api/discover/plan/apply',{method:'POST',body:{id:request.id,season:request.season,episodes:[request.episode],confirm:'ADD_MISSING'}});
+    }else await api('/api/discover/add',{method:'POST',body:{kind:'movie',id:request.id}});
+    const queued=await api('/api/discover/browser-download',{method:'POST',body:{
+     scanId:result.scanId,candidateId:candidate.id,confirm:'DOWNLOAD_GERMAN',confirmUnknownGerman:unknown
+    }});
+    notify('Browser-Agent: Download geplant · '+(queued.notice||'Deutsch wird vor Jellyfin-Import geprüft'));
+   }));
+   root.append(card);
+  }
+  if(!result.sources.length)root.append(node('p','Kein direkter Mediastream erkennbar. Automatische Wiedergabe kann bei Playern mit manueller Interaktion oder Zugriffsschutz scheitern.','discoverSourceNotice'));
+ }catch(e){root.replaceChildren(node('p','Browser-Agent: '+e.message,'discoverSourceNotice'));throw e}
 }

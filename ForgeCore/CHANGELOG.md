@@ -1,5 +1,15 @@
 # ForgeCore – Changelog
 
+## v1.7.0 – Autonomer Browser-Agent
+
+- Separater, optionaler Playwright/Chromium-Agent im eigenen Docker-Container mit aktivierter Browser-Sandbox.
+- Erkennt zur Laufzeit angeforderte direkte HLS-, DASH- und MP4-Medienadressen durch Netzwerkanalyse.
+- Sichere Discover-Verknüpfung nur mit explizit gespeicherten, eindeutig zugeordneten Katalog-Episodenseiten.
+- Browser-Agent muss weder durch StreamForge-Connector noch durch Nutzerwiedergabe vorbereitet werden; startet eingebettete HTML5-Videos, soweit zulässig und technisch möglich.
+- Erkannten Stream innerhalb von acht Minuten über bestätigte Deutschprüfung an bestehende Warteschlange übergeben.
+- Browsersperren gegen private Adressen, unzulässige URLs, Captchas, DRM-Umgehung und aggressive Popup-Klicks.
+- CI für Scanner, Web-API und Docker-Sandbox. ZimaOS-Hardwarevalidierung weiterhin offen.
+
 ## v1.6.2 – Discover zeigt Katalogtreffer getrennt von Direktlinks
 
 - Diagnose der gespeicherten Webseiten: gefundene Titel-/Episodenseiten werden neben den unterstützten direkten Medienlinks angezeigt.

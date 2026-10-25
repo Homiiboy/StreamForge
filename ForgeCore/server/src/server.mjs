@@ -18,6 +18,7 @@ import {discoverCatalog,discoverDetail,hasDiscoverToken} from './discover.mjs';
 import {discoverMetadata,discoverSeason,validKind,validId,validSeason} from './discover-metadata.mjs';
 import {discoverWatchlist,watchlistSave,watchlistRemove,watchlistMonitor,discoverJellyfinPreview,discoverEpisodePlan,applyDiscoverEpisodePlan,checkDiscoverRadar} from './discover-state.mjs';
 import {discoverDownloadSources,queueDiscoverDownload,checkGermanAvailabilityRadar} from './discover-download.mjs';
+import {BrowserScanSession,browserAgentStatus} from './browser-scanner.mjs';
 import {inspectCatalog,catalogJellyfinPreview} from './catalog-inspect.mjs';
 import {seriesOverview,importJellyfinSeries} from './series-overview.mjs';
 import {parseWebUrl} from './source-security.mjs';
@@ -29,7 +30,7 @@ import {downloadSubtitle,normalizeLanguage} from './subtitles.mjs';
 import {operationalStatus,diagnosticEvents} from './operations.mjs';
 
 export const APP_NAME='ForgeCore';
-export const APP_VERSION='1.6.2';
+export const APP_VERSION='1.7.0';
 const staticDir=resolve(dirname(fileURLToPath(import.meta.url)),'../public');
 const MAX_BODY=64*1024;
 const limitText=(v,max=150)=>typeof v==='string'?v.trim().slice(0,max):'';
@@ -59,9 +60,10 @@ function response(res,status,data,headers={}){
  res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','x-frame-options':'DENY',...headers});
  res.end(JSON.stringify(data));
 }
-function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'v1-release-pending-hardware-validation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,sourceAutomation:true,jellyfinApi:true,sourceAdapterSelection:true,operations:true,discover:true,discoverDownloads:true,germanOnly:true,discoverDetails:true,discoverJellyfin:true,discoverWatchlist:true,discoverEpisodePlan:true,lifecycleBackup:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
-export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,languageFetch,download,subtitleFetch,jellyfinFetch,discoverFetch,tvmazeFetch,tmdbToken=process.env.FORGECORE_TMDB_TOKEN,automationInterval=60000}={}){
+function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'v1-release-pending-hardware-validation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,sourceAutomation:true,jellyfinApi:true,sourceAdapterSelection:true,operations:true,discover:true,discoverDownloads:true,browserAgent:true,germanOnly:true,discoverDetails:true,discoverJellyfin:true,discoverWatchlist:true,discoverEpisodePlan:true,lifecycleBackup:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
+export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,languageFetch,browserAgentFetch,download,subtitleFetch,jellyfinFetch,discoverFetch,tvmazeFetch,tmdbToken=process.env.FORGECORE_TMDB_TOKEN,automationInterval=60000}={}){
  const db=openDatabase(dbPath);
+ const browserScans=new BrowserScanSession();
  const queue=new JobQueue(db,{mediaRoot});
  const transfers=new TransferQueue(db,{mediaRoot,...(download?{download}:{})});
  const automation=new SourceAutomation(db,{transfers,fetcher:sourceFetch,interval:automationInterval});
@@ -152,6 +154,15 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     return response(res,200,await discoverDownloadSources(db,Object.fromEntries(url.searchParams),downloadOpts));
    if(path==='/api/discover/download'&&method==='POST')
     return response(res,201,await queueDiscoverDownload(db,transfers,await readJson(req),downloadOpts));
+   // v1.7.0: optional isolated Chromium agent. The agent cannot publish media.
+   // Login and CSRF are required, even for browser scanning.
+   if(path==='/api/browser-agent/status'&&method==='GET')
+    return response(res,200,await browserAgentStatus(browserAgentFetch?{fetcher:browserAgentFetch}:{}));
+   if(path==='/api/discover/browser-scan'&&method==='POST')
+    return response(res,200,await browserScans.scan(db,await readJson(req),
+     {...downloadOpts,...(browserAgentFetch?{agentFetch:browserAgentFetch}:{})}));
+   if(path==='/api/discover/browser-download'&&method==='POST')
+    return response(res,201,await browserScans.enqueue(db,transfers,await readJson(req),downloadOpts));
    if(path==='/api/discover/plan'&&method==='GET')
     return response(res,200,await discoverEpisodePlan(db,{id:url.searchParams.get('id'),season:url.searchParams.get('season')},{...discoverOpts,jellyfinFetch}));
    if(path==='/api/discover/plan/apply'&&method==='POST')

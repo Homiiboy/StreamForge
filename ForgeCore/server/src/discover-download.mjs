@@ -62,7 +62,7 @@ export async function discoverDownloadSources(db,raw,{token,discoverFetch,source
   checkedSites:searches.checked,results,catalogHits,matchedSites:sites,errors:searches.errors.slice(0,10),
   warnings:searches.warnings.slice(0,10),germanOnly:true,notice};
 }
-export async function queueDiscoverDownload(db,transfers,raw,{token,discoverFetch,sourceFetch,languageFetch,jellyfinFetch}={}){
+export async function queueDiscoverDownload(db,transfers,raw,{token,discoverFetch,sourceFetch,languageFetch,jellyfinFetch,trustedCandidate=null}={}){
  const request=validateRequest(raw);
  if(raw.confirm!=='DOWNLOAD_GERMAN')fail('Download muss ausdrücklich bestätigt werden');
  if(typeof raw.url!=='string'||raw.url.length>2048||typeof raw.siteId!=='string')fail('Quelle ungültig');
@@ -77,8 +77,12 @@ export async function queueDiscoverDownload(db,transfers,raw,{token,discoverFetc
   if(!local)fail('Episode zunächst über Discover vormerken',409);
   if(local.status!=='missing')fail('Nur fehlende Episoden dürfen heruntergeladen werden',409);
  }
- const {candidates}=await discoverCandidates(db,request,{token,discoverFetch,sourceFetch});
- const selected=candidates.find(x=>x.url===raw.url&&x.siteId===raw.siteId);
+ // A short-lived browser scan from the server may supply an observed, exact-episode
+ // candidate, never a client-supplied arbitrary link. The caller owns this trust boundary.
+ const candidates=trustedCandidate?[]:(await discoverCandidates(db,request,{token,discoverFetch,sourceFetch})).candidates;
+ const selected=trustedCandidate?
+  (trustedCandidate.url===raw.url&&trustedCandidate.siteId===raw.siteId?trustedCandidate:null):
+  candidates.find(x=>x.url===raw.url&&x.siteId===raw.siteId);
  if(!selected)fail('Quelle nicht im gespeicherten Website-Katalog nachgewiesen',409);
  const inspection=await inspectGermanSource(selected.url,languageFetch?{fetcher:languageFetch}:{});
  if(inspection.state==='not-german')fail(NOT_GERMAN,409);

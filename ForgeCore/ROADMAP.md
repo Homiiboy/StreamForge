@@ -1,5 +1,13 @@
 # ForgeCore – Entwicklungsroadmap
 
+## v1.7.0 – Standalone Browser-Agent (implementiert, ZimaOS-Abnahme ausstehend)
+
+- Chromium per optionalem Docker-Compose-Profil `browser`, keine externen Ports/Volumes
+- Interne Browser-Sitzung analysiert freigegebene Episodenseite und Netzwerkantworten
+- Eindeutige Zuordnung Episode/Film + Deutsch-Abgleich + ausdrücklicher Downloadstart
+- Kein DRM-/Captcha-Bypass, kein Hostercookie-Export, keine Garantie bei dynamischen Playern
+- Test auf echtem ZimaOS zur Freigabe noch erforderlich
+
 ## v1.6.2 – Discover-Katalogdiagnose (implementiert)
 
 - Erkanntes Titel-/Episodenangebot ohne Direktdownload separat anzeigen
