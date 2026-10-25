@@ -13,7 +13,7 @@ async function api(path,{method='GET',body}={}){
 }
 function node(tag,text='',klass=''){const element=document.createElement(tag);element.textContent=text;if(klass)element.className=klass;return element;}
 function action(text,fn,klass='outline'){const b=node('button',text,klass);b.type='button';b.addEventListener('click',async()=>{b.disabled=true;try{await fn();}catch(error){notify(error.message,true);}finally{b.disabled=false;}});return b;}
-function showView(view){for(const v of ['discover','library','tasks','settings','system'])$('#'+v+'View').hidden=v!==view;document.querySelectorAll('nav .tab').forEach(t=>t.classList.toggle('selected',t.dataset.view===view));if(view==='discover'){refreshDiscover().catch(e=>notify(e.message,true));refreshDiscoverWatchlist().catch(e=>notify(e.message,true));}if(view==='tasks'){refreshJobs().catch(e=>notify(e.message,true));refreshTransfers().catch(e=>notify(e.message,true));refreshNotices().catch(e=>notify(e.message,true));refreshDiagnostics().catch(e=>notify(e.message,true));}if(view==='settings'){refreshSettings().catch(e=>notify(e.message,true));refreshSchedule().catch(e=>notify(e.message,true));refreshJellyfin().catch(e=>notify(e.message,true));}if(view==='system')refreshOperations().catch(e=>notify(e.message,true));}
+function showView(view){for(const v of ['discover','library','downloads','radar','tasks','settings','system'])$('#'+v+'View').hidden=v!==view;document.querySelectorAll('nav .tab').forEach(t=>t.classList.toggle('selected',t.dataset.view===view));if(view==='discover'){refreshDiscover().catch(e=>notify(e.message,true));refreshDiscoverWatchlist().catch(e=>notify(e.message,true));}if(view==='downloads'){refreshDownloadDashboard().catch(e=>notify(e.message,true));}if(view==='radar'){refreshRadarDashboard().catch(e=>notify(e.message,true));}if(view==='tasks'){refreshJobs().catch(e=>notify(e.message,true));refreshTransfers().catch(e=>notify(e.message,true));refreshNotices().catch(e=>notify(e.message,true));refreshDiagnostics().catch(e=>notify(e.message,true));}if(view==='settings'){refreshSettings().catch(e=>notify(e.message,true));refreshSchedule().catch(e=>notify(e.message,true));refreshJellyfin().catch(e=>notify(e.message,true));}if(view==='system')refreshOperations().catch(e=>notify(e.message,true));}
 async function startup(){
  try{const me=await api('/api/me');csrf=me.csrf||'';$('#connection').textContent='Verbunden';
   $('#setup').hidden=me.configured;$('#login').hidden=!me.configured||me.authenticated;$('#app').hidden=!me.authenticated;
@@ -597,7 +597,7 @@ async function refreshDiscover(query=''){
    details.append(node('p',(item.kind==='tv'?'Serie':'Film')+(item.year?' · '+item.year:'')+(item.rating!==null?' · ★ '+item.rating.toFixed(1):''),'muted'));
    if(item.overview)details.append(node('p',item.overview.slice(0,230)+(item.overview.length>230?' …':''),'discoverSynopsis'));
    const actions=node('div','','actionrow');
-   actions.append(action('Details & Staffeln',async()=>showDiscoverDetail(item.kind,item.id)));
+   actions.append(action('Details & deutsche Quellen',async()=>showDiscoverDetail(item.kind,item.id)));
    actions.append(action('Zur Bibliothek hinzufügen',async()=>{
     const r=await api('/api/discover/add',{method:'POST',body:{id:item.id,kind:item.kind}});
     notify(r.alreadyAdded?'Bereits in der ForgeCore-Bibliothek.':'Titel zur ForgeCore-Bibliothek hinzugefügt.');
@@ -708,6 +708,7 @@ async function showDiscoverDetail(kind,id){
     else jfStatus.textContent=result.reason+' · Der Bestand ist möglicherweise unvollständig oder anders benannt.';
    }catch(e){jfStatus.textContent='Jellyfin-Abgleich fehlgeschlagen: '+e.message;throw e;}
   }));
+  if(kind==='movie')actions.append(action('Deutsche Downloadquelle suchen',async()=>renderDiscoverSources(box,{kind,id})));
   box.append(actions,jfStatus);
   if(kind==='tv')renderDiscoverSeasons(box,detail);
  }catch(e){box.replaceChildren(node('p','Detailansicht fehlgeschlagen: '+e.message,'muted'));throw e;}
@@ -746,7 +747,9 @@ async function loadDiscoverSeason(id,season,root){
    if(ep.selectable)selected.push(checkbox);
    const title=node('span','S'+String(season).padStart(2,'0')+'E'+String(ep.episode).padStart(2,'0')+' · '+(ep.title||'Ohne Titel'),'discoverEpisodeTitle');
    label.append(checkbox,title,node('small',discoverStatusText(ep.state),'muted'));
-   rows.append(label);
+   const line=node('div','','discoverEpisodeAction');line.append(label);
+   if(ep.selectable)line.append(action('Deutsche Quelle suchen',async()=>renderDiscoverSources(root,{kind:'tv',id,season,episode:ep.episode})));
+   rows.append(line);
   }
   root.append(rows);
   if(selected.length){
@@ -774,3 +777,95 @@ $('#discoverRadarCheck').addEventListener('click',async()=>{
   notify(r.checked+' Titel geprüft · '+r.notified+' neue Hinweise'+(r.errors.length?' · '+r.errors.length+' Fehler':''));
  }catch(e){notify(e.message,true);}
 });
+
+
+// v1.5.2–v1.6.0: audited, authenticated saved-site results only.
+async function renderDiscoverSources(host,request){
+ let area=host.querySelector('.discoverSourcePicker');
+ if(!area){area=node('section','','discoverSourcePicker');host.append(area);}
+ area.replaceChildren(node('p','Durchsuche aktivierte Quellen und prüfe deutsche Tonspuren …','muted'));
+ const params=discoveryParams(request.kind,request.id,request.kind==='tv'?{season:request.season,episode:request.episode}:{});
+ try{
+  const data=await api('/api/discover/download-sources?'+params);
+  area.replaceChildren(node('h3','Deutsche Downloadquellen'));
+  area.append(node('p','Von '+data.checkedSites+' gespeicherten Websites geprüft · '+data.results.length+' direkte Mediendateien','hint'));
+  for(const result of data.results){
+   const card=node('div','','discoverSourceResult');
+   const status=result.language==='german'?'Deutsch laut Playlist':result.language==='not-german'?'Gibt es noch nicht auf Deutsch':
+      result.language==='unverified'?'Deutsch nicht bestätigt':'Nicht unterstützt';
+   card.append(node('strong',result.siteLabel),node('span',status,'discoverLanguageStatus '+result.language));
+   card.append(node('small',result.languageReason||'', 'muted'));
+   const actionRow=node('div','','actionrow');
+   if(result.canAttempt){
+    actionRow.append(action(result.language==='german'?'Deutschen Download planen':'Deutsch prüfen & Download versuchen',async()=>{
+     const unknown=result.language!=='german';
+     const question=unknown?'Deutsche Tonspur ist noch nicht nachgewiesen. Datei prüfen und nur bei deutscher Audiospur in Jellyfin importieren?':
+      'Download der deutschen Quelle planen? Der Import erfolgt nur bei bestätigter deutscher Audiospur.';
+     if(!confirm(question))return;
+     if(request.kind==='tv'){
+      await api('/api/discover/add',{method:'POST',body:{kind:'tv',id:request.id}});
+      await api('/api/discover/plan/apply',{method:'POST',body:{id:request.id,season:request.season,episodes:[request.episode],confirm:'ADD_MISSING'}});
+     }else await api('/api/discover/add',{method:'POST',body:{kind:'movie',id:request.id}});
+     const saved=await api('/api/discover/download',{method:'POST',body:{...request,siteId:result.siteId,url:result.url,confirm:'DOWNLOAD_GERMAN',confirmUnknownGerman:unknown}});
+     notify('Downloadauftrag angelegt · '+(saved.language==='german'?'Deutsch laut Playlist':'Deutsch wird vor Import überprüft'));
+     await refreshDownloadDashboard();
+    }));
+   }
+   card.append(actionRow);
+   area.append(card);
+  }
+  if(!data.results.length||data.results.every(x=>!x.canAttempt))
+   area.append(node('p','Gibt es noch nicht auf Deutsch – keine geeignete Quelle mit unterstütztem direkten Medienlink nachgewiesen.','discoverMissing'));
+  if(data.errors?.length)area.append(node('p','Einzelne Websites waren nicht erreichbar oder konnten nicht analysiert werden.','hint'));
+  area.scrollIntoView({behavior:'smooth',block:'nearest'});
+ }catch(e){area.replaceChildren(node('p','Gibt es noch nicht auf Deutsch – '+e.message,'discoverMissing'));throw e}
+}
+// v1.5.5: a separate download workbench; no duplicate queue implementation.
+async function refreshDownloadDashboard(){
+ const root=$('#downloadDashboard'),metrics=$('#downloadMetrics');
+ if(!root||!metrics)return;
+ const data=await api('/api/transfers');
+ const items=data.items||[];
+ root.replaceChildren();metrics.replaceChildren();
+ for(const [name,state] of [['Geplant','queued'],['Aktiv','running'],['Abgeschlossen','complete'],['Fehlgeschlagen','failed']]){
+  const tile=node('div','','opsMetric');tile.append(node('small',name),node('strong',String(items.filter(i=>i.state===state).length)));
+  metrics.append(tile);
+ }
+ for(const item of items){
+  const box=node('article','','entry downloadEntry'),top=node('div','','entryhead');
+  top.append(node('strong',item.url.split('/').pop()||'Medien-Download'));
+  top.append(node('span',({queued:'Geplant',running:'Läuft',complete:'Fertig',failed:'Fehler',cancelled:'Abgebrochen'}[item.state]||item.state),'muted'));
+  box.append(top);
+  const progress=node('progress');progress.value=Math.max(0,Math.min(100,Number(item.progress)||0));progress.max=100;
+  progress.setAttribute('aria-label','Downloadfortschritt in Prozent');box.append(progress);
+  box.append(node('p',String(item.progress||0)+'% · '+(Number(item.downloaded_bytes||0)/1048576).toFixed(1)+' MiB','muted'));
+  if(item.error)box.append(node('p',item.error.includes('Deutsch')?item.error:'Fehler: '+item.error,'discoverMissing'));
+  const controls=node('div','','actionrow');
+  if(['queued','running'].includes(item.state))controls.append(action('Abbrechen',async()=>{await api('/api/transfers/'+item.id+'/cancel',{method:'POST'});await refreshDownloadDashboard();}));
+  if(['failed','cancelled'].includes(item.state))controls.append(action('Wiederholen',async()=>{if(!confirm('Download erneut prüfen und versuchen?'))return;await api('/api/transfers/'+item.id+'/retry',{method:'POST'});await refreshDownloadDashboard();}));
+  controls.append(action('Ereignisse',async()=>{
+   const result=await api('/api/transfers/'+item.id+'/events');
+   box.querySelector('pre')?.remove();box.append(node('pre',result.items.map(e=>e.created_at+' · '+e.category+': '+e.description).join('\n'),'downloadEvents'));
+  }));
+  box.append(controls);root.append(box);
+ }
+ if(!items.length)root.append(node('p','Noch keine deutschen Downloadaufträge.','muted'));
+}
+$('#downloadRefresh')?.addEventListener('click',()=>refreshDownloadDashboard().catch(e=>notify(e.message,true)));
+async function refreshRadarDashboard(){
+ const summary=$('#radarSummary'),list=$('#radarWatchlist');
+ if(!summary||!list)return;
+ const data=await api('/api/discover/watchlist');
+ list.replaceChildren();summary.replaceChildren();
+ for(const [label,value] of [['Merkliste',data.items.length],['Aktiv überwacht',data.items.filter(x=>x.monitored).length]]){
+  const tile=node('div','','opsMetric');tile.append(node('small',label),node('strong',String(value)));summary.append(tile);
+ }
+ for(const item of data.items){
+  const row=node('article','','entry');row.append(node('strong',item.title+' · '+(item.monitored?'Überwacht':'Nicht überwacht')));
+  if(item.lastCheckedAt)row.append(node('small','Letzte Terminprüfung: '+item.lastCheckedAt,'muted'));
+  row.append(node('p','Termine aus TMDB/TVmaze sind nicht automatisch deutsche Veröffentlichungen. Deutsche Quellen separat prüfen.','hint'));
+  row.append(action('Titel in Discover öffnen',async()=>{showView('discover');await showDiscoverDetail(item.kind,item.id);}));
+  list.append(row);
+ }
+ if(!data.items.length)list.append(node('p','Noch keine überwachten Titel.','muted'));
+}
