@@ -1,5 +1,20 @@
 # ForgeCore
 
+## ForgeCore v1.6.0 – Discover Downloads (nur Deutsch)
+
+Diese Version integriert die Meilensteine v1.5.2–v1.5.5 auf Basis v1.5.1, ohne die StreamForge-Browser-Extension oder StreamRadar Windows-App zu verändern.
+
+**Deutsch ist Pflicht für Downloads und Jellyfin-Import.** Discover sucht nur auf vom Administrator gespeicherten und aktivierten Websites. Filme sowie Serienfolgen benötigen eindeutige direkte HLS-/DASH-/MP4-Quellen; Serienfolgen müssen nach Staffel und Episodennummer sicher übereinstimmen. Die UI zeigt HLS-/DASH-Sprachkennzeichnung als **Deutsch laut Playlist**. MP4 und nicht etikettierte Medien werden als **unbestätigt** dargestellt und benötigen eine zweite ausdrückliche Zustimmung zur Überprüfung. Quellen, deren Playlist explizit nur andere Audiosprachen enthält, werden mit **„Gibt es noch nicht auf Deutsch“** abgewiesen. Vor Veröffentlichung in Jellyfin überprüft ffprobe die tatsächlichen Mediastream-Tags: Ohne deutsche Audiospur bzw. eindeutigen deutschen Playlist-Sprachnachweis **kein Import**. Nicht prüfbare Sprache bleibt gesperrt; die Prüfung analysiert Kennzeichnungen, nicht die gesprochene Sprache und ist daher keine Garantie der Synchronfassung.
+
+**Download:** Discover-Titel auswählen → Staffel / Episode oder Film → „Deutsche Downloadquelle suchen“ → erkannte direkte Quelle prüfen → Download explizit bestätigen → Transferübersicht. Bereits vorhandene, ignorierte und eingeplante Episoden werden nicht erneut geladen. Externe Player bleiben reine Verweise; keine DRM-Umgehung oder geschützte Hosterstream-Extraktion. Fehlende direkte Quellen lösen keinen Download aus.
+
+**Radar:** Release-Daten von TMDB/TVmaze sind *Originalstarts, keine deutschsprachige Veröffentlichungsbestätigung*. Überwachung ist pro Titel freiwillig. Optional „Deutsche Downloads automatisch“ aktivieren: Regelmäßig wird höchstens eine bereits registrierte, fehlende Folge pro überwachter Serie auf eine eindeutig als Deutsch ausgewiesene direkte Quelle geprüft. Nur bestätigte deutsche Playlist-Sprachen werden automatisch in die Queue aufgenommen. Bei einer Wiederherstellung bleibt die Überwachung samt Automatik deaktiviert. Kein automatisches Hinzufügen nicht verifizierter Episoden.
+
+**ZimaOS:** Backup vor Update erstellen. TMDB-Token weiterhin `FORGECORE_TMDB_TOKEN` ausschließlich lokal in .env setzen. ffmpeg und ffprobe sind im Docker-Image vorhanden. Die SQLite-Migration ist vorwärtskompatibel (Schema 12); Downgrade nur nach Datenbank-Restore. Prüfe auf dem eigenen Server Netzwerkzugriff und Jellyfin-/SMB-Schreibrechte.
+
+---
+
+
 ## ForgeCore v1.5.1 – Discover & Radar (StreamRadar-Integration)
 
 ForgeCore v1.5.1 bündelt die ursprünglich geplanten Meilensteine v1.4.0–v1.4.4 in einer vorwärtskompatiblen Version. Die PlayerBridge und Jellyfin-Fixes des bestehenden v1.5.0-Codes bleiben erhalten; StreamRadar v0.5.3 selbst bleibt unverändert.
