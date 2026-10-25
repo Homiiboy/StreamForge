@@ -14,6 +14,9 @@ import {TransferQueue} from './transfer-queue.mjs';
 import {SourceAutomation} from './source-automation.mjs';
 import {validateSearchSite,searchSites} from './site-search.mjs';
 import {inspectPlayerPage} from './player-bridge.mjs';
+import {discoverCatalog,discoverDetail,hasDiscoverToken} from './discover.mjs';
+import {discoverMetadata,discoverSeason,validKind,validId,validSeason} from './discover-metadata.mjs';
+import {discoverWatchlist,watchlistSave,watchlistRemove,watchlistMonitor,discoverJellyfinPreview,discoverEpisodePlan,applyDiscoverEpisodePlan,checkDiscoverRadar} from './discover-state.mjs';
 import {inspectCatalog,catalogJellyfinPreview} from './catalog-inspect.mjs';
 import {seriesOverview,importJellyfinSeries} from './series-overview.mjs';
 import {parseWebUrl} from './source-security.mjs';
@@ -25,7 +28,7 @@ import {downloadSubtitle,normalizeLanguage} from './subtitles.mjs';
 import {operationalStatus,diagnosticEvents} from './operations.mjs';
 
 export const APP_NAME='ForgeCore';
-export const APP_VERSION='1.5.0';
+export const APP_VERSION='1.5.1';
 const staticDir=resolve(dirname(fileURLToPath(import.meta.url)),'../public');
 const MAX_BODY=64*1024;
 const limitText=(v,max=150)=>typeof v==='string'?v.trim().slice(0,max):'';
@@ -55,8 +58,8 @@ function response(res,status,data,headers={}){
  res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','x-frame-options':'DENY',...headers});
  res.end(JSON.stringify(data));
 }
-function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'v1-release-pending-hardware-validation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,sourceAutomation:true,jellyfinApi:true,sourceAdapterSelection:true,operations:true,lifecycleBackup:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
-export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,download,subtitleFetch,jellyfinFetch,automationInterval=60000}={}){
+function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'v1-release-pending-hardware-validation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,sourceAutomation:true,jellyfinApi:true,sourceAdapterSelection:true,operations:true,discover:true,discoverDetails:true,discoverJellyfin:true,discoverWatchlist:true,discoverEpisodePlan:true,lifecycleBackup:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
+export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,download,subtitleFetch,jellyfinFetch,discoverFetch,tvmazeFetch,tmdbToken=process.env.FORGECORE_TMDB_TOKEN,automationInterval=60000}={}){
  const db=openDatabase(dbPath);
  const queue=new JobQueue(db,{mediaRoot});
  const transfers=new TransferQueue(db,{mediaRoot,...(download?{download}:{})});
@@ -65,6 +68,11 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
   void cleanOldStaging(process.env.FORGECORE_STAGING_ROOT||'/data',db).catch(error=>process.stderr.write('Recovery cleanup warning: '+error.message+'\n'));
   queue.start();transfers.start();automation.start();
  }
+ const radarParams={token:tmdbToken,...(discoverFetch?{fetcher:discoverFetch}:{}),...(tvmazeFetch?{tvmazeFetch}:{})};
+ let radarTask=null;
+ const runRadar=()=>radarTask||(radarTask=checkDiscoverRadar(db,radarParams).finally(()=>{radarTask=null;}));
+ const radarTimer=startWorker&&hasDiscoverToken(tmdbToken)?setInterval(()=>{void runRadar().catch(e=>process.stderr.write('Discover radar: '+e.message+'\n'));},6*60*60*1000):null;
+ radarTimer?.unref();
  const authAttempts=new Map();
  const gate=(req)=>{
   const origin=req.headers.origin;
@@ -105,6 +113,47 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
    if(path==='/api/auth/logout'&&method==='POST'){
     deleteSession(db,session);
     return response(res,200,{ok:true},{'set-cookie':clearCookie(process.env.FORGECORE_SECURE_COOKIE==='1')});
+   }
+   // Discover is read-only until the user explicitly adds a title to the library.
+   // The TMDB token stays on the server; these routes inherit session/CSRF checks.
+   if(path==='/api/discover/status'&&method==='GET')
+    return response(res,200,{configured:hasDiscoverToken(tmdbToken),source:'TMDB',region:'AT',language:'de-DE'});
+   if(path==='/api/discover'&&method==='GET')
+    return response(res,200,await discoverCatalog({token:tmdbToken,query:url.searchParams.get('q')||'',kind:url.searchParams.get('kind')||'all',...(discoverFetch?{fetcher:discoverFetch}:{})}));
+   // v1.4.1 – extended metadata and explicit per-season listing.
+   const discoverOpts={token:tmdbToken,...(discoverFetch?{fetcher:discoverFetch}:{}),...(tvmazeFetch?{tvmazeFetch}:{})};
+   if(path==='/api/discover/detail'&&method==='GET')
+    return response(res,200,await discoverMetadata({...discoverOpts,kind:url.searchParams.get('kind'),id:url.searchParams.get('id')}));
+   if(path==='/api/discover/season'&&method==='GET')
+    return response(res,200,await discoverSeason({...discoverOpts,id:url.searchParams.get('id'),season:url.searchParams.get('season')}));
+   // v1.4.2 – independent, read-only Jellyfin preview; no inventory mutation.
+   if(path==='/api/discover/jellyfin'&&method==='GET')
+    return response(res,200,await discoverJellyfinPreview(db,{kind:url.searchParams.get('kind'),id:url.searchParams.get('id')},{...discoverOpts,jellyfinFetch}));
+   // v1.4.3 – SQLite watchlist and an opt-in, deduplicated radar.
+   if(path==='/api/discover/watchlist'&&method==='GET')
+    return response(res,200,{items:discoverWatchlist(db)});
+   if(path==='/api/discover/watchlist'&&method==='POST')
+    return response(res,201,await watchlistSave(db,await readJson(req),discoverOpts));
+   if(path==='/api/discover/watchlist'&&method==='DELETE')
+    return response(res,200,watchlistRemove(db,await readJson(req)));
+   if(path==='/api/discover/watchlist/monitor'&&method==='PATCH')
+    return response(res,200,watchlistMonitor(db,await readJson(req)));
+   if(path==='/api/discover/radar/check'&&method==='POST')
+    return response(res,200,await runRadar());
+   // v1.4.4 – episode status planning only, never enqueue unauthorized streams.
+   if(path==='/api/discover/plan'&&method==='GET')
+    return response(res,200,await discoverEpisodePlan(db,{id:url.searchParams.get('id'),season:url.searchParams.get('season')},{...discoverOpts,jellyfinFetch}));
+   if(path==='/api/discover/plan/apply'&&method==='POST')
+    return response(res,200,await applyDiscoverEpisodePlan(db,await readJson(req),{...discoverOpts,jellyfinFetch}));
+   if(path==='/api/discover/add'&&method==='POST'){
+    const body=await readJson(req);
+    const detail=await discoverDetail({token:tmdbToken,id:body.id,kind:body.kind,...(discoverFetch?{fetcher:discoverFetch}:{})});
+    const existing=one(db,'SELECT * FROM media WHERE external_id=?',detail.externalId);
+    if(existing)return response(res,200,{item:existing,alreadyAdded:true});
+    const id=newId(),now=utc(),kind=detail.kind==='tv'?'series':'movie';
+    db.prepare('INSERT INTO media(id,kind,title,year,external_id,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)')
+     .run(id,kind,detail.title,detail.year,detail.externalId,'',now,now);
+    return response(res,201,{item:one(db,'SELECT * FROM media WHERE id=?',id),alreadyAdded:false});
    }
    if(path==='/api/media'){
     if(method==='GET')return response(res,200,{items:rows(db,'SELECT * FROM media ORDER BY title COLLATE NOCASE,created_at')});
@@ -424,9 +473,10 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     if(backup.source_items!==undefined&&!Array.isArray(backup.source_items))fail('Invalid discovered-item backup');
     if(backup.source_automation!==undefined&&!Array.isArray(backup.source_automation))fail('Invalid automation backup');
     if(backup.search_sites!==undefined&&!Array.isArray(backup.search_sites))fail('Invalid website catalog backup');
-    if(backup.media.length>10000||backup.episodes.length>200000||backup.config.length>100||(backup.sources?.length||0)>20000||(backup.source_items?.length||0)>100000||(backup.source_automation?.length||0)>20000||(backup.search_sites?.length||0)>1000)fail('Backup exceeds safety limits');
+    if(backup.discover_watchlist!==undefined&&!Array.isArray(backup.discover_watchlist))fail('Invalid Discover watchlist backup');
+    if(backup.media.length>10000||backup.episodes.length>200000||backup.config.length>100||(backup.sources?.length||0)>20000||(backup.source_items?.length||0)>100000||(backup.source_automation?.length||0)>20000||(backup.search_sites?.length||0)>1000||(backup.discover_watchlist?.length||0)>1000)fail('Backup exceeds safety limits');
     transaction(db,()=>{
-     db.exec('DELETE FROM search_sites; DELETE FROM source_check_events; DELETE FROM source_automation; DELETE FROM transfer_jobs; DELETE FROM source_items; DELETE FROM sources; DELETE FROM jobs; DELETE FROM episodes; DELETE FROM media; DELETE FROM config;');
+     db.exec('DELETE FROM discover_watchlist; DELETE FROM search_sites; DELETE FROM source_check_events; DELETE FROM source_automation; DELETE FROM transfer_jobs; DELETE FROM source_items; DELETE FROM sources; DELETE FROM jobs; DELETE FROM episodes; DELETE FROM media; DELETE FROM config;');
      for(const media of backup.media){
       const m=mediaInput(media);idCheck(media.id);
       db.prepare('INSERT INTO media(id,kind,title,year,external_id,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').run(media.id,m.kind,m.title,m.year,m.external_id,m.notes,utc(),utc());
@@ -459,6 +509,16 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
       const v=validateSearchSite({url:site.url,label:site.label,adapterId:site.adapter_id,searchTemplate:site.search_template||'',enabled:false});
       db.prepare('INSERT INTO search_sites(id,url,label,adapter_id,enabled,search_template,created_at,updated_at) VALUES(?,?,?,?,0,?,?,?)').run(site.id,v.url,v.label,v.adapterId,v.searchTemplate,utc(),utc());
      }
+     for(const entry of backup.discover_watchlist||[]){
+      const kind=validKind(entry.kind),id=validId(entry.tmdb_id);
+      const title=limitText(entry.title,140);
+      if(!title)fail('Invalid Discover watchlist title');
+      const year=entry.year===null||entry.year===undefined?null:Number(entry.year);
+      if(year!==null&&(!Number.isInteger(year)||year<1888||year>2200))fail('Invalid Discover watchlist year');
+      // Explicit re-enable required after restore. Never restore monitoring automatically.
+      db.prepare('INSERT INTO discover_watchlist(tmdb_id,kind,title,year,monitored,added_at,updated_at) VALUES(?,?,?,?,0,?,?)')
+       .run(id,kind,title,year,utc(),utc());
+     }
      for(const item of backup.config){
       if(!['jellyfin_url','library_label','preferred_language','transfer_schedule'].includes(item.key))continue;
       if(item.key==='transfer_schedule'){try{setSchedule(db,JSON.parse(String(item.value)));}catch{fail('Invalid transfer schedule in backup');}continue;}
@@ -481,7 +541,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     return response(res,200,{items:rows(db,'SELECT id,category,description,created_at FROM transfer_events WHERE transfer_id=? ORDER BY id DESC LIMIT 150',job)});
    }
    if(path==='/api/backup/export'&&method==='GET'){
-    const data={format:'forgecore-export-v1',version:APP_VERSION,createdAt:utc(),media:rows(db,'SELECT * FROM media'),episodes:rows(db,'SELECT * FROM episodes'),config:rows(db,"SELECT * FROM config WHERE key!='jellyfin_api_key'"),sources:rows(db,'SELECT * FROM sources'),source_items:rows(db,'SELECT * FROM source_items'),source_automation:rows(db,'SELECT * FROM source_automation'),search_sites:rows(db,'SELECT * FROM search_sites')};
+    const data={format:'forgecore-export-v1',version:APP_VERSION,createdAt:utc(),media:rows(db,'SELECT * FROM media'),episodes:rows(db,'SELECT * FROM episodes'),config:rows(db,"SELECT * FROM config WHERE key!='jellyfin_api_key'"),sources:rows(db,'SELECT * FROM sources'),source_items:rows(db,'SELECT * FROM source_items'),source_automation:rows(db,'SELECT * FROM source_automation'),search_sites:rows(db,'SELECT * FROM search_sites'),discover_watchlist:rows(db,'SELECT * FROM discover_watchlist')};
     return response(res,200,data,{'content-disposition':'attachment; filename="forgecore-backup.json"'});
    }
    if(path.startsWith('/api/'))fail('Unknown endpoint',404);
@@ -490,11 +550,11 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
    const file=names[path];if(!file||method!=='GET')fail('Not found',404);
    const body=await readFile(join(staticDir,file));
    const mime=file.endsWith('.png')?'image/png':file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8';
-   res.writeHead(200,{'content-type':mime,'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','x-frame-options':'DENY','content-security-policy':"default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'"});res.end(body);
+   res.writeHead(200,{'content-type':mime,'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','x-frame-options':'DENY','content-security-policy':"default-src 'self'; img-src 'self' https://image.tmdb.org; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'"});res.end(body);
   }catch(err){response(res,Number(err?.status)||500,{error:Number(err?.status)?err.message:'Internal server error'});}
  };
  const server=http.createServer((req,res)=>{handler(req,res).catch(()=>{if(!res.headersSent)response(res,500,{error:'Internal server error'});else res.destroy();});});
- return {db,queue,transfers,automation,server,close:async()=>{queue.stop();await automation.stop();await transfers.stop();await new Promise(resolve=>server.listening?server.close(resolve):resolve());db.close();}};
+ return {db,queue,transfers,automation,server,close:async()=>{if(radarTimer)clearInterval(radarTimer);if(radarTask)await radarTask.catch(()=>{});queue.stop();await automation.stop();await transfers.stop();await new Promise(resolve=>server.listening?server.close(resolve):resolve());db.close();}};
 }
 export function createServer(){return createApp().server;}
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){

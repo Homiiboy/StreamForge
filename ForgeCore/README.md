@@ -1,5 +1,38 @@
 # ForgeCore
 
+## ForgeCore v1.5.1 – Discover & Radar (StreamRadar-Integration)
+
+ForgeCore v1.5.1 bündelt die ursprünglich geplanten Meilensteine v1.4.0–v1.4.4 in einer vorwärtskompatiblen Version. Die PlayerBridge und Jellyfin-Fixes des bestehenden v1.5.0-Codes bleiben erhalten; StreamRadar v0.5.3 selbst bleibt unverändert.
+
+**Einrichten:** In der lokalen (nicht einzucheckenden) ForgeCore-.env die neue Zeile FORGECORE_TMDB_TOKEN=... mit dem eigenen TMDB API Read Access Token ergänzen. Diese Zeile kann aus .env.example übernommen werden, ohne die bestehende .env zu überschreiben. Anschließend ForgeCore aktualisieren. Ohne Token wird Discover als unkonfiguriert angezeigt. Das Token wird nicht über die API ausgegeben oder im JSON-Backup gespeichert.
+
+**Discover-Bereich:** TMDB-Top-Trends und Suche, detaillierte Filminfos, Anbieter für AT, eindeutige TVmaze-Serienzuordnung, Jellyfin-Bestand je Titel auf Knopfdruck, SQLite-Merkliste, optionale Radar-Überwachung und Staffel-/Episodenplanung. Überwachungschecks laufen bei aktivierter Konfiguration ungefähr alle sechs Stunden; sie informieren über nachgewiesene kommende Termine im 30-Tage-Fenster. Pro Ereignis gibt es höchstens eine neue Nachricht; nach JSON-Restore bleibt die Überwachung zunächst ausgeschaltet.
+
+**Downloads:** Der TMDB-/TVmaze-Katalog liefert keine Mediendateien. Das Hinzufügen oder Vormerken startet keine Downloads. Zum Laden einer Episode muss separat eine tatsächlich unterstützte und rechtmäßig nutzbare, ungeschützte Downloadquelle in ForgeCore vorhanden sein.
+
+**Auf ZimaOS:** Upgrade erst nach vollständigem Backup. Jellyfin-Identitätszuordnung und SMB-Schreibrechte sowie echte TMDB-/TVmaze-Daten müssen auf dem eigenen Server verifiziert werden. Wegen SQLite-Schema 11 keine Rückkehr zur alten Serverversion mit demselben aktualisierten Datenvolume ohne Restore.
+
+---
+
+
+## Discover aus StreamRadar – v1.4.0-Funktionsmeilenstein
+
+Der Entwicklungsbranch baut auf dem neueren ForgeCore-v1.5.0-Code auf und ergänzt den geplanten Discover-Meilenstein ohne Versions-Downgrade. StreamRadar v0.5.3 bleibt als Windows-App unabhängig.
+
+- Im Reiter **Discover** erscheinen TMDB-Wochentrends und eine Suche nach Filmen/Serien.
+- Die Katalog-API läuft über den angemeldeten ForgeCore-Server. TMDB-Zugangsdaten verlassen den Container nicht.
+- **Zur Bibliothek hinzufügen** liest TMDB-Details serverseitig und legt ein Medienprojekt pro externer TMDB-ID an; Duplikate werden erkannt.
+- Weder Quellen noch Downloads werden automatisch gestartet.
+
+**Einrichtung:** In der lokalen, nicht eingecheckten .env den Wert FORGECORE_TMDB_TOKEN mit einem persönlichen TMDB API Read Access Token belegen, anschließend den Docker-Compose-Container neu erstellen/starten. Die .env.example enthält absichtlich keinen Schlüssel. Ohne Token wird im Discover-Reiter ein Hinweis gezeigt. Ein lokal in StreamRadar gespeicherter Windows-Token wird aus Sicherheitsgründen nicht automatisch übernommen.
+
+**Geplante Folgeschritte:** TMDB-Detailseiten, TVmaze-Episodentermine, Kalender, Merkliste, Überwachung und Jellyfin-Vergleich auf Discover-Karten. Die Wochentrends sind noch kein Release-Kalender. Downloads aus Discover folgen erst, wenn eine berechtigte, unterstützte Quell-URL vorliegt und der Benutzer sie freigibt.
+
+**Prüfstand:** Unit- und API-Regressionstests liegen im Branch; ein vollständiger Node-Testlauf, CI-Abnahme und ein ZimaOS-/TMDB-Live-Test sind noch offen.
+
+---
+
+
 ## v1.5.0 – PlayerBridge und Downloadaktionen in der Liste
 
 - PlayerBridge erkennt HTML-`iframe`- und Player-Links auf gespeicherten Websites und zeigt die externen Player getrennt von direkt unterstützten MP4-/M4V-/HLS-/DASH-Dateien. Externe Player werden **nicht** automatisch ausgelesen; es gibt keinen DRM-, Login-, Captcha- oder Hoster-Bypass.

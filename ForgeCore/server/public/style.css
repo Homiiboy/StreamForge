@@ -14,3 +14,39 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
 
 .brand-icon{width:48px;height:48px;border-radius:12px;object-fit:contain;flex-shrink:0}
+
+
+/* ForgeCore Discover – TMDB poster catalog in the existing ForgeCore design */
+.discoverSearch{display:grid;grid-template-columns:minmax(180px,1fr) 160px auto auto;gap:12px;align-items:end;margin:16px 0}
+.discoverSearch label{margin:0}
+.discoverGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:16px;margin-top:18px}
+.discoverCard{background:#0d1828;border:1px solid #30415f;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.discoverCard>img{width:100%;aspect-ratio:2/3;object-fit:cover;background:#1c2d43}
+.discoverNoPoster{aspect-ratio:2/3;display:grid;place-items:center;color:#8ea3bd;background:#182942}
+.discoverBody{padding:13px;display:flex;flex-direction:column;flex:1;gap:6px}
+.discoverBody h3{font-size:14px;line-height:1.35;margin:0}
+.discoverBody p{margin:0}
+.discoverSynopsis{font-size:12px;line-height:1.5;flex:1}
+.discoverBody .actionrow{margin-top:auto;padding-top:10px}
+.discoverBody button{width:100%;font-size:12px}
+@media(max-width:720px){.discoverSearch{grid-template-columns:1fr 1fr}.discoverSearch label:first-child{grid-column:1/-1}}
+@media(max-width:430px){.discoverSearch{grid-template-columns:1fr}.discoverSearch label:first-child{grid-column:auto}}
+
+
+/* Discover v1.4.1–v1.4.4 title details, providers, watchlist and episode planner */
+.discoverDetails{margin-top:18px;padding:18px;background:#0e192b;border:1px solid #38537b;border-radius:12px;scroll-margin-top:12px}
+.discoverDetails .entryhead h2{margin:0}
+.discoverMetadata{padding:15px 0;border-top:1px solid #2d4059;margin-top:15px}
+.discoverMetadata h3{font-size:15px;margin:0 0 9px}
+.discoverProvider{display:inline-flex;border:1px solid #445675;background:#1d314c;color:#e5eefb;padding:6px 10px;border-radius:20px;margin:4px;font-size:12px}
+.discoverMetadata select{max-width:340px}
+.discoverEpisodeRows{max-height:460px;overflow:auto;border:1px solid #30415f;border-radius:8px;margin:12px 0}
+.discoverEpisodeRow{display:flex;align-items:center;gap:11px;padding:9px 11px;margin:0;border-bottom:1px solid #26354c;cursor:pointer}
+.discoverEpisodeRow:last-child{border-bottom:0}
+.discoverEpisodeRow:has(input:disabled){opacity:.68;cursor:default}
+.discoverEpisodeRow input[type=checkbox]{width:17px;height:17px;margin:0;flex:none;accent-color:#6488f1}
+.discoverEpisodeTitle{flex:1;font-size:13px;color:#e3eafa}
+.discoverEpisodeRow small{max-width:145px;text-align:right}
+#discoverWatchlist{margin-top:14px}
+#discoverWatchlist .actionrow{margin-top:7px}
+@media(max-width:540px){.discoverEpisodeRow{flex-wrap:wrap}.discoverEpisodeRow small{width:100%;max-width:none;text-align:left;margin-left:28px}.discoverDetails{padding:13px}}

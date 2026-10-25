@@ -13,7 +13,7 @@ async function api(path,{method='GET',body}={}){
 }
 function node(tag,text='',klass=''){const element=document.createElement(tag);element.textContent=text;if(klass)element.className=klass;return element;}
 function action(text,fn,klass='outline'){const b=node('button',text,klass);b.type='button';b.addEventListener('click',async()=>{b.disabled=true;try{await fn();}catch(error){notify(error.message,true);}finally{b.disabled=false;}});return b;}
-function showView(view){for(const v of ['library','tasks','settings','system'])$('#'+v+'View').hidden=v!==view;document.querySelectorAll('nav .tab').forEach(t=>t.classList.toggle('selected',t.dataset.view===view));if(view==='tasks'){refreshJobs().catch(e=>notify(e.message,true));refreshTransfers().catch(e=>notify(e.message,true));refreshNotices().catch(e=>notify(e.message,true));refreshDiagnostics().catch(e=>notify(e.message,true));}if(view==='settings'){refreshSettings().catch(e=>notify(e.message,true));refreshSchedule().catch(e=>notify(e.message,true));refreshJellyfin().catch(e=>notify(e.message,true));}if(view==='system')refreshOperations().catch(e=>notify(e.message,true));}
+function showView(view){for(const v of ['discover','library','tasks','settings','system'])$('#'+v+'View').hidden=v!==view;document.querySelectorAll('nav .tab').forEach(t=>t.classList.toggle('selected',t.dataset.view===view));if(view==='discover'){refreshDiscover().catch(e=>notify(e.message,true));refreshDiscoverWatchlist().catch(e=>notify(e.message,true));}if(view==='tasks'){refreshJobs().catch(e=>notify(e.message,true));refreshTransfers().catch(e=>notify(e.message,true));refreshNotices().catch(e=>notify(e.message,true));refreshDiagnostics().catch(e=>notify(e.message,true));}if(view==='settings'){refreshSettings().catch(e=>notify(e.message,true));refreshSchedule().catch(e=>notify(e.message,true));refreshJellyfin().catch(e=>notify(e.message,true));}if(view==='system')refreshOperations().catch(e=>notify(e.message,true));}
 async function startup(){
  try{const me=await api('/api/me');csrf=me.csrf||'';$('#connection').textContent='Verbunden';
   $('#setup').hidden=me.configured;$('#login').hidden=!me.configured||me.authenticated;$('#app').hidden=!me.authenticated;
@@ -567,4 +567,210 @@ $('#siteSearchForm').addEventListener('submit',async e=>{e.preventDefault();
   for(const warning of data.warnings||[])box.append(node('p',warning.siteLabel+': '+warning.message,'muted'));
   if(!data.results.length)box.append(node('p','Keine passenden Titel oder Medienlinks gefunden. Für eine echte Titelsuche eine Suchadresse mit {query} hinterlegen.','muted'));
  }catch(error){box.replaceChildren();notify(error.message,true);}
+});
+
+
+// StreamRadar-inspired Discover. TMDB calls and credentials remain on the server.
+async function refreshDiscover(query=''){
+ const container=$('#discoverResults'),status=$('#discoverStatus');
+ container.replaceChildren();
+ status.textContent='TMDB-Katalog wird geladen …';
+ const params=new URLSearchParams({kind:$('#discoverKind').value});
+ if(query)params.set('q',query);
+ try{
+  const result=await api('/api/discover?'+params.toString());
+  if(!result.configured){
+   status.textContent='Discover benötigt einen TMDB Read Access Token. Trage FORGECORE_TMDB_TOKEN in der ForgeCore-.env ein und starte den Container erneut.';
+   return;
+  }
+  status.textContent=(query?'Suchergebnisse':'Trends dieser Woche')+' · '+result.items.length+' Titel · Quelle: TMDB';
+  if(!result.items.length){container.append(node('p','Keine passenden Titel gefunden.'));return;}
+  for(const item of result.items){
+   const card=node('article','','discoverCard');
+   if(item.poster){
+    const img=document.createElement('img');
+    img.src=item.poster;img.alt='Poster: '+item.title;img.loading='lazy';img.referrerPolicy='no-referrer';
+    card.append(img);
+   }else card.append(node('div','Kein Poster','discoverNoPoster'));
+   const details=node('div','','discoverBody');
+   const h=node('h3',item.title);details.append(h);
+   details.append(node('p',(item.kind==='tv'?'Serie':'Film')+(item.year?' · '+item.year:'')+(item.rating!==null?' · ★ '+item.rating.toFixed(1):''),'muted'));
+   if(item.overview)details.append(node('p',item.overview.slice(0,230)+(item.overview.length>230?' …':''),'discoverSynopsis'));
+   const actions=node('div','','actionrow');
+   actions.append(action('Details & Staffeln',async()=>showDiscoverDetail(item.kind,item.id)));
+   actions.append(action('Zur Bibliothek hinzufügen',async()=>{
+    const r=await api('/api/discover/add',{method:'POST',body:{id:item.id,kind:item.kind}});
+    notify(r.alreadyAdded?'Bereits in der ForgeCore-Bibliothek.':'Titel zur ForgeCore-Bibliothek hinzugefügt.');
+    await refreshLibrary();
+   }));
+   details.append(actions);card.append(details);container.append(card);
+  }
+ }catch(error){status.textContent='Katalog konnte nicht geladen werden.';container.append(node('p',error.message,'muted'));}
+}
+$('#discoverForm').addEventListener('submit',e=>{
+ e.preventDefault();refreshDiscover($('#discoverQuery').value.trim()).catch(err=>notify(err.message,true));
+});
+$('#discoverTrending').addEventListener('click',()=>{
+ $('#discoverQuery').value='';
+ refreshDiscover().catch(err=>notify(err.message,true));
+});
+$('#discoverKind').addEventListener('change',()=>{
+ const query=$('#discoverQuery').value.trim();
+ if(!query||query.length>=2)refreshDiscover(query).catch(err=>notify(err.message,true));
+});
+
+
+// Discover v1.4.1–v1.4.4: title details, Austrian providers, watchlist,
+// exact Jellyfin preview and manual episode registration. No stream download.
+let discoverSaved=[];
+const discoveryParams=(kind,id,extra={})=>{
+ const p=new URLSearchParams({kind:String(kind),id:String(id)});
+ for(const [key,value] of Object.entries(extra))p.set(key,String(value));
+ return p.toString();
+};
+const discoveryName=x=>x==='tv'?'Serie':'Film';
+function discoverStatusText(status){
+ return ({
+  'in-jellyfin':'In Jellyfin','available':'In ForgeCore vorhanden','ignored':'Ignoriert',
+  'queued':'Bereits in Download-Warteschlange','missing':'Als fehlend markiert',
+  'not-tracked':'Noch nicht verwaltet'
+ })[status]||'Nicht geprüft';
+}
+function discoverFlag(label,value){
+ const p=node('p',label+': '+value,'muted');return p;
+}
+async function refreshDiscoverWatchlist(){
+ const box=$('#discoverWatchlist'),result=await api('/api/discover/watchlist');
+ discoverSaved=result.items;
+ box.replaceChildren();
+ $('#discoverWatchlistStatus').textContent=result.items.length+' gemerkte Titel · '+result.items.filter(x=>x.monitored).length+' überwacht';
+ for(const item of result.items){
+  const entry=node('article','','entry');
+  const head=node('div','','entryhead');
+  head.append(node('strong',item.title+(item.year?' ('+item.year+')':'')));
+  head.append(node('span',item.monitored?'Überwacht':'Merkliste','muted'));
+  entry.append(head);
+  const actions=node('div','','actionrow');
+  actions.append(action('Details',async()=>{await showDiscoverDetail(item.kind,item.id);document.getElementById('discoverDetails').scrollIntoView({behavior:'smooth',block:'start'});}));
+  actions.append(action(item.monitored?'Überwachung ausschalten':'Überwachen',async()=>{
+   await api('/api/discover/watchlist/monitor',{method:'PATCH',body:{kind:item.kind,id:item.id,monitored:!item.monitored}});
+   await refreshDiscoverWatchlist();notify('Radar-Einstellung gespeichert.');
+  }));
+  actions.append(action('Entfernen',async()=>{
+   await api('/api/discover/watchlist',{method:'DELETE',body:{kind:item.kind,id:item.id}});
+   await refreshDiscoverWatchlist();notify('Aus Merkliste entfernt.');
+  },'outline'));
+  entry.append(actions);box.append(entry);
+ }
+ if(!result.items.length)box.append(node('p','Noch keine Filme oder Serien gemerkt.','muted'));
+}
+async function showDiscoverDetail(kind,id){
+ const box=$('#discoverDetails');box.hidden=false;box.replaceChildren(node('p','Lade TMDB-Details …','muted'));
+ try{
+  const detail=await api('/api/discover/detail?'+discoveryParams(kind,id));
+  box.replaceChildren();
+  const head=node('div','','entryhead');
+  head.append(node('h2',detail.title+(detail.year?' ('+detail.year+')':'')));
+  head.append(action('Schließen',async()=>{box.hidden=true;},'outline'));
+  box.append(head);
+  box.append(discoverFlag('Kategorie',discoveryName(kind)+' · '+(detail.genres.join(', ')||'Genre unbekannt')));
+  box.append(discoverFlag('TMDB-Bewertung',detail.rating===null?'Nicht verfügbar':detail.rating.toFixed(1)+'/10'));
+  if(detail.overview)box.append(node('p',detail.overview));
+  const prov=node('section','','discoverMetadata');
+  prov.append(node('h3','Streaminganbieter in Österreich'));
+  prov.append(node('p','Daten von TMDB/JustWatch · Verfügbarkeit ist keine Downloadberechtigung.','hint'));
+  if(!detail.providers.items.length)prov.append(node('p','Derzeit keine Anbieterinformationen für Österreich.','muted'));
+  else for(const p of detail.providers.items)prov.append(node('span',p.name+' · '+({flatrate:'Abo',free:'kostenlos',ads:'mit Werbung',rent:'Leihe',buy:'Kauf'}[p.type]||p.type),'discoverProvider'));
+  box.append(prov);
+  if(kind==='tv'){
+   const next=detail.nextEpisode;
+   box.append(discoverFlag('Nächste angekündigte Folge',next?('S'+String(next.season).padStart(2,'0')+'E'+String(next.episode).padStart(2,'0')+' · '+(next.airDate||'Datum offen')+(next.title?' · '+next.title:'')):'Keine bestätigte nächste Folge'));
+   box.append(discoverFlag('TVmaze-Abgleich',detail.tvmaze.matched?'Eindeutig über IMDb-ID verknüpft':(detail.tvmaze.notice||'Nicht verknüpft')));
+  }
+  const actions=node('div','','actionrow');
+  const saved=discoverSaved.find(x=>x.kind===kind&&x.id===id);
+  actions.append(action(saved?'In Merkliste gespeichert':'Zur Merkliste',async()=>{
+   await api('/api/discover/watchlist',{method:'POST',body:{kind,id,monitored:!!saved?.monitored}});
+   await refreshDiscoverWatchlist();notify('In Merkliste gespeichert.');
+  }));
+  actions.append(action('Serie/Film zur Bibliothek',async()=>{
+   const r=await api('/api/discover/add',{method:'POST',body:{kind,id}});
+   await refreshLibrary();
+   notify(r.alreadyAdded?'Bereits in ForgeCore.':'Medienprojekt angelegt.');
+  }));
+  const jfStatus=node('p','Jellyfin noch nicht geprüft.','muted');
+  actions.append(action('Mit Jellyfin vergleichen',async()=>{
+   jfStatus.textContent='Jellyfin-Abgleich wird geprüft …';
+   try{
+    const result=await api('/api/discover/jellyfin?'+discoveryParams(kind,id));
+    if(!result.configured)jfStatus.textContent='Jellyfin ist nicht konfiguriert. Bestand unbekannt.';
+    else if(result.state==='matched')jfStatus.textContent=kind==='tv'?'Serienidentität bestätigt · '+result.present.filter(x=>x.season!==0).length+' reguläre Folgen und '+result.specials+' Specials in Jellyfin.':'Film in Jellyfin vorhanden.';
+    else jfStatus.textContent=result.reason+' · Der Bestand ist möglicherweise unvollständig oder anders benannt.';
+   }catch(e){jfStatus.textContent='Jellyfin-Abgleich fehlgeschlagen: '+e.message;throw e;}
+  }));
+  box.append(actions,jfStatus);
+  if(kind==='tv')renderDiscoverSeasons(box,detail);
+ }catch(e){box.replaceChildren(node('p','Detailansicht fehlgeschlagen: '+e.message,'muted'));throw e;}
+}
+function renderDiscoverSeasons(box,detail){
+ const group=node('section','','discoverMetadata');
+ group.append(node('h3','Staffeln & Episoden'));
+ group.append(node('p','Staffeln aus TMDB. Specials (Staffel 0) werden nur angezeigt, wenn TMDB eine entsprechende Staffel meldet.','hint'));
+ const choices=node('select');choices.setAttribute('aria-label','Staffel auswählen');
+ for(const s of detail.seasons){
+  const opt=node('option',s.season===0?'Specials / Staffel 0':'Staffel '+s.season+(s.episodes!==null?' · '+s.episodes+' Folgen':''));
+  opt.value=String(s.season);choices.append(opt);
+ }
+ if(detail.seasons.some(s=>s.season===1))choices.value='1';
+ else if(detail.seasons.length)choices.value=String(detail.seasons[0].season);
+ const load=action('Folgen anzeigen',async()=>loadDiscoverSeason(detail.id,Number(choices.value),list));
+ const list=node('div','','discoverEpisodeList');
+ group.append(choices,load,list);
+ if(!detail.seasons.length)group.append(node('p','TMDB meldet noch keine Staffeln.','muted'));
+ box.append(group);
+}
+async function loadDiscoverSeason(id,season,root){
+ root.replaceChildren(node('p','Lade Staffelinventar und Jellyfin-Abgleich …','muted'));
+ try{
+  const data=await api('/api/discover/plan?'+discoveryParams('tv',id,{season}));
+  root.replaceChildren();
+  root.append(node('p',data.episodes.length+' Folgen · Jellyfin: '+(data.jellyfin.configured?data.jellyfin.reason:'nicht konfiguriert'),'hint'));
+  root.append(node('p',data.notice,'hint'));
+  const selected=[];
+  const rows=node('div','','discoverEpisodeRows');
+  for(const ep of data.episodes){
+   const label=node('label','','discoverEpisodeRow');
+   const checkbox=node('input');
+   checkbox.type='checkbox';checkbox.value=String(ep.episode);
+   checkbox.disabled=!ep.selectable;
+   if(ep.selectable)selected.push(checkbox);
+   const title=node('span','S'+String(season).padStart(2,'0')+'E'+String(ep.episode).padStart(2,'0')+' · '+(ep.title||'Ohne Titel'),'discoverEpisodeTitle');
+   label.append(checkbox,title,node('small',discoverStatusText(ep.state),'muted'));
+   rows.append(label);
+  }
+  root.append(rows);
+  if(selected.length){
+   const act=node('div','','actionrow');
+   act.append(action('Alle geeigneten markieren',async()=>{selected.forEach(ch=>ch.checked=true);}));
+   act.append(action('Auswahl zurücksetzen',async()=>{selected.forEach(ch=>ch.checked=false);}));
+   act.append(action('Ausgewählte Episoden vormerken',async()=>{
+    const chosen=selected.filter(c=>c.checked).map(c=>Number(c.value));
+    if(!chosen.length)throw Error('Bitte Episoden auswählen.');
+    if(!confirm(chosen.length+' Episoden in ForgeCore registrieren? Dies startet keine Downloads.'))return;
+    const result=await api('/api/discover/plan/apply',{method:'POST',body:{id,season,episodes:chosen,confirm:'ADD_MISSING'}});
+    notify(result.added+' neue Episoden registriert · 0 Downloads gestartet.');
+    await loadDiscoverSeason(id,season,root);
+   }));
+   root.append(act);
+  }
+  if(!data.episodes.length)root.append(node('p','Keine Episoden in dieser TMDB-Staffel gefunden.','muted'));
+ }catch(e){root.replaceChildren(node('p','Staffelprüfung fehlgeschlagen: '+e.message,'muted'));throw e;}
+}
+$('#discoverWatchlistReload').addEventListener('click',()=>refreshDiscoverWatchlist().catch(e=>notify(e.message,true)));
+$('#discoverRadarCheck').addEventListener('click',async()=>{
+ try{
+  const r=await api('/api/discover/radar/check',{method:'POST',body:{}});
+  await refreshDiscoverWatchlist();
+  notify(r.checked+' Titel geprüft · '+r.notified+' neue Hinweise'+(r.errors.length?' · '+r.errors.length+' Fehler':''));
+ }catch(e){notify(e.message,true);}
 });

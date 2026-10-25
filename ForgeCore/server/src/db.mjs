@@ -49,7 +49,10 @@ CREATE INDEX IF NOT EXISTS idx_source_check_events_source ON source_check_events
 CREATE TABLE IF NOT EXISTS jellyfin_sync_events(id INTEGER PRIMARY KEY AUTOINCREMENT,checked_at TEXT NOT NULL,matched INTEGER NOT NULL,updated INTEGER NOT NULL,unmatched INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_jellyfin_sync_events_checked ON jellyfin_sync_events(checked_at);`,
 `CREATE TABLE IF NOT EXISTS search_sites(id TEXT PRIMARY KEY,url TEXT NOT NULL UNIQUE,label TEXT NOT NULL,adapter_id TEXT NOT NULL DEFAULT 'auto',enabled INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0,1)),created_at TEXT NOT NULL,updated_at TEXT NOT NULL);`,
-`ALTER TABLE search_sites ADD COLUMN search_template TEXT NOT NULL DEFAULT '';`
+`ALTER TABLE search_sites ADD COLUMN search_template TEXT NOT NULL DEFAULT '';`,
+`CREATE TABLE IF NOT EXISTS discover_watchlist(tmdb_id INTEGER NOT NULL CHECK(tmdb_id>0),kind TEXT NOT NULL CHECK(kind IN ('tv','movie')),title TEXT NOT NULL,year INTEGER,monitored INTEGER NOT NULL DEFAULT 0 CHECK(monitored IN (0,1)),added_at TEXT NOT NULL,updated_at TEXT NOT NULL,last_checked_at TEXT,last_event_key TEXT,PRIMARY KEY(kind,tmdb_id));
+CREATE INDEX IF NOT EXISTS idx_discover_monitor ON discover_watchlist(monitored,last_checked_at);
+CREATE INDEX IF NOT EXISTS idx_media_external_id ON media(external_id);`
 ];
 export const utc=()=>new Date().toISOString();
 export function openDatabase(path=':memory:'){

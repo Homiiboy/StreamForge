@@ -3,7 +3,7 @@ services:
   forgecore:
     build:
       context: ./server
-    image: forgecore:1.5.0
+    image: forgecore:1.5.1
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -14,6 +14,7 @@ services:
       FORGECORE_HOST: 0.0.0.0
       FORGECORE_PORT: 8787
       FORGECORE_SECURE_COOKIE: ${FORGECORE_SECURE_COOKIE:-0}
+      FORGECORE_TMDB_TOKEN: ${FORGECORE_TMDB_TOKEN:-}
     dns:
       - 1.1.1.1
       - 1.0.0.1
