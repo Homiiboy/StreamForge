@@ -24,7 +24,7 @@ export function catalogRecord(item,fallback=''){
   externalId:'tmdb:'+kind+':'+item.id};
 }
 export function hasDiscoverToken(token){return typeof token==='string'&&token.trim().length>0;}
-async function tmdb(path,{token,fetcher=fetch,params={}}={}){
+export async function tmdb(path,{token,fetcher=fetch,params={}}={}){
  if(!hasDiscoverToken(token))throw error('TMDB nicht konfiguriert. FORGECORE_TMDB_TOKEN in .env eintragen.',503);
  const url=new URL(API_BASE+path);
  url.searchParams.set('language','de-DE');
