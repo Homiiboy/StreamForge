@@ -1,5 +1,30 @@
 # ForgeCore
 
+## ForgeCore v1.7.0 – eigenständiger Chromium Browser-Agent
+
+Der optionale ForgeCore Browser-Agent beobachtet HLS-/DASH-/MP4-Netzwerkantworten während eines automatisch gestarteten HTML5-Videos. Er benötigt weder den Windows-StreamForge-Connector noch einen manuell gestarteten Player. Er **kann nicht gewährleisten**, dass dynamische Player mit Popup-, JavaScript- oder Benutzerinteraktionsschranken erfolgreich automatisch abspielen. Es werden keine CAPTCHAs, Anmeldungen, DRMs oder Zugangsrestriktionen umgangen.
+
+**ZimaOS-Installation:** Die Konfiguration bleibt in deiner lokalen `.env`, das geschützte `upgrade.sh` wird weiterverwendet. Erst die normale ForgeCore-ZIP v1.7.0 herunterladen und installieren, anschließend den optionalen Browser-Service aktivieren:
+
+```bash
+cd ~/AppData/ForgeCore/StreamForge/ForgeCore
+curl -fL --retry 3 -o /tmp/ForgeCore-v1.7.0.zip https://github.com/Homiiboy/StreamForge/releases/download/forgecore-v1.7.0/ForgeCore-v1.7.0-ZimaOS.zip
+unzip -tq /tmp/ForgeCore-v1.7.0.zip
+sudo bash upgrade.sh /tmp/ForgeCore-v1.7.0.zip
+sudo docker compose --profile browser up -d --build forgecore-browser
+sudo docker compose --profile browser ps
+```
+
+Die Chromium-Installation benötigt beträchtlich mehr Speicherplatz als ForgeCore allein. Der Container ist durch ein eigenes Chromium-Sandbox-Profil, einen separaten unprivilegierten Benutzer, keine veröffentlichten Ports, keine Zugangsdaten oder Medienvolumes und ein begrenztes RAM-/CPU-Kontingent von ForgeCore getrennt. ZimaOS muss Docker-User-Namespaces/Seccomp für die Chromium-Sandbox zulassen; andernfalls verweigert der Agent den Browserstart, statt mit deaktivierter Sandbox zu laufen.
+
+**Ablauf in der UI:** Discover → Film/Serie wählen → exakte Episodenseite über eine gespeicherte Website finden → **Browser-Agent: Stream selbst erkennen**. Der Agent öffnet die Seite in Chromium und versucht nur HTML5-Videos zu starten. Er erkennt direkte Stream-Dateianfragen. ForgeCore prüft anschließend die deutsche Sprachkennzeichnung; nur bei bestätigtem, unterstütztem und autorisiertem Direktlink kann man den Download ausdrücklich freigeben. Die Datei wird erst nach deutscher Audioprüfung in Jellyfin importiert. Der Scan wird nicht als dauerhafte Hoster-Umgehung implementiert.
+
+**Grenzen:** Ein Link kann sitzungsgebunden, abgelaufen, CDN-spezifisch oder vom Browser abhängig sein; der Download im ForgeCore-Server kann dann nicht funktionieren. Nur öffentlich erreichbare HTTPS-URLs, keine automatischen Login-/Cookie-Replays und keine privaten oder lokalen Netzwerkanfragen im Chromium-Agenten. Gefundene Browser-Quellen verfallen nach acht Minuten und werden nicht ohne Bestätigung in die Download-Warteschlange übernommen. Bei fehlendem Direktstream wird die Verfügbarkeit deutscher Medien als **unbekannt** angezeigt.
+
+**Abnahme:** GitHub-CI führt Browser-Agent-Unit-Tests, Docker-Image-Build und einen echten Chromium-Start mit Sandbox aus. Der Praxistest auf deinem ZimaOS inklusive realer Webseiten, Playersteuerung und Netzwerkzugang ist separat erforderlich.
+
+---
+
 ## v1.6.2 – Website-Treffer in Discover sichtbar
 
 Die deutschsprachige Download-Suche trennt jetzt **Katalogtreffer** (Serien-, Film- und Episodenseiten) von **direkten Mediendateien**. Findet die Website nur eine Episodenseite mit einem externen Player, ist das ein erkannter Katalogtreffer – noch kein Downloadlink und kein deutscher Audiosprachnachweis. Bei einer eindeutig passenden Episodenseite steht „Externe Player prüfen“ zur Verfügung; die PlayerBridge listet Wiedergabelinks und ggf. direkt unterstützte Medienlinks. Sie extrahiert keine geschützten oder extern gehosteten Streams.
