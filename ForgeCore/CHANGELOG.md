@@ -1,5 +1,16 @@
 # ForgeCore – Changelog
 
+## Discover-Meilenstein v1.4.0 – auf dem v1.5.0-Code entwickelt
+
+- Neuer Discover-Tab mit TMDB-Wochentrends, Suche und Poster-Karten im Stil der ForgeCore-Oberfläche, angelehnt an StreamRadar v0.5.3.
+- Serverseitiger TMDB-Adapter und optionales FORGECORE_TMDB_TOKEN-Secret aus der lokalen Umgebung.
+- TMDB-Bild-CSP und getrennte Behandlung von Katalog- und Downloadquellen.
+- Expliziter, duplikatgeschützter Import von TMDB-Titeln in die bestehende Medienbibliothek.
+- Unit-/HTTP-Regressionstests sowie Docker-/Umgebungsanpassung.
+- Keine automatische Downloadplanung, noch keine Merkliste, TVmaze-Kalender oder Jellyfin-Anzeige auf Discover-Karten.
+- Versionshinweis: Meilenstein v1.4.0 ist kein Release-Downgrade; der bestehende v1.5.0-Stand auf main bleibt erhalten.
+
+
 ## v1.5.0 – PlayerBridge und Listen-Download
 
 - Read-only-PlayerBridge: externe Player und direkte Medienlinks differenziert; begrenzte Same-Origin-Inspektion.
