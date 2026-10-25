@@ -60,7 +60,7 @@ function response(res,status,data,headers={}){
  res.end(JSON.stringify(data));
 }
 function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'v1-release-pending-hardware-validation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,sourceAutomation:true,jellyfinApi:true,sourceAdapterSelection:true,operations:true,discover:true,discoverDownloads:true,germanOnly:true,discoverDetails:true,discoverJellyfin:true,discoverWatchlist:true,discoverEpisodePlan:true,lifecycleBackup:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
-export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,download,subtitleFetch,jellyfinFetch,discoverFetch,tvmazeFetch,tmdbToken=process.env.FORGECORE_TMDB_TOKEN,automationInterval=60000}={}){
+export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,languageFetch,download,subtitleFetch,jellyfinFetch,discoverFetch,tvmazeFetch,tmdbToken=process.env.FORGECORE_TMDB_TOKEN,automationInterval=60000}={}){
  const db=openDatabase(dbPath);
  const queue=new JobQueue(db,{mediaRoot});
  const transfers=new TransferQueue(db,{mediaRoot,...(download?{download}:{})});
@@ -73,7 +73,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
  let radarTask=null;
  const runRadar=()=>radarTask||(radarTask=(async()=>{
   const releases=await checkDiscoverRadar(db,radarParams);
-  const german=await checkGermanAvailabilityRadar(db,transfers,{...radarParams,discoverFetch,sourceFetch,jellyfinFetch});
+  const german=await checkGermanAvailabilityRadar(db,transfers,{...radarParams,discoverFetch,sourceFetch,languageFetch,jellyfinFetch});
   return {...releases,german};
  })().finally(()=>{radarTask=null;}));
  const radarTimer=startWorker&&hasDiscoverToken(tmdbToken)?setInterval(()=>{void runRadar().catch(e=>process.stderr.write('Discover radar: '+e.message+'\n'));},6*60*60*1000):null;
@@ -147,7 +147,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     return response(res,200,await runRadar());
    // v1.4.4 – episode status planning only, never enqueue unauthorized streams.
    // v1.5.2–v1.6.0: language-filtered discoveries from saved websites.
-   const downloadOpts={token:tmdbToken,discoverFetch,sourceFetch,jellyfinFetch};
+   const downloadOpts={token:tmdbToken,discoverFetch,sourceFetch,languageFetch,jellyfinFetch};
    if(path==='/api/discover/download-sources'&&method==='GET')
     return response(res,200,await discoverDownloadSources(db,Object.fromEntries(url.searchParams),downloadOpts));
    if(path==='/api/discover/download'&&method==='POST')
