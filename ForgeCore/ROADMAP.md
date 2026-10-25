@@ -1,5 +1,11 @@
 # ForgeCore – Entwicklungsroadmap
 
+## v1.6.1 – Host-Konfiguration schützen (umgesetzt)
+
+- Sicherer ZIP-Updater `upgrade.sh`, kein Überschreiben privater `.env`.
+- Private .env-Kopie vor dem Update, Integritätsprüfung nachher und kompatible ZimaOS-Docker-Sicherung.
+- Testabdeckung für versehentlich enthaltene `.env`, Symlinks und fehlende Konfiguration.
+
 ## v1.5.2–v1.6.0 – fertig implementiert (ZimaOS-Praxisabnahme offen)
 
 | Version | Funktion | Status |
