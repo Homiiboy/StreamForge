@@ -159,7 +159,7 @@ export async function downloadMedia({sourceUrl,media,episode=null,root,fetcher=s
  if(!Number.isFinite(rateLimitBytesPerSecond)||rateLimitBytesPerSecond<0||rateLimitBytesPerSecond>52428800)throw Error('Invalid transfer bandwidth');
  const uri=parseWebUrl(sourceUrl);
  const staging=jobId?await prepareStaging(process.env.FORGECORE_STAGING_ROOT||tmpdir(),jobId):await mkdtemp(join(process.env.FORGECORE_STAGING_ROOT||tmpdir(),'forgecore-transfer-'));
- let completed=false;
+ let completed=false,blockedGerman=false;
  try{
   const kind=uri.pathname.toLowerCase();
   let video=join(staging,'video.data'),audio='',output=join(staging,'output.mp4'),manifestLanguage='';
@@ -185,9 +185,9 @@ export async function downloadMedia({sourceUrl,media,episode=null,root,fetcher=s
    // Mandatory in production; verify before any file reaches Jellyfin.
    const checked=await verifyMediaTracks(output,{signal,ffprobe:process.env.FORGECORE_FFPROBE||'ffprobe'});
    const german=germanAudioDecision({streams:checked.streams,manifestLanguage});
-   if(!german.german)throw Error(german.reason);
+   if(!german.german){blockedGerman=true;throw Error(german.reason);}
   }
   const result=await safePublish(output,root,media,episode,{signal});
   completed=true;return result;
- }finally{if(completed||!jobId)await rm(staging,{recursive:true,force:true})}
+ }finally{if(completed||blockedGerman||!jobId)await rm(staging,{recursive:true,force:true})}
 }
