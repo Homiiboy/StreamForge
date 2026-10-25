@@ -1,5 +1,12 @@
 # ForgeCore – Changelog
 
+## v1.6.1 – Dauerhafter Schutz lokaler Zugangsdaten
+
+- ZIP-Upgrader verweigert Archive mit `.env`, unsicheren Pfaden und Symlinks; vorherige Konfiguration bleibt erhalten.
+- Die `.env` wird vor dem Update sicher unter `backups/` gesichert und danach überprüft.
+- `manage.sh` verweigert Updates ohne vorhandene, reguläre `.env`, anstatt Token versehentlich zu verlieren.
+- Neue Regressionstests für gültige und manipulierte Updatepakete. Keine Datenbankmigration.
+
 ## v1.6.0 – Deutschpflicht, Discover Downloads und neue Benutzeroberfläche
 
 - **v1.5.2:** Quellen in Discover aus bereits gespeicherten Websites finden, Staffel-/Folgenzuordnung ohne Raten, vorhandene TransferQueue und PlayerBridge weiterverwenden.
