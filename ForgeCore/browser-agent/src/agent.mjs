@@ -81,20 +81,27 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
    }catch{/* untrusted resource */ }
   });
   await page.goto(target,{waitUntil:'domcontentloaded',timeout:14000}).catch(e=>warnings.push('Seite nicht vollständig geladen: '+String(e.message).slice(0,90)));
-  if(autoPlay){
-   for(const frame of page.frames().slice(0,12)){
-    try{
-     const attempted=await frame.evaluate(async()=>{
-      const videos=[...document.querySelectorAll('video')].slice(0,6);
-      let count=0;
-      for(const v of videos){try{v.muted=true;v.autoplay=true;v.playsInline=true;const p=v.play();if(p?.catch)p.catch(()=>{});count++}catch{}}
-      return count;
-     });
-     playAttempts+=attempted;
-    }catch{/* cross-origin/inaccessible frame */ }
+  // Some player frames are injected after DOMContentLoaded. Re-check in short,
+  // bounded intervals instead of assuming the initial DOM already contains video.
+  for(let pass=0;pass<3;pass++){
+   if(autoPlay){
+    for(const frame of page.frames().slice(0,12)){
+     try{
+      const attempted=await frame.evaluate(async()=>{
+       const videos=[...document.querySelectorAll('video')].slice(0,6);
+       let count=0;
+       for(const v of videos){
+        if(!v.paused)continue;
+        try{v.muted=true;v.autoplay=true;v.playsInline=true;const p=v.play();if(p?.catch)p.catch(()=>{});count++}catch{}
+       }
+       return count;
+      });
+      playAttempts+=attempted;
+     }catch{/* inaccessible/destroyed frame */ }
+    }
    }
+   await sleep(Math.ceil(waitMs/3));
   }
-  await sleep(waitMs);
   return {state:sources.size?'media-observed':'no-media',sources:[...sources.values()],observed:sources.size,
     playAttempts,blockedRequests:blocked,warning:warnings.slice(0,2),
     note:sources.size?'Medienanfragen beobachtet; Deutsch und Server-Erreichbarkeit müssen separat bestätigt werden.':
