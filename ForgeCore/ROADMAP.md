@@ -1,5 +1,21 @@
 # ForgeCore – Entwicklungsroadmap
 
+## StreamRadar-Integration als ForgeCore Discover
+
+Da main bereits ForgeCore v1.5.0 enthält, wird der historische v1.4.0-Funktionsmeilenstein auf einem separaten Entwicklungsbranch ergänzt. Ein späterer Merge braucht eine höhere Release-Version.
+
+| Meilenstein | Funktion | Status |
+| --- | --- | --- |
+| v1.4.0 | TMDB-Katalogsuche, Trends, Titelkarten und Übernahme in die Bibliothek | Implementiert im Entwicklungsbranch; CI/Hardware offen |
+| v1.4.1 | TMDB-Detailansicht, Anbieter und TVmaze-Metadaten | Geplant |
+| v1.4.2 | Jellyfin-Bestandsabgleich direkt in Discover | Geplant |
+| v1.4.3 | Serverseitige Merkliste und freiwillige Überwachung | Geplant |
+| v1.4.4 | Staffelauswahl, Episodenauswahl und Fehlfolgenplanung | Geplant |
+| v1.5.0 | PlayerBridge | Bereits vorhanden; wird beim Discover-Merge bewahrt |
+
+TMDB-/JustWatch-Streamingverfügbarkeit ist keine Downloadberechtigung. Downloads dürfen nur über unterstützte, autorisierte direkte Mediendateien erfolgen.
+
+
 **Aktueller Phase-9-Teststand: v1.1.0.** Eine globale, benutzerkonfigurierte Site-Suche mit Such-URL-Vorlage und begrenzter Detailseitenanalyse ist implementiert. Bis zu einer Sonarr-/Radarr-ähnlichen Vollautomatisierung fehlen noch Website-spezifische Suchadapter und Freigabe-/Zuordnungslogik für gefundene Medien.
 
 **Eigenständige Versionierung:** ForgeCore startet bei **v0.0.1**. Die Kopie unter `ForgeCore/browser-extension/` wurde durch die bewusste Integration auf **StreamForge v1.8.11** angehoben. Die zwei Versionsnummern sind unabhängig.
