@@ -5,6 +5,9 @@ on:
     paths:
       - 'ForgeCore/server/**'
       - 'ForgeCore/compose.yaml'
+      - 'ForgeCore/manage.sh'
+      - 'ForgeCore/upgrade.sh'
+      - 'ForgeCore/.env.example'
       - '.github/workflows/forgecore-release.yml'
   workflow_dispatch:
 permissions:
@@ -32,15 +35,15 @@ jobs:
         run: |
           VERSION=$(node -p "require('./ForgeCore/server/package.json').version")
           TAG="forgecore-v${VERSION}"
-          test "$VERSION" = "1.6.0"
+          test "$VERSION" = "1.6.1"
           mkdir -p dist
           zip -qr "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
-            ForgeCore/server ForgeCore/compose.yaml ForgeCore/.env.example ForgeCore/install.sh ForgeCore/manage.sh \
+            ForgeCore/server ForgeCore/compose.yaml ForgeCore/.env.example ForgeCore/install.sh ForgeCore/manage.sh ForgeCore/upgrade.sh \
             ForgeCore/README.md ForgeCore/ROADMAP.md ForgeCore/CHANGELOG.md ForgeCore/ACCEPTANCE-v1.0.0.md
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
-              --title "ForgeCore ${VERSION} – StreamRadar Discover Integration" \
+              --title "ForgeCore ${VERSION} – Geschützter TMDB-Token bei Updates" \
               --prerelease \
               --target "$GITHUB_SHA" \
-              --notes "ForgeCore v1.6.0 – deutsche Downloadfunktionen in Discover aus StreamRadar v0.5.3: TMDB-Suche und Details, TVmaze, Jellyfin-Bestand, Merkliste, Release-Radar sowie kontrollierte Episodenvormerkung. Nur unterstützte, autorisierte Direktmedien sind downloadbar. ZimaOS-Hardwareabnahme noch ausstehend."
+              --notes "ForgeCore v1.6.1: upgrade.sh aktualisiert das ZIP mit strenger Dateipfad-Prüfung, sichert die lokale .env (einschließlich TMDB Read Access Token), schützt sie vor Überschreiben und führt danach das Docker-Update aus. ZimaOS-Hardware-Abnahme weiterhin ausstehend."
           fi
