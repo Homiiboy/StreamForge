@@ -656,6 +656,12 @@ async function refreshDiscoverWatchlist(){
    await api('/api/discover/watchlist/monitor',{method:'PATCH',body:{kind:item.kind,id:item.id,monitored:!item.monitored}});
    await refreshDiscoverWatchlist();notify('Radar-Einstellung gespeichert.');
   }));
+  actions.append(action(item.autoQueueGerman?'Deutsche Downloads: Automatik AUS':'Deutsche Downloads automatisch',async()=>{
+   if(!item.autoQueueGerman&&!confirm('Nur explizit geprüfte deutsche Direktquellen automatisch herunterladen? Titel und fehlende Episoden müssen zuvor manuell angelegt sein.'))return;
+   await api('/api/discover/watchlist/monitor',{method:'PATCH',body:{kind:item.kind,id:item.id,monitored:item.autoQueueGerman?!!item.monitored:true,autoQueueGerman:!item.autoQueueGerman}});
+   await refreshDiscoverWatchlist();
+   notify(item.autoQueueGerman?'Automatik deaktiviert.':'Deutsch-Only-Automatik aktiviert.');
+  }));
   actions.append(action('Entfernen',async()=>{
    await api('/api/discover/watchlist',{method:'DELETE',body:{kind:item.kind,id:item.id}});
    await refreshDiscoverWatchlist();notify('Aus Merkliste entfernt.');
@@ -774,7 +780,7 @@ $('#discoverRadarCheck').addEventListener('click',async()=>{
  try{
   const r=await api('/api/discover/radar/check',{method:'POST',body:{}});
   await refreshDiscoverWatchlist();
-  notify(r.checked+' Titel geprüft · '+r.notified+' neue Hinweise'+(r.errors.length?' · '+r.errors.length+' Fehler':''));
+  notify(r.checked+' Termine geprüft · '+r.notified+' Hinweise · '+(r.german?.confirmed||0)+' deutsche Quellen bestätigt · '+(r.german?.queued||0)+' Downloads geplant');
  }catch(e){notify(e.message,true);}
 });
 
