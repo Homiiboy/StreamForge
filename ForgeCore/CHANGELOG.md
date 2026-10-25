@@ -1,5 +1,17 @@
 # ForgeCore – Changelog
 
+## v1.5.1 – StreamRadar Discover & Radar (zusammengefasste v1.4.x-Meilensteine)
+
+- Discover-Tab inklusive TMDB-Suche, Wochen-Trends, Poster und Details.
+- Österreichische Watch-Provider (Abo/Kauf/Leihe); verifizierte TMDB-IMDb-TVmaze-Verknüpfung für Serientermine.
+- Manuell ausgelöster Jellyfin-Bestandsabgleich mit strikter SeriesId-Filterung; keine Vermischung von Specials.
+- Serverseitige Merkliste, freiwillige Überwachung, alle sechs Stunden wiederkehrender Radar-Check, deduplizierte Benachrichtigungen.
+- Staffel-/Episodenliste mit vorausgewählten Ausschlüssen für bereits vorhandene, ignorierte oder bereits laufende Folgen. Explizite Registrierung fehlender Einträge, **keine automatische Downloadplanung**.
+- SQLite-Migration 11, JSON-Backup/Restore (Überwachung bei Restore deaktiviert), neue Unit-/HTTP-Regressionstests.
+- StreamForge-Browser-Connector, ForgeCore-v1.5.0-PlayerBridge und StreamRadar-Windows-App unverändert.
+- Prerelease bis zur echten ZimaOS-/Jellyfin-/TMDB-Live-Abnahme.
+
+
 ## Discover-Meilensteine v1.4.1–v1.4.4 (im Entwicklungsbranch, nachträglich auf v1.5.0-Code)
 
 - **v1.4.1:** TMDB-Detailseiten (Genre, Inhalt, Laufzeit soweit geliefert), österreichische Abo-/Kauf-/Leihanbieter sowie explizite TMDB-Staffelansicht und TVmaze-Zuordnung ausschließlich mit bestätigter IMDb-ID.
