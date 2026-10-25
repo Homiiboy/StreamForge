@@ -820,11 +820,48 @@ async function renderDiscoverSources(host,request){
    card.append(actionRow);
    area.append(card);
   }
-  if(!data.results.length||data.results.every(x=>!x.canAttempt))
-   area.append(node('p','Gibt es noch nicht auf Deutsch – keine geeignete Quelle mit unterstütztem direkten Medienlink nachgewiesen.','discoverMissing'));
-  if(data.errors?.length)area.append(node('p','Einzelne Websites waren nicht erreichbar oder konnten nicht analysiert werden.','hint'));
+  area.append(node('p',data.notice||'Verfügbarkeit nicht nachweisbar.','discoverSourceNotice'));
+  const catalogs=data.catalogHits||[];
+  if(catalogs.length){
+   const titles=node('section','','discoverCatalogueMatches');
+   titles.append(node('h4','Website- und Episodentreffer ('+catalogs.length+')'));
+   titles.append(node('p','Diese Treffer sind Katalog-/Wiedergabeseiten, keine Download-Dateien. Sie beweisen weder eine deutsche Tonspur noch die Downloadberechtigung.','hint'));
+   const relevant=catalogs.filter(x=>x.exactEpisode||x.exactMovie||x.mediaType==='title'||x.mediaType==='series');
+   for(const hit of relevant.slice(0,12)){
+    const row=node('article','','discoverSourceResult');
+    const name=hit.exactEpisode?'Genau diese Episode im Katalog':hit.exactMovie?'Filmseite gefunden':'Titel-/Serienseite gefunden · Episode nicht bestätigt';
+    row.append(node('strong',hit.siteLabel),node('span',name,'discoverLanguageStatus'));
+    row.append(node('small',hit.title||'', 'muted'));
+    const actions=node('div','','actionrow');
+    const link=node('a','Seite öffnen','outline');link.href=hit.url;link.target='_blank';link.rel='noopener noreferrer';actions.append(link);
+    if(hit.exactEpisode||hit.exactMovie){
+     actions.append(action('Externe Player prüfen',async()=>{
+      const checked=await api('/api/playerbridge/inspect',{method:'POST',body:{siteId:hit.siteId,url:hit.url}});
+      row.querySelector('.discoverPlayerCheck')?.remove();
+      const panel=node('div','','discoverPlayerCheck');
+      panel.append(node('p',checked.counts.external+' externe Player · '+checked.counts.direct+' direkte Mediendateien','muted'));
+      for(const player of checked.players){
+       const a=node('a',(player.hoster||'Player')+' · '+(player.kind==='direct'?'Direktlink':'Externer Wiedergabelink'));
+       a.href=player.url;a.target='_blank';a.rel='noopener noreferrer';panel.append(a);
+      }
+      if(!checked.players.length)panel.append(node('p','Keine unterstützten Player-Links im statischen HTML gefunden.','hint'));
+      row.append(panel);
+     }));
+    }
+    row.append(actions);titles.append(row);
+   }
+   if(!relevant.length)titles.append(node('p','Treffer vorhanden, aber nicht eindeutig dieser Episode zugeordnet.','hint'));
+   area.append(titles);
+  }
+  if(!data.results.length){
+   area.append(node('p','Keine direkte Downloadquelle nachgewiesen. Die deutsche Verfügbarkeit ist unbekannt.','discoverSourceNotice'));
+  }
+  for(const error of (data.errors||[]).slice(0,10))
+   area.append(node('p',error.siteLabel+': '+error.error,'discoverSourceNotice'));
+  for(const warning of (data.warnings||[]).slice(0,10))
+   area.append(node('p',warning.siteLabel+': '+warning.message,'hint'));
   area.scrollIntoView({behavior:'smooth',block:'nearest'});
- }catch(e){area.replaceChildren(node('p','Gibt es noch nicht auf Deutsch – '+e.message,'discoverMissing'));throw e}
+ }catch(e){area.replaceChildren(node('p','Quellensuche fehlgeschlagen: '+e.message,'discoverMissing'));throw e}
 }
 // v1.5.5: a separate download workbench; no duplicate queue implementation.
 async function refreshDownloadDashboard(){
