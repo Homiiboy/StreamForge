@@ -32,15 +32,15 @@ jobs:
         run: |
           VERSION=$(node -p "require('./ForgeCore/server/package.json').version")
           TAG="forgecore-v${VERSION}"
-          test "$VERSION" = "1.5.0"
+          test "$VERSION" = "1.5.1"
           mkdir -p dist
           zip -qr "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
             ForgeCore/server ForgeCore/compose.yaml ForgeCore/.env.example ForgeCore/install.sh ForgeCore/manage.sh \
             ForgeCore/README.md ForgeCore/ROADMAP.md ForgeCore/CHANGELOG.md ForgeCore/ACCEPTANCE-v1.0.0.md
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
-              --title "ForgeCore ${VERSION} – Catalog Title Search" \
+              --title "ForgeCore ${VERSION} – StreamRadar Discover Integration" \
               --prerelease \
               --target "$GITHUB_SHA" \
-              --notes "ForgeCore v1.5.0 – Testversion mit read-only Staffel- und Episodeninspektion sowie Jellyfin-Abgleichvorschau. Automatische End-to-End-Suche und unattended Downloads noch nicht fertig. ZimaOS-Hardwaretests ausstehend."
+              --notes "ForgeCore v1.5.1 – Discover aus StreamRadar v0.5.3: TMDB-Suche und Details, TVmaze, Jellyfin-Bestand, Merkliste, Release-Radar sowie kontrollierte Episodenvormerkung. Nur unterstützte, autorisierte Direktmedien sind downloadbar. ZimaOS-Hardwareabnahme noch ausstehend."
           fi
