@@ -57,6 +57,8 @@ services:
       - seccomp:./browser-agent/seccomp_profile.json
     cap_drop:
       - ALL
+    cap_add:
+      - SYS_CHROOT
     environment:
       NODE_ENV: production
       HOME: /tmp
