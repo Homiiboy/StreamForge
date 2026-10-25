@@ -13,7 +13,7 @@ async function api(path,{method='GET',body}={}){
 }
 function node(tag,text='',klass=''){const element=document.createElement(tag);element.textContent=text;if(klass)element.className=klass;return element;}
 function action(text,fn,klass='outline'){const b=node('button',text,klass);b.type='button';b.addEventListener('click',async()=>{b.disabled=true;try{await fn();}catch(error){notify(error.message,true);}finally{b.disabled=false;}});return b;}
-function showView(view){for(const v of ['library','tasks','settings','system'])$('#'+v+'View').hidden=v!==view;document.querySelectorAll('nav .tab').forEach(t=>t.classList.toggle('selected',t.dataset.view===view));if(view==='tasks'){refreshJobs().catch(e=>notify(e.message,true));refreshTransfers().catch(e=>notify(e.message,true));refreshNotices().catch(e=>notify(e.message,true));refreshDiagnostics().catch(e=>notify(e.message,true));}if(view==='settings'){refreshSettings().catch(e=>notify(e.message,true));refreshSchedule().catch(e=>notify(e.message,true));refreshJellyfin().catch(e=>notify(e.message,true));}if(view==='system')refreshOperations().catch(e=>notify(e.message,true));}
+function showView(view){for(const v of ['discover','library','tasks','settings','system'])$('#'+v+'View').hidden=v!==view;document.querySelectorAll('nav .tab').forEach(t=>t.classList.toggle('selected',t.dataset.view===view));if(view==='discover'){refreshDiscover().catch(e=>notify(e.message,true));}if(view==='tasks'){refreshJobs().catch(e=>notify(e.message,true));refreshTransfers().catch(e=>notify(e.message,true));refreshNotices().catch(e=>notify(e.message,true));refreshDiagnostics().catch(e=>notify(e.message,true));}if(view==='settings'){refreshSettings().catch(e=>notify(e.message,true));refreshSchedule().catch(e=>notify(e.message,true));refreshJellyfin().catch(e=>notify(e.message,true));}if(view==='system')refreshOperations().catch(e=>notify(e.message,true));}
 async function startup(){
  try{const me=await api('/api/me');csrf=me.csrf||'';$('#connection').textContent='Verbunden';
   $('#setup').hidden=me.configured;$('#login').hidden=!me.configured||me.authenticated;$('#app').hidden=!me.authenticated;
@@ -567,4 +567,53 @@ $('#siteSearchForm').addEventListener('submit',async e=>{e.preventDefault();
   for(const warning of data.warnings||[])box.append(node('p',warning.siteLabel+': '+warning.message,'muted'));
   if(!data.results.length)box.append(node('p','Keine passenden Titel oder Medienlinks gefunden. Für eine echte Titelsuche eine Suchadresse mit {query} hinterlegen.','muted'));
  }catch(error){box.replaceChildren();notify(error.message,true);}
+});
+
+
+// StreamRadar-inspired Discover. TMDB calls and credentials remain on the server.
+async function refreshDiscover(query=''){
+ const container=$('#discoverResults'),status=$('#discoverStatus');
+ container.replaceChildren();
+ status.textContent='TMDB-Katalog wird geladen …';
+ const params=new URLSearchParams({kind:$('#discoverKind').value});
+ if(query)params.set('q',query);
+ try{
+  const result=await api('/api/discover?'+params.toString());
+  if(!result.configured){
+   status.textContent='Discover benötigt einen TMDB Read Access Token. Trage FORGECORE_TMDB_TOKEN in der ForgeCore-.env ein und starte den Container erneut.';
+   return;
+  }
+  status.textContent=(query?'Suchergebnisse':'Trends dieser Woche')+' · '+result.items.length+' Titel · Quelle: TMDB';
+  if(!result.items.length){container.append(node('p','Keine passenden Titel gefunden.'));return;}
+  for(const item of result.items){
+   const card=node('article','','discoverCard');
+   if(item.poster){
+    const img=document.createElement('img');
+    img.src=item.poster;img.alt='Poster: '+item.title;img.loading='lazy';img.referrerPolicy='no-referrer';
+    card.append(img);
+   }else card.append(node('div','Kein Poster','discoverNoPoster'));
+   const details=node('div','','discoverBody');
+   const h=node('h3',item.title);details.append(h);
+   details.append(node('p',(item.kind==='tv'?'Serie':'Film')+(item.year?' · '+item.year:'')+(item.rating!==null?' · ★ '+item.rating.toFixed(1):''),'muted'));
+   if(item.overview)details.append(node('p',item.overview.slice(0,230)+(item.overview.length>230?' …':''),'discoverSynopsis'));
+   const actions=node('div','','actionrow');
+   actions.append(action('Zur Bibliothek hinzufügen',async()=>{
+    const r=await api('/api/discover/add',{method:'POST',body:{id:item.id,kind:item.kind}});
+    notify(r.alreadyAdded?'Bereits in der ForgeCore-Bibliothek.':'Titel zur ForgeCore-Bibliothek hinzugefügt.');
+    await refreshLibrary();
+   }));
+   details.append(actions);card.append(details);container.append(card);
+  }
+ }catch(error){status.textContent='Katalog konnte nicht geladen werden.';container.append(node('p',error.message,'muted'));}
+}
+$('#discoverForm').addEventListener('submit',e=>{
+ e.preventDefault();refreshDiscover($('#discoverQuery').value.trim()).catch(err=>notify(err.message,true));
+});
+$('#discoverTrending').addEventListener('click',()=>{
+ $('#discoverQuery').value='';
+ refreshDiscover().catch(err=>notify(err.message,true));
+});
+$('#discoverKind').addEventListener('change',()=>{
+ const query=$('#discoverQuery').value.trim();
+ if(!query||query.length>=2)refreshDiscover(query).catch(err=>notify(err.message,true));
 });
