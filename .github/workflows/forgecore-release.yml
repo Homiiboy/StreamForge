@@ -35,7 +35,7 @@ jobs:
         run: |
           VERSION=$(node -p "require('./ForgeCore/server/package.json').version")
           TAG="forgecore-v${VERSION}"
-          test "$VERSION" = "1.6.1"
+          test "$VERSION" = "1.6.2"
           mkdir -p dist
           zip -qr "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
             ForgeCore/server ForgeCore/compose.yaml ForgeCore/.env.example ForgeCore/install.sh ForgeCore/manage.sh ForgeCore/upgrade.sh \
@@ -45,5 +45,5 @@ jobs:
               --title "ForgeCore ${VERSION} – Geschützter TMDB-Token bei Updates" \
               --prerelease \
               --target "$GITHUB_SHA" \
-              --notes "ForgeCore v1.6.1: upgrade.sh aktualisiert das ZIP mit strenger Dateipfad-Prüfung, sichert die lokale .env (einschließlich TMDB Read Access Token), schützt sie vor Überschreiben und führt danach das Docker-Update aus. ZimaOS-Hardware-Abnahme weiterhin ausstehend."
+              --notes "ForgeCore v1.6.2: Discover zeigt erkannte Katalog- und Episodenseiten getrennt von direkten Mediendateien und ermöglicht die bestehende PlayerBridge für eindeutige Episodenseiten. Fehlende direkte Downloads werden nicht als fehlende deutsche Synchronfassung bezeichnet. ZimaOS-Hardware-Abnahme ausstehend."
           fi
