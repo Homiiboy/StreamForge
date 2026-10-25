@@ -1,5 +1,20 @@
 # ForgeCore
 
+## ForgeCore v1.5.1 – Discover & Radar (StreamRadar-Integration)
+
+ForgeCore v1.5.1 bündelt die ursprünglich geplanten Meilensteine v1.4.0–v1.4.4 in einer vorwärtskompatiblen Version. Die PlayerBridge und Jellyfin-Fixes des bestehenden v1.5.0-Codes bleiben erhalten; StreamRadar v0.5.3 selbst bleibt unverändert.
+
+**Einrichten:** In der lokalen (nicht einzucheckenden) ForgeCore-.env die neue Zeile FORGECORE_TMDB_TOKEN=... mit dem eigenen TMDB API Read Access Token ergänzen. Diese Zeile kann aus .env.example übernommen werden, ohne die bestehende .env zu überschreiben. Anschließend ForgeCore aktualisieren. Ohne Token wird Discover als unkonfiguriert angezeigt. Das Token wird nicht über die API ausgegeben oder im JSON-Backup gespeichert.
+
+**Discover-Bereich:** TMDB-Top-Trends und Suche, detaillierte Filminfos, Anbieter für AT, eindeutige TVmaze-Serienzuordnung, Jellyfin-Bestand je Titel auf Knopfdruck, SQLite-Merkliste, optionale Radar-Überwachung und Staffel-/Episodenplanung. Überwachungschecks laufen bei aktivierter Konfiguration ungefähr alle sechs Stunden; sie informieren über nachgewiesene kommende Termine im 30-Tage-Fenster. Pro Ereignis gibt es höchstens eine neue Nachricht; nach JSON-Restore bleibt die Überwachung zunächst ausgeschaltet.
+
+**Downloads:** Der TMDB-/TVmaze-Katalog liefert keine Mediendateien. Das Hinzufügen oder Vormerken startet keine Downloads. Zum Laden einer Episode muss separat eine tatsächlich unterstützte und rechtmäßig nutzbare, ungeschützte Downloadquelle in ForgeCore vorhanden sein.
+
+**Auf ZimaOS:** Upgrade erst nach vollständigem Backup. Jellyfin-Identitätszuordnung und SMB-Schreibrechte sowie echte TMDB-/TVmaze-Daten müssen auf dem eigenen Server verifiziert werden. Wegen SQLite-Schema 11 keine Rückkehr zur alten Serverversion mit demselben aktualisierten Datenvolume ohne Restore.
+
+---
+
+
 ## Discover aus StreamRadar – v1.4.0-Funktionsmeilenstein
 
 Der Entwicklungsbranch baut auf dem neueren ForgeCore-v1.5.0-Code auf und ergänzt den geplanten Discover-Meilenstein ohne Versions-Downgrade. StreamRadar v0.5.3 bleibt als Windows-App unabhängig.
