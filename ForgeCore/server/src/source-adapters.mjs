@@ -1,4 +1,5 @@
 import {safeFetch,parseWebUrl} from './source-security.mjs';
+import {isGermanLanguage,NOT_GERMAN} from './german-language.mjs';
 
 export const SOURCE_ADAPTERS=Object.freeze([{id:'hls',label:'HLS VOD'},{id:'dash',label:'DASH VOD (SegmentList / SegmentTemplate)'},{id:'html-links',label:'Webseite (Links zu Medien/Playlisten)'},{id:'html-episode-data',label:'HTML mit data-season/data-episode'}]);
 function attr(tag,key){return (tag.match(new RegExp('\\b'+key+'\\s*=\\s*["\']([^"\']*)["\']','i'))||[])[1]||''}
@@ -91,14 +92,16 @@ export function parseDash(text,base){
      ||set[2].slice(0,set[2].indexOf('<Representation')).match(/<SegmentTemplate\b([^>]*?)(?:\/\s*>|>([\s\S]*?)<\/SegmentTemplate>)/i);
     if(template)segmentData=dashTemplate(template[1],template[2]||'',{id,bandwidth,base:baseUri,duration});
    }
-   if(segmentData)tracks.push({type,url:baseUri,bandwidth,...segmentData});
+   if(segmentData)tracks.push({type,url:baseUri,bandwidth,language:attr(rep[1],'lang')||attr(set[1],'lang'),...segmentData});
   }
  }
  if(!tracks.length)throw Error('No supported DASH SegmentList or SegmentTemplate tracks in VOD manifest');
  const video=tracks.filter(x=>x.type==='video').sort((a,b)=>b.bandwidth-a.bandwidth)[0];
- const audio=tracks.filter(x=>x.type==='audio').sort((a,b)=>b.bandwidth-a.bandwidth)[0];
+ const audioTracks=tracks.filter(x=>x.type==='audio').sort((a,b)=>b.bandwidth-a.bandwidth);
+ const audio=audioTracks.find(x=>isGermanLanguage(x.language))||(!audioTracks.some(x=>x.language)?audioTracks[0]:null);
+ if(audioTracks.length&&!audio)throw Error(NOT_GERMAN+' (DASH-Audiospuren ohne Deutsch)');
  if(!video)throw Error('DASH video track missing');
- return {kind:'dash',video,audio};
+ return {kind:'dash',video,audio,audioLanguage:audio?.language||''};
 }
 export function parseHtmlLinks(html,base){
  const found=new Map();

@@ -17,6 +17,7 @@ import {inspectPlayerPage} from './player-bridge.mjs';
 import {discoverCatalog,discoverDetail,hasDiscoverToken} from './discover.mjs';
 import {discoverMetadata,discoverSeason,validKind,validId,validSeason} from './discover-metadata.mjs';
 import {discoverWatchlist,watchlistSave,watchlistRemove,watchlistMonitor,discoverJellyfinPreview,discoverEpisodePlan,applyDiscoverEpisodePlan,checkDiscoverRadar} from './discover-state.mjs';
+import {discoverDownloadSources,queueDiscoverDownload,checkGermanAvailabilityRadar} from './discover-download.mjs';
 import {inspectCatalog,catalogJellyfinPreview} from './catalog-inspect.mjs';
 import {seriesOverview,importJellyfinSeries} from './series-overview.mjs';
 import {parseWebUrl} from './source-security.mjs';
@@ -28,7 +29,7 @@ import {downloadSubtitle,normalizeLanguage} from './subtitles.mjs';
 import {operationalStatus,diagnosticEvents} from './operations.mjs';
 
 export const APP_NAME='ForgeCore';
-export const APP_VERSION='1.5.1';
+export const APP_VERSION='1.6.0';
 const staticDir=resolve(dirname(fileURLToPath(import.meta.url)),'../public');
 const MAX_BODY=64*1024;
 const limitText=(v,max=150)=>typeof v==='string'?v.trim().slice(0,max):'';
@@ -58,8 +59,8 @@ function response(res,status,data,headers={}){
  res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','x-frame-options':'DENY',...headers});
  res.end(JSON.stringify(data));
 }
-function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'v1-release-pending-hardware-validation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,sourceAutomation:true,jellyfinApi:true,sourceAdapterSelection:true,operations:true,discover:true,discoverDetails:true,discoverJellyfin:true,discoverWatchlist:true,discoverEpisodePlan:true,lifecycleBackup:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
-export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,download,subtitleFetch,jellyfinFetch,discoverFetch,tvmazeFetch,tmdbToken=process.env.FORGECORE_TMDB_TOKEN,automationInterval=60000}={}){
+function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'v1-release-pending-hardware-validation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,sourceAutomation:true,jellyfinApi:true,sourceAdapterSelection:true,operations:true,discover:true,discoverDownloads:true,germanOnly:true,discoverDetails:true,discoverJellyfin:true,discoverWatchlist:true,discoverEpisodePlan:true,lifecycleBackup:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
+export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,languageFetch,download,subtitleFetch,jellyfinFetch,discoverFetch,tvmazeFetch,tmdbToken=process.env.FORGECORE_TMDB_TOKEN,automationInterval=60000}={}){
  const db=openDatabase(dbPath);
  const queue=new JobQueue(db,{mediaRoot});
  const transfers=new TransferQueue(db,{mediaRoot,...(download?{download}:{})});
@@ -70,7 +71,11 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
  }
  const radarParams={token:tmdbToken,...(discoverFetch?{fetcher:discoverFetch}:{}),...(tvmazeFetch?{tvmazeFetch}:{})};
  let radarTask=null;
- const runRadar=()=>radarTask||(radarTask=checkDiscoverRadar(db,radarParams).finally(()=>{radarTask=null;}));
+ const runRadar=()=>radarTask||(radarTask=(async()=>{
+  const releases=await checkDiscoverRadar(db,radarParams);
+  const german=await checkGermanAvailabilityRadar(db,transfers,{...radarParams,discoverFetch,sourceFetch,languageFetch,jellyfinFetch});
+  return {...releases,german};
+ })().finally(()=>{radarTask=null;}));
  const radarTimer=startWorker&&hasDiscoverToken(tmdbToken)?setInterval(()=>{void runRadar().catch(e=>process.stderr.write('Discover radar: '+e.message+'\n'));},6*60*60*1000):null;
  radarTimer?.unref();
  const authAttempts=new Map();
@@ -141,6 +146,12 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
    if(path==='/api/discover/radar/check'&&method==='POST')
     return response(res,200,await runRadar());
    // v1.4.4 – episode status planning only, never enqueue unauthorized streams.
+   // v1.5.2–v1.6.0: language-filtered discoveries from saved websites.
+   const downloadOpts={token:tmdbToken,discoverFetch,sourceFetch,languageFetch,jellyfinFetch};
+   if(path==='/api/discover/download-sources'&&method==='GET')
+    return response(res,200,await discoverDownloadSources(db,Object.fromEntries(url.searchParams),downloadOpts));
+   if(path==='/api/discover/download'&&method==='POST')
+    return response(res,201,await queueDiscoverDownload(db,transfers,await readJson(req),downloadOpts));
    if(path==='/api/discover/plan'&&method==='GET')
     return response(res,200,await discoverEpisodePlan(db,{id:url.searchParams.get('id'),season:url.searchParams.get('season')},{...discoverOpts,jellyfinFetch}));
    if(path==='/api/discover/plan/apply'&&method==='POST')
@@ -246,6 +257,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
      const targetUrl=String(b.url||'').trim();parseWebUrl(targetUrl);
      if(!targetUrl.toLowerCase().split('?')[0].endsWith('.vtt'))fail('Only WebVTT subtitle URLs are supported');
      const language=normalizeLanguage(b.language||'de'),id=newId(),created=utc();
+     if(!/^de(?:[-_][A-Za-z0-9]+)?$/i.test(language))fail('Nur Deutsch wird unterstützt');
      db.prepare("INSERT INTO subtitle_jobs(id,media_id,episode_id,url,language,state,created_at,updated_at) VALUES(?,?,?,?,?,'running',?,?)").run(id,mediaId,episodeId,targetUrl,language,created,created);
      try{
       const result=await downloadSubtitle({url:targetUrl,root:mediaRoot,media,episode,language,...(subtitleFetch?{fetcher:subtitleFetch}:{})});
@@ -447,6 +459,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     if(body.jellyfin_url){try{const u=new URL(body.jellyfin_url);if(!['http:','https:'].includes(u.protocol))fail('Invalid jellyfin URL');}catch{fail('Invalid jellyfin URL');}}
     transaction(db,()=>{for(const [key,value] of Object.entries(body)){
      const v=limitText(value,300);
+     if(key==='preferred_language'&&v!=='de')fail('Nur Deutsch wird unterstützt');
      db.prepare('INSERT INTO config(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(key,v);
     }});
     return response(res,200,{ok:true});

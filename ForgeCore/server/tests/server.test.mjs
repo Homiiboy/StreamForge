@@ -28,8 +28,8 @@ async function harness(fn,options={}){
  try{await fn({app,root,request,close:()=>app.close()});}finally{await app.close();await rm(root,{recursive:true,force:true});}
 }
 test('v1.5.1 setup, auth, CRUD, jobs, exports and secure API',async()=>harness(async({app,request,root})=>{
- assert.equal(APP_VERSION,'1.5.1');
- assert.equal((await request('/api/health')).data.version,'1.5.1');
+ assert.equal(APP_VERSION,'1.6.0');
+ assert.equal((await request('/api/health')).data.version,'1.6.0');
  assert.equal((await request('/api/status')).data.capabilities.downloads,true);
  assert.equal((await request('/api/media')).status,401);
  assert.equal((await request('/api/setup','POST',{password:'short'})).status,400);
@@ -81,7 +81,7 @@ test('persisted media and queued jobs survive restart',async()=>{
   let db=openDatabase(dbPath);const q=new JobQueue(db,{mediaRoot:dir});
   const item=q.enqueue('library_scan');assert.equal(item.state,'queued');db.close();
   db=openDatabase(dbPath);assert.equal(db.prepare('SELECT state FROM jobs WHERE id=?').get(item.id).state,'queued');
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version,11);db.close();
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version,12);db.close();
  }finally{await rm(dir,{recursive:true,force:true});}
 });
 
@@ -160,10 +160,10 @@ test('0.0.9 database migrates in-place to 0.1.9 without losing existing media',a
   let db=openDatabase(file);
   const now=new Date().toISOString(),id='123e4567-e89b-12d3-a456-426614174000';
   db.prepare('INSERT INTO media(id,kind,title,created_at,updated_at) VALUES(?,?,?,?,?)').run(id,'movie','Interstellar',now,now);
-  db.exec('DROP TABLE transfer_jobs; DROP TABLE source_items; DROP TABLE sources; DROP TABLE search_sites; PRAGMA user_version=3');
+  db.exec('DROP TABLE transfer_jobs; DROP TABLE source_items; DROP TABLE sources; DROP TABLE search_sites; DROP TABLE discover_watchlist; PRAGMA user_version=3');
   db.close();
   db=openDatabase(file);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version,11);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version,12);
   assert.equal(db.prepare('SELECT title FROM media WHERE id=?').get(id).title,'Interstellar');
   assert.equal(db.prepare("SELECT name FROM sqlite_master WHERE name='transfer_jobs'").get().name,'transfer_jobs');
   db.close();

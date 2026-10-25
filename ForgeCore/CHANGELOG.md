@@ -1,5 +1,16 @@
 # ForgeCore – Changelog
 
+## v1.6.0 – Deutschpflicht, Discover Downloads und neue Benutzeroberfläche
+
+- **v1.5.2:** Quellen in Discover aus bereits gespeicherten Websites finden, Staffel-/Folgenzuordnung ohne Raten, vorhandene TransferQueue und PlayerBridge weiterverwenden.
+- **v1.5.3:** Neue responsive Oberfläche mit Poster-Cards, Detailseiten, separaten Downloads- und Radar-Ansichten und deutschbezogenem Quellendialog.
+- **v1.5.4:** Opt-in-Überwachung und optional automatische Einplanung von nur als Deutsch bestätigten Direktquellen für bereits verwaltete fehlende Medien.
+- **v1.5.5:** Download-Dashboard mit Fortschritt, Fehlerstatus, Abbruch, Retry und Ereignissen.
+- **v1.6.0:** Alle produktiven Übertragungen verlangen Audiosprachennachweis vor Jellyfin-Publikation. HLS/DASH priorisiert Deutsch; fehlende oder gegenteilige Sprachinformationen melden „Gibt es noch nicht auf Deutsch“. SQLite-Migration 12 und Sicherheitstests.
+- **Einschränkungen:** Externe Player werden nicht entschlüsselt/heruntergeladen; die Sprache wird anhand von Tonspur-Metadaten und Manifestangaben bewertet, nicht durch automatische Spracherkennung. Für MP4 ohne Sprach-Tags wird ein Download zwar nur nach Bestätigung versucht, aber die Datei wird nicht in Jellyfin veröffentlicht.
+- ZimaOS-Prerelease bis zur echten Hardware-/Quellenabnahme.
+
+
 ## v1.5.1 – StreamRadar Discover & Radar (zusammengefasste v1.4.x-Meilensteine)
 
 - Discover-Tab inklusive TMDB-Suche, Wochen-Trends, Poster und Details.

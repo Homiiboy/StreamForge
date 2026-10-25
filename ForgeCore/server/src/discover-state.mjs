@@ -6,7 +6,7 @@ import {discoverSeason,discoverMetadata,validId,validKind,validSeason} from './d
 const fail=(msg,status=400)=>{throw Object.assign(Error(msg),{status})};
 const norm=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim().toLowerCase();
 const eid=(kind,id)=>'tmdb:'+kind+':'+id;
-export const discoverWatchlist=db=>rows(db,'SELECT tmdb_id AS id,kind,title,year,monitored,added_at AS addedAt,updated_at AS updatedAt,last_checked_at AS lastCheckedAt FROM discover_watchlist ORDER BY updated_at DESC LIMIT 1000').map(x=>({...x,monitored:!!x.monitored}));
+export const discoverWatchlist=db=>rows(db,'SELECT tmdb_id AS id,kind,title,year,monitored,auto_queue_german AS autoQueueGerman,added_at AS addedAt,updated_at AS updatedAt,last_checked_at AS lastCheckedAt FROM discover_watchlist ORDER BY updated_at DESC LIMIT 1000').map(x=>({...x,monitored:!!x.monitored,autoQueueGerman:!!x.autoQueueGerman}));
 export function watchlistRemove(db,{kind,id}){
  validKind(kind);id=validId(id);
  return {removed:db.prepare('DELETE FROM discover_watchlist WHERE kind=? AND tmdb_id=?').run(kind,id).changes>0};
@@ -20,10 +20,13 @@ export async function watchlistSave(db,{kind,id,monitored=false},{token,fetcher}
  .run(id,kind,title.title,title.year,monitored?1:0,now,now);
  return {item:one(db,'SELECT tmdb_id AS id,kind,title,year,monitored FROM discover_watchlist WHERE kind=? AND tmdb_id=?',kind,id)};
 }
-export function watchlistMonitor(db,{kind,id,monitored}){
+export function watchlistMonitor(db,{kind,id,monitored,autoQueueGerman}){
  validKind(kind);id=validId(id);
  if(typeof monitored!=='boolean')fail('Ungültiger Überwachungsstatus');
- const changed=db.prepare('UPDATE discover_watchlist SET monitored=?,updated_at=? WHERE kind=? AND tmdb_id=?').run(monitored?1:0,utc(),kind,id).changes;
+ if(autoQueueGerman!==undefined&&typeof autoQueueGerman!=='boolean')fail('Ungültige deutsche Downloadautomatik');
+ const current=one(db,'SELECT auto_queue_german FROM discover_watchlist WHERE kind=? AND tmdb_id=?',kind,id);
+ const enabled=monitored?(autoQueueGerman===undefined?!!current?.auto_queue_german:autoQueueGerman):false;
+ const changed=db.prepare('UPDATE discover_watchlist SET monitored=?,auto_queue_german=?,updated_at=? WHERE kind=? AND tmdb_id=?').run(monitored?1:0,enabled?1:0,utc(),kind,id).changes;
  if(!changed)fail('Titel nicht auf Merkliste',404);
  return {ok:true};
 }
@@ -113,10 +116,10 @@ export async function checkDiscoverRadar(db,{token,fetcher,tvmazeFetch,max=30}={
    let event=null;
    if(item.kind==='tv'&&d.nextEpisode?.airDate){
     const ep=d.nextEpisode,days=(Date.parse(ep.airDate+'T12:00:00Z')-Date.now())/86400000;
-    if(days>=-1&&days<=30)event={key:'episode:'+ep.season+':'+ep.episode+':'+ep.airDate,message:d.title+' · S'+ep.season+'E'+ep.episode+' am '+ep.airDate};
+    if(days>=-1&&days<=30)event={key:'episode:'+ep.season+':'+ep.episode+':'+ep.airDate,message:d.title+' · Original-Erstausstrahlung S'+ep.season+'E'+ep.episode+' am '+ep.airDate+' (Deutsch noch nicht bestätigt)'};
    }else if(item.kind==='movie'&&d.releaseDate){
     const days=(Date.parse(d.releaseDate+'T12:00:00Z')-Date.now())/86400000;
-    if(days>=-1&&days<=30)event={key:'film:'+d.releaseDate,message:d.title+' · angekündigt für '+d.releaseDate};
+    if(days>=-1&&days<=30)event={key:'film:'+d.releaseDate,message:d.title+' · Original-Kinostart am '+d.releaseDate+' (Deutsch noch nicht bestätigt)'};
    }
    if(event&&event.key!==item.last_event_key){
     transaction(db,()=>{
