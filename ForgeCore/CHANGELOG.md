@@ -1,5 +1,14 @@
 # ForgeCore – Changelog
 
+## Discover-Meilensteine v1.4.1–v1.4.4 (im Entwicklungsbranch, nachträglich auf v1.5.0-Code)
+
+- **v1.4.1:** TMDB-Detailseiten (Genre, Inhalt, Laufzeit soweit geliefert), österreichische Abo-/Kauf-/Leihanbieter sowie explizite TMDB-Staffelansicht und TVmaze-Zuordnung ausschließlich mit bestätigter IMDb-ID.
+- **v1.4.2:** Read-only Jellyfin-Vergleich pro Titel, bei Serien strikt über deren Jellyfin-SeriesId; bei Filmen über TMDB-Provider-ID oder eindeutige Kombination aus Name/Jahr. Verwechslungsrisiken werden nicht als Verfügbarkeit ausgegeben.
+- **v1.4.3:** SQLite-Merkliste und separat aktivierbare Titelüberwachung, alle 6 Stunden im Server bzw. manuell. Hinweise zu bestätigten Terminen im 30-Tage-Fenster werden pro Event dedupliziert. Schema 11; JSON-Backup enthält Merkliste und deaktiviert Überwachung beim Restore.
+- **v1.4.4:** Staffel- und Folgenübersicht, registrierbare Episodenauswahl, Berücksichtigung von Jellyfin-/ForgeCore-/Queue-Status. Bereits nachgewiesene oder ignorierte Folgen werden nicht neu angelegt. Kein automatischer Download von Streams.
+- Alle Änderungen sind abwärtskompatibel zur aktuellen v1.5.0-PlayerBridge; StreamRadar v0.5.3 bleibt unverändert.
+- **Abnahme offen:** GitHub CI, ZimaOS-/SMB-Praxistest, realer TMDB-/TVmaze-/Jellyfin-Abgleich. Diese Meilensteine sind noch kein veröffentlichtes Release.
+
 ## Discover-Meilenstein v1.4.0 – auf dem v1.5.0-Code entwickelt
 
 - Neuer Discover-Tab mit TMDB-Wochentrends, Suche und Poster-Karten im Stil der ForgeCore-Oberfläche, angelehnt an StreamRadar v0.5.3.
