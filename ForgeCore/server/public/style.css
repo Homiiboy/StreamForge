@@ -89,3 +89,13 @@ nav .tab.selected{background:linear-gradient(125deg,#4865ca,#4f83dd)}
 .downloadEvents{white-space:pre-wrap;max-height:220px;overflow:auto;background:#0a1424;padding:12px;border-radius:9px;font-size:11px}
 @media(min-width:950px){nav{justify-content:flex-start}.discoverGrid{grid-template-columns:repeat(auto-fill,minmax(176px,1fr))}}
 @media(max-width:730px){nav{position:static}.discoverEpisodeAction{flex-wrap:wrap;padding:9px}.discoverEpisodeAction>.discoverEpisodeRow{width:100%}.discoverSourceResult .actionrow{width:100%;margin:0}.discoverNotice{flex-direction:column;align-items:start}}
+
+
+/* v1.6.2: separate recognised catalogue/player pages from downloadable links */
+.discoverCatalogueMatches{margin-top:16px;padding:13px;background:#0e2134;border:1px solid #385575;border-radius:11px}
+.discoverCatalogueMatches h4{margin:0 0 7px}
+.discoverCatalogueMatches .discoverSourceResult{margin:9px 0}
+.discoverCatalogueMatches a{display:inline-flex;align-items:center;color:#a7c5ff;padding:9px 12px}
+.discoverPlayerCheck{display:flex;flex-wrap:wrap;gap:9px;width:100%;background:#0b172a;padding:12px;border-radius:9px;margin-top:5px}
+.discoverPlayerCheck p{width:100%;margin:0}
+.discoverSourceNotice{padding:12px;margin:12px 0;color:#b8d8f0;background:#142d43;border-left:3px solid #547baa;border-radius:6px}
