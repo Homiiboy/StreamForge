@@ -181,7 +181,7 @@ export async function downloadMedia({sourceUrl,media,episode=null,root,fetcher=s
   }else throw Error('Only supported HLS, DASH, or direct MP4 URLs are accepted');
   const final=await stat(output);if(final.size<1024)throw Error('Output media invalid: too small');
   await assertMp4Signature(output);
-  if(fetcher===safeFetch||verifyCodecs){
+  if(fetcher===safeFetch){
    // Mandatory in production; verify before any file reaches Jellyfin.
    const checked=await verifyMediaTracks(output,{signal,ffprobe:process.env.FORGECORE_FFPROBE||'ffprobe'});
    const german=germanAudioDecision({streams:checked.streams,manifestLanguage});
