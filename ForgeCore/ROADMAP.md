@@ -1,5 +1,18 @@
 # ForgeCore – Entwicklungsroadmap
 
+## v1.5.2–v1.6.0 – fertig implementiert (ZimaOS-Praxisabnahme offen)
+
+| Version | Funktion | Status |
+|---|---|---|
+| v1.5.2 | Discover → eigene konfigurierte Websites → exakt zugeordnete MP4/HLS/DASH-Quelle → bestehende Warteschlange | Im v1.6.0-Quellcode umgesetzt |
+| v1.5.3 | Neu gestaltete Discover-Oberfläche, eigene Downloads- und Radar-Bereiche | Im v1.6.0-Quellcode umgesetzt |
+| v1.5.4 | Deutsche Quellensprachprüfung, explizite Monitoring-/Autodownload-Schalter | Im v1.6.0-Quellcode umgesetzt |
+| v1.5.5 | Dashboard für Fortschritt, Fehler, Wiederholung, Events, Abbruch | Im v1.6.0-Quellcode umgesetzt |
+| v1.6.0 | Deutsch-Pflichtprüfung vor Jellyfin-Import, Tests, ZimaOS-Paket | CI geprüft; reale Hardwareabnahme offen |
+
+**Wichtig:** Katalogtitel, Veröffentlichungsdatum und TMDB-/JustWatch-Verfügbarkeit liefern **keinen** Beleg einer deutschen Synchronspur. Film-/Episoden-Downloads von externen Hostern werden nicht extrahiert. Nur ungeschützte, direkt erreichbare und vom Nutzer autorisierte Medienlinks werden angeboten. Sprachangaben stammen aus technischen Audiometadaten und nicht aus Spracherkennung. Ohne eindeutige Sprachkennzeichnung meldet ForgeCore „Gibt es noch nicht auf Deutsch“ und veröffentlicht nichts nach Jellyfin.
+
+
 ## StreamRadar-Integration als ForgeCore Discover
 
 Da main bereits ForgeCore v1.5.0 enthält, wird der historische v1.4.0-Funktionsmeilenstein auf einem separaten Entwicklungsbranch ergänzt. Ein späterer Merge braucht eine höhere Release-Version.
