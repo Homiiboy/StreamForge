@@ -507,7 +507,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
    const file=names[path];if(!file||method!=='GET')fail('Not found',404);
    const body=await readFile(join(staticDir,file));
    const mime=file.endsWith('.png')?'image/png':file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8';
-   res.writeHead(200,{'content-type':mime,'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','x-frame-options':'DENY','content-security-policy':"default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'"});res.end(body);
+   res.writeHead(200,{'content-type':mime,'cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','x-frame-options':'DENY','content-security-policy':"default-src 'self'; img-src 'self' https://image.tmdb.org; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'"});res.end(body);
   }catch(err){response(res,Number(err?.status)||500,{error:Number(err?.status)?err.message:'Internal server error'});}
  };
  const server=http.createServer((req,res)=>{handler(req,res).catch(()=>{if(!res.headersSent)response(res,500,{error:'Internal server error'});else res.destroy();});});
