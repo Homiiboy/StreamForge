@@ -1,5 +1,27 @@
 # ForgeCore
 
+## v1.6.1 – TMDB-Token über Updates hinweg behalten
+
+Die persönliche Konfiguration ist nur in der lokalen, nicht eingecheckten `.env` gespeichert. Der TMDB Read Access Token muss dort nur einmal eingetragen werden.
+
+**Ab v1.6.1:** `upgrade.sh` prüft heruntergeladene Release-ZIPs und verweigert gefährliche Archivpfade, Symlinks und jede enthaltene `.env`. Vor dem Upgrade legt das Skript eine private Kopie unter `ForgeCore/backups/env-before-upgrade-.../.env` mit restriktiven Rechten ab, übernimmt nur freigegebene ForgeCore-Dateien, vergleicht danach die `.env` und führt `manage.sh update` aus. Das normale `manage.sh backup` enthält künftig ebenfalls eine private `.env`-Sicherung.
+
+**Einmaliger Übergang von v1.6.0 zu v1.6.1:**
+
+```bash
+cd ~/AppData/ForgeCore/StreamForge/ForgeCore
+curl -fL -o /tmp/ForgeCore-v1.6.1.zip https://github.com/Homiiboy/StreamForge/releases/download/forgecore-v1.6.1/ForgeCore-v1.6.1-ZimaOS.zip
+curl -fL -o /tmp/forgecore-upgrade.sh https://raw.githubusercontent.com/Homiiboy/StreamForge/main/ForgeCore/upgrade.sh
+sudo bash /tmp/forgecore-upgrade.sh /tmp/ForgeCore-v1.6.1.zip
+sudo docker compose ps
+```
+
+Für spätere Versionen wird das installierte Skript mit `sudo bash upgrade.sh /tmp/ForgeCore-vNAECHSTE-VERSION.zip` aufgerufen, nachdem die passende Version heruntergeladen wurde. **Nicht mehr ungeschützt `unzip -o` ins Installationsverzeichnis ausführen.**
+
+Backups können API-Schlüssel enthalten und dürfen nicht veröffentlicht werden. Die `.env` selbst gehört niemals ins GitHub-Repository.
+
+---
+
 ## ForgeCore v1.6.0 – Discover Downloads (nur Deutsch)
 
 Diese Version integriert die Meilensteine v1.5.2–v1.5.5 auf Basis v1.5.1, ohne die StreamForge-Browser-Extension oder StreamRadar Windows-App zu verändern.
