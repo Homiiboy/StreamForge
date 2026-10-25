@@ -52,7 +52,10 @@ CREATE INDEX IF NOT EXISTS idx_jellyfin_sync_events_checked ON jellyfin_sync_eve
 `ALTER TABLE search_sites ADD COLUMN search_template TEXT NOT NULL DEFAULT '';`,
 `CREATE TABLE IF NOT EXISTS discover_watchlist(tmdb_id INTEGER NOT NULL CHECK(tmdb_id>0),kind TEXT NOT NULL CHECK(kind IN ('tv','movie')),title TEXT NOT NULL,year INTEGER,monitored INTEGER NOT NULL DEFAULT 0 CHECK(monitored IN (0,1)),added_at TEXT NOT NULL,updated_at TEXT NOT NULL,last_checked_at TEXT,last_event_key TEXT,PRIMARY KEY(kind,tmdb_id));
 CREATE INDEX IF NOT EXISTS idx_discover_monitor ON discover_watchlist(monitored,last_checked_at);
-CREATE INDEX IF NOT EXISTS idx_media_external_id ON media(external_id);`
+CREATE INDEX IF NOT EXISTS idx_media_external_id ON media(external_id);`,
+`ALTER TABLE discover_watchlist ADD COLUMN auto_queue_german INTEGER NOT NULL DEFAULT 0 CHECK(auto_queue_german IN (0,1));
+ALTER TABLE discover_watchlist ADD COLUMN last_german_key TEXT;
+CREATE INDEX IF NOT EXISTS idx_discover_auto_german ON discover_watchlist(monitored,auto_queue_german);`
 ];
 export const utc=()=>new Date().toISOString();
 export function openDatabase(path=':memory:'){
