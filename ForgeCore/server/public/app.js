@@ -827,8 +827,10 @@ async function renderDiscoverSources(host,request){
    titles.append(node('h4','Website- und Episodentreffer ('+catalogs.length+')'));
    titles.append(node('p','Diese Treffer sind Katalog-/Wiedergabeseiten, keine Download-Dateien. Sie beweisen weder eine deutsche Tonspur noch die Downloadberechtigung.','hint'));
    const relevant=catalogs.filter(x=>x.exactEpisode||x.exactMovie||x.mediaType==='title'||x.mediaType==='series');
+   let firstExactRow=null,firstExactHit=null;
    for(const hit of relevant.slice(0,12)){
     const row=node('article','','discoverSourceResult');
+    if(!firstExactRow&&(hit.exactEpisode||hit.exactMovie)){firstExactRow=row;firstExactHit=hit;}
     const name=hit.exactEpisode?'Genau diese Episode im Katalog':hit.exactMovie?'Filmseite gefunden':'Titel-/Serienseite gefunden · Episode nicht bestätigt';
     row.append(node('strong',hit.siteLabel),node('span',name,'discoverLanguageStatus'));
     row.append(node('small',hit.title||'', 'muted'));
@@ -855,6 +857,18 @@ async function renderDiscoverSources(host,request){
    }
    if(!relevant.length)titles.append(node('p','Treffer vorhanden, aber nicht eindeutig dieser Episode zugeordnet.','hint'));
    area.append(titles);
+   // A deliberate Discover source search is permission to run one bounded browser
+   // observation for one exact catalogue episode. No automatic download/queueing.
+   if(!data.results.length&&firstExactRow&&firstExactHit){
+    try{
+     const agentStatus=await api('/api/browser-agent/status');
+     if(agentStatus.online&&!agentStatus.busy){
+      await showBrowserAgentResults(firstExactRow,request,firstExactHit);
+     }else if(!agentStatus.online){
+      titles.append(node('p','Chromium-Agent nicht aktiviert. Bei Bedarf auf ZimaOS das Compose-Profil browser starten.','hint'));
+     }
+    }catch(error){titles.append(node('p','Automatische Browseranalyse: '+error.message,'hint'));}
+   }
   }
   if(!data.results.length){
    area.append(node('p','Keine direkte Downloadquelle nachgewiesen. Die deutsche Verfügbarkeit ist unbekannt.','discoverSourceNotice'));
