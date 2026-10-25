@@ -11,6 +11,7 @@ import {spawn} from 'node:child_process';
 import {setTimeout as sleep} from 'node:timers/promises';
 import {randomUUID} from 'node:crypto';
 import {mediaRelative,mediaBaseName,ensureWithin} from './library.mjs';
+import {germanAudioDecision,NOT_GERMAN} from './german-language.mjs';
 const MAX_SEGMENT=48*1024*1024;
 const MAX_MEDIA=12*1024*1024*1024;
 const MAX_SEGMENTS=4000;
@@ -27,11 +28,11 @@ export async function fetchManifest(url,fetcher=safeFetch,depth=0,language='de')
   const variant=hls.variants[0];
   const video=await fetchManifest(variant.url,fetcher,depth+1,language);
   const available=(hls.audioGroups||[]).filter(x=>x.group===variant.audioGroup);
-  if(!available.length)return video;
+  if(!available.length){if((hls.audioGroups||[]).length)throw Error(NOT_GERMAN+' (Audio-Gruppe nicht zuordenbar)');return video;}
   const matching=available.find(x=>x.language.toLowerCase()===language.toLowerCase())
     ||available.find(x=>x.language.toLowerCase().split('-')[0]===language.toLowerCase().split('-')[0])
-    ||available.find(x=>x.default)||available[0];
-  if(!matching)return video;
+    ; // No fallback to English/default audio.
+  if(!matching)throw Error(NOT_GERMAN+' (HLS-Master enthält keine deutsche Audiospur)');
   const track=await fetchManifest(matching.url,fetcher,depth+1,language);
   if(track.kind!=='hls'||video.kind!=='hls')throw Error('Invalid separate HLS audio track');
   return {...video,audioSegments:[...(track.init?[track.init]:[]),...track.segments],audioLanguage:matching.language};
@@ -88,7 +89,7 @@ async function ffmpegRemux(inputs,output,{signal,ffmpeg='ffmpeg',timeoutMs=45*60
 export async function verifyMediaTracks(filename,{signal,ffprobe='ffprobe',timeoutMs=60000}={}){
  ensureNotAborted(signal);
  const output=await new Promise((resolve,reject)=>{
-  const child=spawn(ffprobe,['-v','error','-show_entries','stream=codec_type,codec_name:format=duration','-of','json',filename],{stdio:['ignore','pipe','pipe']});
+  const child=spawn(ffprobe,['-v','error','-show_entries','stream=codec_type,codec_name:stream_tags=language:format=duration','-of','json',filename],{stdio:['ignore','pipe','pipe']});
   let stdout='',stderr='',settled=false;
   const finish=(error,value)=>{if(settled)return;settled=true;clearTimeout(timer);signal?.removeEventListener('abort',abort);error?reject(error):resolve(value)};
   const abort=()=>child.kill('SIGKILL');signal?.addEventListener('abort',abort,{once:true});
@@ -104,7 +105,7 @@ export async function verifyMediaTracks(filename,{signal,ffprobe='ffprobe',timeo
  if(video.length===0)throw Error('Output has no valid video stream');
  const duration=Number(data.format?.duration||0);
  if(!Number.isFinite(duration)||duration<0.1)throw Error('Invalid or missing media duration');
- return {videoStreams:video.length,audioStreams:(data.streams||[]).filter(x=>x.codec_type==='audio').length,duration};
+ return {videoStreams:video.length,audioStreams:(data.streams||[]).filter(x=>x.codec_type==='audio').length,duration,streams:data.streams||[]};
 }
 
 export async function safePublish(from,root,media,episode,{signal}={}){
@@ -161,9 +162,10 @@ export async function downloadMedia({sourceUrl,media,episode=null,root,fetcher=s
  let completed=false;
  try{
   const kind=uri.pathname.toLowerCase();
-  let video=join(staging,'video.data'),audio='',output=join(staging,'output.mp4');
+  let video=join(staging,'video.data'),audio='',output=join(staging,'output.mp4'),manifestLanguage='';
   if(kind.endsWith('.m3u8')||kind.endsWith('.mpd')){
-   const manifest=await fetchManifest(sourceUrl,fetcher,0,language);
+   const manifest=await fetchManifest(sourceUrl,fetcher,0,'de');
+   manifestLanguage=manifest.audioLanguage||'';
    if(manifest.kind==='hls'){
     await cacheSegments({staging,track:'video',urls:[...(manifest.init?[manifest.init]:[]),...manifest.segments],fetcher,signal,onProgress,rateLimitBytesPerSecond});
     if(manifest.audioSegments?.length){audio=join(staging,'audio.data');await cacheSegments({staging,track:'audio',urls:manifest.audioSegments,fetcher,signal,onProgress,rateLimitBytesPerSecond});}
@@ -179,7 +181,12 @@ export async function downloadMedia({sourceUrl,media,episode=null,root,fetcher=s
   }else throw Error('Only supported HLS, DASH, or direct MP4 URLs are accepted');
   const final=await stat(output);if(final.size<1024)throw Error('Output media invalid: too small');
   await assertMp4Signature(output);
-  if(verifyCodecs&&fetcher===safeFetch)await verifyMediaTracks(output,{signal,ffprobe:process.env.FORGECORE_FFPROBE||'ffprobe'});
+  if(fetcher===safeFetch||verifyCodecs){
+   // Mandatory in production; verify before any file reaches Jellyfin.
+   const checked=await verifyMediaTracks(output,{signal,ffprobe:process.env.FORGECORE_FFPROBE||'ffprobe'});
+   const german=germanAudioDecision({streams:checked.streams,manifestLanguage});
+   if(!german.german)throw Error(german.reason);
+  }
   const result=await safePublish(output,root,media,episode,{signal});
   completed=true;return result;
  }finally{if(completed||!jobId)await rm(staging,{recursive:true,force:true})}
