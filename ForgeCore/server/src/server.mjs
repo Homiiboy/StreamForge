@@ -14,6 +14,7 @@ import {TransferQueue} from './transfer-queue.mjs';
 import {SourceAutomation} from './source-automation.mjs';
 import {validateSearchSite,searchSites} from './site-search.mjs';
 import {inspectPlayerPage} from './player-bridge.mjs';
+import {discoverCatalog,discoverDetail,hasDiscoverToken} from './discover.mjs';
 import {inspectCatalog,catalogJellyfinPreview} from './catalog-inspect.mjs';
 import {seriesOverview,importJellyfinSeries} from './series-overview.mjs';
 import {parseWebUrl} from './source-security.mjs';
@@ -55,8 +56,8 @@ function response(res,status,data,headers={}){
  res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','referrer-policy':'no-referrer','x-frame-options':'DENY',...headers});
  res.end(JSON.stringify(data));
 }
-function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'v1-release-pending-hardware-validation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,sourceAutomation:true,jellyfinApi:true,sourceAdapterSelection:true,operations:true,lifecycleBackup:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
-export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,download,subtitleFetch,jellyfinFetch,automationInterval=60000}={}){
+function publicStatus(db){return {service:APP_NAME,version:APP_VERSION,phase:'v1-release-pending-hardware-validation',configured:isSetup(db),capabilities:{health:true,mediaProjects:true,episodes:true,sourceAdapters:true,downloads:true,jellyfinExport:true,planner:true,scheduling:true,notifications:true,externalWebvtt:true,sourceAutomation:true,jellyfinApi:true,sourceAdapterSelection:true,operations:true,discover:true,lifecycleBackup:true,libraryPreview:true,backgroundJobs:true,metadataManual:true}};}
+export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,staticFiles=true,sourceFetch,download,subtitleFetch,jellyfinFetch,discoverFetch,tmdbToken=process.env.FORGECORE_TMDB_TOKEN,automationInterval=60000}={}){
  const db=openDatabase(dbPath);
  const queue=new JobQueue(db,{mediaRoot});
  const transfers=new TransferQueue(db,{mediaRoot,...(download?{download}:{})});
@@ -105,6 +106,22 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
    if(path==='/api/auth/logout'&&method==='POST'){
     deleteSession(db,session);
     return response(res,200,{ok:true},{'set-cookie':clearCookie(process.env.FORGECORE_SECURE_COOKIE==='1')});
+   }
+   // Discover is read-only until the user explicitly adds a title to the library.
+   // The TMDB token stays on the server; these routes inherit session/CSRF checks.
+   if(path==='/api/discover/status'&&method==='GET')
+    return response(res,200,{configured:hasDiscoverToken(tmdbToken),source:'TMDB',region:'AT',language:'de-DE'});
+   if(path==='/api/discover'&&method==='GET')
+    return response(res,200,await discoverCatalog({token:tmdbToken,query:url.searchParams.get('q')||'',kind:url.searchParams.get('kind')||'all',...(discoverFetch?{fetcher:discoverFetch}:{})}));
+   if(path==='/api/discover/add'&&method==='POST'){
+    const body=await readJson(req);
+    const detail=await discoverDetail({token:tmdbToken,id:body.id,kind:body.kind,...(discoverFetch?{fetcher:discoverFetch}:{})});
+    const existing=one(db,'SELECT * FROM media WHERE external_id=?',detail.externalId);
+    if(existing)return response(res,200,{item:existing,alreadyAdded:true});
+    const id=newId(),now=utc(),kind=detail.kind==='tv'?'series':'movie';
+    db.prepare('INSERT INTO media(id,kind,title,year,external_id,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)')
+     .run(id,kind,detail.title,detail.year,detail.externalId,'',now,now);
+    return response(res,201,{item:one(db,'SELECT * FROM media WHERE id=?',id),alreadyAdded:false});
    }
    if(path==='/api/media'){
     if(method==='GET')return response(res,200,{items:rows(db,'SELECT * FROM media ORDER BY title COLLATE NOCASE,created_at')});
