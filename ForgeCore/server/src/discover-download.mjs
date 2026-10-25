@@ -86,3 +86,46 @@ export async function queueDiscoverDownload(db,transfers,raw,{token,discoverFetc
  const job=transfers.enqueue({mediaId:project.id,episodeId:local?.id||null,sourceId});
  return {item:job,language:inspection.state,notice:inspection.state==='unverified'?'Sprachprüfung ausstehend: Import wird abgebrochen, falls keine deutsche Audiospur nachgewiesen wird.':'Deutsche Tonspur laut Playlist bestätigt; endgültige Medienprüfung vor Import.'};
 }
+
+
+// v1.5.4 – bounded German radar. Does not claim German from TMDB air dates.
+// Scan *registered missing* episodes only; no auto registration or unverified audio.
+export async function checkGermanAvailabilityRadar(db,transfers,{token,discoverFetch,sourceFetch,languageFetch,jellyfinFetch,max=5}={}){
+ const watched=rows(db,'SELECT * FROM discover_watchlist WHERE monitored=1 AND kind IN (\'tv\',\'movie\') ORDER BY COALESCE(last_checked_at,added_at) ASC LIMIT ?',Math.min(Math.max(max,1),10));
+ let checked=0,confirmed=0,queued=0;const errors=[];
+ for(const item of watched){
+  const req={kind:item.kind,id:item.tmdb_id};
+  try{
+   const media=mediaFor(db,req);
+   if(!media)continue; // No unrequested imports into Jellyfin.
+   if(item.kind==='tv'){
+    const next=one(db,"SELECT season,episode FROM episodes WHERE media_id=? AND status='missing' AND season>0 ORDER BY season DESC,episode ASC LIMIT 1",media.id);
+    if(!next)continue;
+    req.season=next.season;req.episode=next.episode;
+   }
+   const found=await discoverDownloadSources(db,req,{token,discoverFetch,sourceFetch,languageFetch});
+   checked++;
+   const candidate=found.results.find(x=>x.language==='german');
+   if(!candidate)continue; // Unknown language is never auto-queued.
+   const key=[req.kind,req.id,req.season??'film',req.episode??'film',candidate.siteId,candidate.url].join(':');
+   if(key!==item.last_german_key){
+    db.prepare('INSERT INTO notifications(id,category,message,ref_id,created_at) VALUES(?,?,?,?,?)')
+      .run(newId(),'discover','Deutsche Direktquelle laut Playlist gefunden: '+item.title+(item.kind==='tv'?' S'+req.season+'E'+req.episode:''),'tmdb:'+req.kind+':'+req.id,utc());
+    db.prepare('UPDATE discover_watchlist SET last_german_key=? WHERE kind=? AND tmdb_id=?').run(key,item.kind,item.tmdb_id);
+    confirmed++;
+   }
+   if(item.auto_queue_german===1){
+    // Only explicitly enabled and confirmed German source; source must be rediscovered
+    // at enqueue time and any Jellyfin status conflict stops the queue.
+    try{
+     await queueDiscoverDownload(db,transfers,{...req,url:candidate.url,siteId:candidate.siteId,confirm:'DOWNLOAD_GERMAN'},
+       {token,discoverFetch,sourceFetch,languageFetch,jellyfinFetch});
+     queued++;
+    }catch(error){
+     if(!/already|bereits|vorhanden|eingeplant|missing/i.test(String(error.message||error)))errors.push(item.title+': '+String(error.message||error).slice(0,90));
+    }
+   }
+  }catch(error){errors.push(item.title+': '+String(error.message||error).slice(0,120))}
+ }
+ return {checked,confirmed,queued,errors};
+}
