@@ -17,7 +17,7 @@ import {inspectPlayerPage} from './player-bridge.mjs';
 import {discoverCatalog,discoverDetail,hasDiscoverToken} from './discover.mjs';
 import {discoverMetadata,discoverSeason,validKind,validId,validSeason} from './discover-metadata.mjs';
 import {discoverWatchlist,watchlistSave,watchlistRemove,watchlistMonitor,discoverJellyfinPreview,discoverEpisodePlan,applyDiscoverEpisodePlan,checkDiscoverRadar} from './discover-state.mjs';
-import {discoverDownloadSources,queueDiscoverDownload} from './discover-download.mjs';
+import {discoverDownloadSources,queueDiscoverDownload,checkGermanAvailabilityRadar} from './discover-download.mjs';
 import {inspectCatalog,catalogJellyfinPreview} from './catalog-inspect.mjs';
 import {seriesOverview,importJellyfinSeries} from './series-overview.mjs';
 import {parseWebUrl} from './source-security.mjs';
@@ -71,7 +71,11 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
  }
  const radarParams={token:tmdbToken,...(discoverFetch?{fetcher:discoverFetch}:{}),...(tvmazeFetch?{tvmazeFetch}:{})};
  let radarTask=null;
- const runRadar=()=>radarTask||(radarTask=checkDiscoverRadar(db,radarParams).finally(()=>{radarTask=null;}));
+ const runRadar=()=>radarTask||(radarTask=(async()=>{
+  const releases=await checkDiscoverRadar(db,radarParams);
+  const german=await checkGermanAvailabilityRadar(db,transfers,{...radarParams,discoverFetch,sourceFetch,jellyfinFetch});
+  return {...releases,german};
+ })().finally(()=>{radarTask=null;}));
  const radarTimer=startWorker&&hasDiscoverToken(tmdbToken)?setInterval(()=>{void runRadar().catch(e=>process.stderr.write('Discover radar: '+e.message+'\n'));},6*60*60*1000):null;
  radarTimer?.unref();
  const authAttempts=new Map();
