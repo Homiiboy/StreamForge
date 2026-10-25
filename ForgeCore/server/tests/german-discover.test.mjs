@@ -87,7 +87,7 @@ test('v1.6.0 authenticated Discover download endpoints require CSRF and explicit
  const {db}=seeded();db.close();
  const app=createApp({dbPath:':memory:',startWorker:false,staticFiles:false,tmdbToken:'fake',discoverFetch:tmdb,sourceFetch,languageFetch});
  const db2=app.db,now=utc(),mediaId=newId(),episodeId=newId(),siteId=newId();
- db2.prepare('INSERT INTO media(id,kind,title,external_id,notes,created_at,updated_at) VALUES(?,?,?,?,"",?,?)').run(mediaId,'series','One Piece','tmdb:tv:319',now,now);
+ db2.prepare('INSERT INTO media(id,kind,title,external_id,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?)').run(mediaId,'series','One Piece','tmdb:tv:319','',now,now);
  db2.prepare("INSERT INTO episodes(id,media_id,season,episode,title,status,created_at,updated_at) VALUES(?,?,?,?,?,'missing',?,?)").run(episodeId,mediaId,1,2,'Zweite Folge',now,now);
  db2.prepare('INSERT INTO search_sites(id,url,label,adapter_id,enabled,search_template,created_at,updated_at) VALUES(?,?,?,?,1,?,?,?)').run(siteId,'https://licensed.example/','Lizenzierte Quelle','html-episode-data','https://licensed.example/search?q={query}',now,now);
  await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));
