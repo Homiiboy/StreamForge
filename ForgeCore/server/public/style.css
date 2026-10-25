@@ -50,3 +50,42 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 #discoverWatchlist{margin-top:14px}
 #discoverWatchlist .actionrow{margin-top:7px}
 @media(max-width:540px){.discoverEpisodeRow{flex-wrap:wrap}.discoverEpisodeRow small{width:100%;max-width:none;text-align:left;margin-left:28px}.discoverDetails{padding:13px}}
+
+
+/* ForgeCore v1.6.0 – responsive StreamRadar-inspired workspaces */
+:root{--fc-panel:#141f32;--fc-raised:#1b2d46;--fc-line:#354869;--fc-text:#eff5ff;--fc-primary:#6485fa}
+body{background:radial-gradient(circle at 50% -15%,#213b5c 0%,#0b111c 43%,#0b111c 100%);background-attachment:fixed}
+main{max-width:1380px;padding-inline:clamp(12px,2.3vw,32px)}
+header{position:sticky;top:0;z-index:12;backdrop-filter:blur(14px);background:rgba(15,25,42,.94)}
+nav{position:sticky;top:82px;z-index:10;backdrop-filter:blur(16px);background:rgba(11,17,28,.95);padding:12px;border:1px solid #2c3c56;border-radius:12px;overflow-x:auto}
+nav .tab{flex-shrink:0;border-radius:9px;white-space:nowrap}
+nav .tab.selected{background:linear-gradient(125deg,#4865ca,#4f83dd)}
+.panel{box-shadow:0 12px 40px rgba(0,0,0,.11)}
+.discoverNotice{display:flex;align-items:center;gap:14px;background:linear-gradient(110deg,#152e40,#172442);border:1px solid #356477;border-radius:13px;padding:14px 16px;margin:10px 0;color:#c8f0eb;line-height:1.5}
+.discoverNotice strong{background:#214f56;color:#cbfff3;padding:6px 10px;border-radius:7px;font-size:11px;white-space:nowrap}
+.discoverNotice span{font-size:13px}
+.discoverGrid{grid-template-columns:repeat(auto-fill,minmax(162px,1fr));gap:14px}
+.discoverCard{transition:transform .2s ease,border-color .2s ease;box-shadow:0 10px 24px rgba(0,0,0,.15)}
+.discoverCard:focus-within,.discoverCard:hover{border-color:#6279a8;transform:translateY(-2px)}
+.discoverBody .actionrow{display:grid;grid-template-columns:1fr;gap:6px}
+.discoverBody button{padding:10px 9px}
+.discoverDetails{background:linear-gradient(170deg,#132540,#0d192b);box-shadow:0 16px 55px rgba(0,0,0,.18)}
+.discoverEpisodeAction{display:flex;align-items:center;gap:8px;border-bottom:1px solid #28384e;padding-right:8px}
+.discoverEpisodeAction>.discoverEpisodeRow{flex:1;border-bottom:0;min-width:0}
+.discoverEpisodeAction>button{font-size:11px;padding:9px 10px;flex-shrink:0}
+.discoverSourcePicker{padding:16px;background:#0b1c30;border:1px solid #45668b;border-radius:12px;margin-top:12px;scroll-margin-top:170px}
+.discoverSourcePicker h3{margin:0 0 10px}
+.discoverSourceResult{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px;margin:9px 0;background:#132841;border:1px solid #36577a;border-radius:9px}
+.discoverSourceResult>strong{font-size:14px}
+.discoverSourceResult>small{width:100%;line-height:1.5}
+.discoverSourceResult .actionrow{margin:0 0 0 auto}
+.discoverLanguageStatus{font-size:11px;padding:6px 9px;border-radius:16px;background:#364863}
+.discoverLanguageStatus.german{background:#17564b;color:#bcffdf}
+.discoverLanguageStatus.not-german,.discoverMissing{color:#ffbdc5}
+.discoverLanguageStatus.unverified{background:#58451a;color:#ffdc9b}
+.discoverMissing{padding:12px;background:#35232c;border-left:3px solid #d56979;border-radius:7px}
+.downloadEntry progress{display:block;width:100%;height:9px;margin:13px 0;accent-color:var(--fc-primary)}
+.downloadEntry .entryhead span{font-size:12px}
+.downloadEvents{white-space:pre-wrap;max-height:220px;overflow:auto;background:#0a1424;padding:12px;border-radius:9px;font-size:11px}
+@media(min-width:950px){nav{justify-content:flex-start}.discoverGrid{grid-template-columns:repeat(auto-fill,minmax(176px,1fr))}}
+@media(max-width:730px){nav{position:static}.discoverEpisodeAction{flex-wrap:wrap;padding:9px}.discoverEpisodeAction>.discoverEpisodeRow{width:100%}.discoverSourceResult .actionrow{width:100%;margin:0}.discoverNotice{flex-direction:column;align-items:start}}
