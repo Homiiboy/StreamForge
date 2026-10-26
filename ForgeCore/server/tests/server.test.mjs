@@ -28,8 +28,8 @@ async function harness(fn,options={}){
  try{await fn({app,root,request,close:()=>app.close()});}finally{await app.close();await rm(root,{recursive:true,force:true});}
 }
 test('v1.6.1 setup, auth, CRUD, jobs, exports and secure API',async()=>harness(async({app,request,root})=>{
- assert.equal(APP_VERSION,'1.8.3');
- assert.equal((await request('/api/health')).data.version,'1.8.3');
+ assert.equal(APP_VERSION,'1.8.4');
+ assert.equal((await request('/api/health')).data.version,'1.8.4');
  assert.equal((await request('/api/status')).data.capabilities.downloads,true);
  assert.equal((await request('/api/media')).status,401);
  assert.equal((await request('/api/setup','POST',{password:'short'})).status,400);
