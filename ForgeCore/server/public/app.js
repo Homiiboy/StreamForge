@@ -964,6 +964,8 @@ async function showBrowserAgentResults(row,request,hit){
   if(pc.types?.length)root.append(node('p','Erkannte Player-Oberflächen: '+pc.types.join(', '),'hint'));
   if(pc.note)root.append(node('p',pc.note,'discoverSourceNotice'));
   const guard=d.overlayGuard||{};
+  root.append(node('p','Behaltene Player-Tabs: '+(d.playerTabsKept??'unbekannt')+
+   ' · Abgewiesene fremde Tabs: '+(d.playerTabsRejected??'unbekannt'),'hint'));
   root.append(node('p','Geschlossene Browser-Pop-ups: '+(guard.popupsClosed??'unbekannt')+
    ' · Geschlossene Werbe-Overlays: '+(guard.dismissalClicks??'unbekannt')+
    ' · Verweigerte Overlay-Klicks: '+(guard.unsafeSkipped??'unbekannt')+
