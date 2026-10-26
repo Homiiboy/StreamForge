@@ -935,11 +935,10 @@ async function refreshRadarDashboard(){
 async function showBrowserAgentResults(row,request,hit){
  let root=row.querySelector('.browserAgentResults');
  if(!root){root=node('section','','browserAgentResults');row.append(root);}
- root.replaceChildren(node('p','Chromium lädt die passende Seite und beobachtet Medienanfragen …','muted'));
+ root.replaceChildren(node('p','Browseranalyse wird vorbereitet. Bei mehreren Websites arbeitet ForgeCore die Scans nacheinander ab …','muted'));
  try{
-  const status=await api('/api/browser-agent/status');
-  if(!status.online)throw Error('Browser-Agent ist nicht gestartet. Auf ZimaOS: sudo docker compose --profile browser up -d --build');
-  if(status.busy)throw Error('Browser-Agent bearbeitet noch eine andere Medienanalyse.');
+  // Do not reject an analysis based on an opportunistic 2-second health ping.
+  // The server owns the bounded FIFO queue and reports precise errors.
   const result=await api('/api/discover/browser-scan',{method:'POST',body:{
    ...request,siteId:hit.siteId,url:hit.url,confirm:'SCAN_MEDIA'
   }});
@@ -994,6 +993,11 @@ async function showBrowserAgentResults(row,request,hit){
     const question=unknown?'Der Browser hat eine Medienadresse beobachtet, aber Deutsch ist noch nicht bestätigt. Nur nach erfolgreicher deutscher Sprachprüfung nach Jellyfin übernehmen?':
        'Deutsche Audiospur in Playlist ausgewiesen. Download verbindlich planen?';
     if(!confirm(question))return;
+    const readiness=await api('/api/downloads/readiness');
+    if(!readiness.ready){
+     const reason=(readiness.notices||[]).join(' ');
+     throw Error('Download noch nicht möglich: '+reason);
+    }
     if(request.kind==='tv'){
      await api('/api/discover/add',{method:'POST',body:{kind:'tv',id:request.id}});
      await api('/api/discover/plan/apply',{method:'POST',body:{id:request.id,season:request.season,episodes:[request.episode],confirm:'ADD_MISSING'}});
@@ -1005,6 +1009,8 @@ async function showBrowserAgentResults(row,request,hit){
    }));
    root.append(card);
   }
+  if(!result.sources.length&&result.agentState!=='human-verification-required')
+   root.append(node('p','Für einen Download fehlt noch eine unterstützte direkte Medienquelle. Eine gefundene Episodenseite allein reicht nicht.','hint'));
   if(!result.sources.length&&result.agentState!=='human-verification-required')
    root.append(node('p',d.playingVideos===0?
    'Kein direkter Mediastream erkannt und keine tatsächliche Videowiedergabe nachgewiesen. Der Browser-Agent kann notwendige Klicks, Captchas oder Zugriffsschutz nicht automatisch überwinden.':

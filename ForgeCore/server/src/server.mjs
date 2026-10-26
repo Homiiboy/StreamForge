@@ -19,6 +19,7 @@ import {discoverMetadata,discoverSeason,validKind,validId,validSeason} from './d
 import {discoverWatchlist,watchlistSave,watchlistRemove,watchlistMonitor,discoverJellyfinPreview,discoverEpisodePlan,applyDiscoverEpisodePlan,checkDiscoverRadar} from './discover-state.mjs';
 import {discoverDownloadSources,queueDiscoverDownload,checkGermanAvailabilityRadar} from './discover-download.mjs';
 import {BrowserScanSession,browserAgentStatus} from './browser-scanner.mjs';
+import {downloadReadiness} from './download-readiness.mjs';
 import {inspectCatalog,catalogJellyfinPreview} from './catalog-inspect.mjs';
 import {seriesOverview,importJellyfinSeries} from './series-overview.mjs';
 import {parseWebUrl} from './source-security.mjs';
@@ -30,7 +31,7 @@ import {downloadSubtitle,normalizeLanguage} from './subtitles.mjs';
 import {operationalStatus,diagnosticEvents} from './operations.mjs';
 
 export const APP_NAME='ForgeCore';
-export const APP_VERSION='1.8.2';
+export const APP_VERSION='1.8.3';
 const staticDir=resolve(dirname(fileURLToPath(import.meta.url)),'../public');
 const MAX_BODY=64*1024;
 const limitText=(v,max=150)=>typeof v==='string'?v.trim().slice(0,max):'';
@@ -157,10 +158,14 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
    // v1.7.0: optional isolated Chromium agent. The agent cannot publish media.
    // Login and CSRF are required, even for browser scanning.
    if(path==='/api/browser-agent/status'&&method==='GET')
-    return response(res,200,await browserAgentStatus(browserAgentFetch?{fetcher:browserAgentFetch}:{}));
+    return response(res,200,await browserAgentStatus({
+     coordinator:browserScans.coordinator,...(browserAgentFetch?{fetcher:browserAgentFetch}:{})
+    }));
    if(path==='/api/discover/browser-scan'&&method==='POST')
     return response(res,200,await browserScans.scan(db,await readJson(req),
      {...downloadOpts,...(browserAgentFetch?{agentFetch:browserAgentFetch}:{})}));
+   if(path==='/api/downloads/readiness'&&method==='GET')
+    return response(res,200,await downloadReadiness({mediaRoot}));
    if(path==='/api/discover/browser-download'&&method==='POST')
     return response(res,201,await browserScans.enqueue(db,transfers,await readJson(req),downloadOpts));
    if(path==='/api/discover/plan'&&method==='GET')

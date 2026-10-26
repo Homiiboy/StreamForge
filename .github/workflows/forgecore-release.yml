@@ -35,15 +35,15 @@ jobs:
         run: |
           VERSION=$(node -p "require('./ForgeCore/server/package.json').version")
           TAG="forgecore-v${VERSION}"
-          test "$VERSION" = "1.8.2"
+          test "$VERSION" = "1.8.3"
           mkdir -p dist
           zip -qr "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
             ForgeCore/server ForgeCore/browser-agent ForgeCore/compose.yaml ForgeCore/.env.example ForgeCore/install.sh ForgeCore/manage.sh ForgeCore/upgrade.sh \
             ForgeCore/README.md ForgeCore/ROADMAP.md ForgeCore/CHANGELOG.md ForgeCore/ACCEPTANCE-v1.0.0.md
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
-              --title "ForgeCore ${VERSION} – Echte Player-Tabs und Seriennavigation" \
+              --title "ForgeCore ${VERSION} – Browser-Scan-Warteschlange und Download-Vorabprüfung" \
               --prerelease \
               --target "$GITHUB_SHA" \
-              --notes "ForgeCore v1.8.2: Browser-Agent behält verifizierte VOE-/Filemoon-Player-Tabs und untersucht ihre Frames sowie Netzwerkanfragen statt alle neuen Tabs zu schließen. Werbe-Pop-ups bleiben geschlossen; nur öffentliche HTTPS-Player-Domains sind erlaubt. Serien-Kataloge können auch explizite Query-Parameter für Staffel und Folge auflösen. Kein DRM-/CAPTCHA-Bypass. ZimaOS-/Hoster-Praxistest ausstehend."
+              --notes "ForgeCore v1.8.3: Beschränkte FIFO-Scanwarteschlange verhindert parallele Chromium-Analysen. Bessere Statusanzeige für beschäftigt, offline und Zeitüberschreitung, 429-Wiederholungen und keine irreführende UI-Vorabablehnung. Authentifizierte Vorabprüfung von Jellyfin-Speicher und ffmpeg/ffprobe vor Downloadstart. Keine DRM-/CAPTCHA-Umgehung; externe Hoster und erster realer Download weiterhin nur auf ZimaOS validierbar."
           fi
