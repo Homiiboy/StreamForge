@@ -1,5 +1,14 @@
 # ForgeCore
 
+## v1.7.3 – gezielter HTML5-Startversuch im Browser-Agenten
+
+Beim expliziten Discover-Scan einer bestätigten Episodenseite versucht der isolierte Chromium-Agent zunächst wie bisher `video.play()`. Falls keine direkte Medienanfrage erscheint, versucht er **höchstens einen** echten, nicht erzwungenen Playwright-Klick auf ein sichtbares HTML5-`video`-Element. Er klickt keine willkürlichen Playerbuttons, Werbeseiten, Pop-ups, Captchas oder andere Zugriffssperren an.
+
+Die UI zeigt neue Werte: gezielter HTML5-Klick, Klickfehler, pausierte Videos und noch nicht abspielbereite Videos. Dies sind Diagnoseinformationen, **keine Garantie**, dass ein externer Video-Hoster automatisch abspielbar oder die angeforderte Mediendatei autorisiert herunterladbar ist.
+
+**ZimaOS-Update:** Das sichere Upgrade per `upgrade.sh` auf v1.7.3 und anschließend `docker compose --profile browser up -d --build forgecore-browser`. Die lokale `.env` bleibt erhalten. Danach denselben One-Piece-Scan durchführen und die neuen Diagnosen kontrollieren.
+
+
 ## ForgeCore v1.7.2 – Browser-Agent: Wiedergabe- und Netzwerkdiagnose
 
 Nach einer Browseranalyse zeigt Discover jetzt **HTML5-Startversuche getrennt von tatsächlich bestätigter Wiedergabe** (Videoposition und Wiedergabestatus). Zusätzlich werden Netzwerkantworten und Medienantworten gezählt, inklusive Medien-MIME-Typen ohne unterstützte Dateiendung. Das dient ausschließlich der Diagnose; URLs ohne unterstützte Dateiendung werden weiterhin **nicht** an die Download-Warteschlange übergeben.
