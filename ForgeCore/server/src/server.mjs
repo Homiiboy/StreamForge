@@ -19,6 +19,7 @@ import {discoverMetadata,discoverSeason,validKind,validId,validSeason} from './d
 import {discoverWatchlist,watchlistSave,watchlistRemove,watchlistMonitor,discoverJellyfinPreview,discoverEpisodePlan,applyDiscoverEpisodePlan,checkDiscoverRadar} from './discover-state.mjs';
 import {discoverDownloadSources,queueDiscoverDownload,checkGermanAvailabilityRadar} from './discover-download.mjs';
 import {BrowserScanSession,browserAgentStatus} from './browser-scanner.mjs';
+import {downloadReadiness} from './download-readiness.mjs';
 import {inspectCatalog,catalogJellyfinPreview} from './catalog-inspect.mjs';
 import {seriesOverview,importJellyfinSeries} from './series-overview.mjs';
 import {parseWebUrl} from './source-security.mjs';
@@ -163,6 +164,8 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
    if(path==='/api/discover/browser-scan'&&method==='POST')
     return response(res,200,await browserScans.scan(db,await readJson(req),
      {...downloadOpts,...(browserAgentFetch?{agentFetch:browserAgentFetch}:{})}));
+   if(path==='/api/downloads/readiness'&&method==='GET')
+    return response(res,200,await downloadReadiness({mediaRoot}));
    if(path==='/api/discover/browser-download'&&method==='POST')
     return response(res,201,await browserScans.enqueue(db,transfers,await readJson(req),downloadOpts));
    if(path==='/api/discover/plan'&&method==='GET')
