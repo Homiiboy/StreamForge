@@ -1,5 +1,15 @@
 # ForgeCore – Changelog
 
+## v1.8.2 – Verifizierte Player-Tabs und SerienStream-Navigation
+
+- Bekannte externe Wiedergabe-Tabs werden nach öffentlicher HTTPS-/DNS-Prüfung geöffnet gehalten; höchstens zwei Tabs pro Scan, andere Pop-ups werden geschlossen.
+- Die Medienantworten und HTML5-/Player-Klicks werden auch aus zugelassenen Player-Tabs erfasst, nicht mehr ausschließlich aus der Episoden-Hauptseite.
+- Gegenprobe: Antworten aus fremden Werbe-Tabs gelangen nicht in die Download-Warteschlange.
+- Serien-/Staffel-/Folgenkataloge können URLs mit expliziten Query-Parametern `staffel` + `folge` bzw. `season` + `episode` auflösen.
+- Exakte Serienzuordnung, Deutsch-Audio-Prüfung, Download-Zustimmung, CAPTCHA-/Popup-Sicherheit und .env-Upgrade-Schutz bleiben erhalten.
+- Tests für Browser-Tab-Berechtigung, DNS, reales Chromium-Popup und exakte Episodenlinks; Live-Tests auf ZimaOS und Hostern ausstehend.
+
+
 ## v1.8.1 – Werbe-Popups und CAPTCHA-Status
 
 - Neue, strikt begrenzte Overlay-Steuerung: höchstens drei sichtbare Werbe-Overlays können über explizite Close-Buttons geschlossen werden.
