@@ -1,5 +1,14 @@
 # ForgeCore – Entwicklungsroadmap
 
+## v1.8.4 – ZimaOS Jellyfin-Speicherziel
+
+- Vorhandene Animes/Animation/Cartoon/TV shows/Shows-Serienordner erkennen und weiterverwenden
+- Fallback-Kategorie für neue Serien über `.env` konfigurierbar
+- Bestehende Staffel- und Staffelnummer-Verzeichnisse nicht duplizieren
+- Mehrdeutige und symlinkbasierte Medienordner nicht automatisch verwenden
+- Offen: Live-Download auf ZimaOS mit bestätigter, zulässig herunterladbarer Medienquelle und validierter deutscher Tonspur
+
+
 ## v1.8.3 – Zuverlässige Analyse bis zum ersten Download
 
 - Begrenzte serielle Chromium-Scans statt konkurrierender Player-Anfragen
