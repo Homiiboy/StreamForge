@@ -86,7 +86,7 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
    diagnostics.responses++;
    try{
     const type=String(response.headers()['content-type']||'').toLowerCase();
-    const isVideoMime=/^(?:video\/|application\/(?:vnd\.apple\.mpegurl|x-mpegurl|dash\+xml))(?:;|$)/i.test(type.trim());
+    const isVideoMime=/^(?:video\/[\w.+-]+|application\/(?:vnd\.apple\.mpegurl|x-mpegurl|dash\+xml))(?:\s*;|$)/i.test(type.trim());
     const kind=typeof response.request==='function'?response.request().resourceType():'';
     if(isVideoMime||kind==='media'){
      diagnostics.mediaResponses++;
