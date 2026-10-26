@@ -5,6 +5,7 @@ import {isIP} from 'node:net';
 import {chromium} from 'playwright';
 import {clickSafePlayerControl,sanitizePlayerMetrics} from './player-interaction.mjs';
 import {detectHumanChallenge,dismissAdOverlays,makeOverlayState,publicOverlayMetrics} from './overlay-guard.mjs';
+import {reviewPopupTab,classifyPlaybackTab,MAX_PLAYER_TABS} from './player-tabs.mjs';
 
 const PORT=Number(process.env.FORGECORE_BROWSER_PORT||8790);
 const DEFAULT_WAIT=9000;
@@ -66,11 +67,47 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
  const browser=await browserFactory();
  const sources=new Map(),warnings=[];let page,context,blocked=0,playAttempts=0,playerState=null;
  const overlayState=makeOverlayState();let challenge={detected:false,type:null};
+ const playerTabs=new Set(),pendingTabs=new Set();
+ const activePages=()=>[...playerTabs,page].filter(Boolean);
+ const acceptPopup=popup=>{
+  const task=(async()=>{
+   try{
+    const outcome=await reviewPopupTab(popup,{
+     validatePublicUrl:href=>validatePublicUrl(href,{resolver}),
+     remaining:MAX_PLAYER_TABS-playerTabs.size
+    });
+    if(!outcome.keep){
+     diagnostics.popupsClosed++;
+     diagnostics.playerTabsRejected++;
+     await popup.close().catch(()=>{});
+     return;
+    }
+    playerTabs.add(popup);
+    diagnostics.playerTabsKept++;
+    popup.on('dialog',dialog=>{diagnostics.dialogsDismissed++;void dialog.dismiss().catch(()=>{})});
+    popup.on('popup',acceptPopup);
+    popup.on('close',()=>playerTabs.delete(popup));
+   }catch{diagnostics.popupsClosed++;await popup.close().catch(()=>{})}
+  })();
+  pendingTabs.add(task);void task.finally(()=>pendingTabs.delete(task));
+ };
+ const resolvedPages=async()=>{
+  if(pendingTabs.size)await Promise.allSettled([...pendingTabs]);
+  const safe=[];
+  for(const tab of [...playerTabs]){
+   if(classifyPlaybackTab(tab.url())!=='known-player'){
+    playerTabs.delete(tab);
+    diagnostics.popupsClosed++;diagnostics.playerTabsRejected++;
+    await tab.close().catch(()=>{});
+   }else safe.push(tab);
+  }
+  return [...safe,page].filter(Boolean);
+ };
  const diagnostics={requests:0,responses:0,requestFailures:0,mediaResponses:0,
   mediaWithoutExtension:0,videoElements:0,playingVideos:0,videoErrors:0,frames:0,webSocketsBlocked:0,
   videoGestureClicks:0,videoGestureClickFailures:0,pausedVideos:0,unreadyVideos:0,
   videoGestureHidden:0,videoGestureNoSource:0,videoGestureStalled:0,videoGestureAlreadyPlaying:0,
-  popupsClosed:0,dialogsDismissed:0,playerControls:null,overlayGuard:null};
+  popupsClosed:0,dialogsDismissed:0,playerTabsKept:0,playerTabsRejected:0,playerControls:null,overlayGuard:null};
  try{
   context=await browser.newContext({acceptDownloads:false,ignoreHTTPSErrors:false,serviceWorkers:'block',javaScriptEnabled:true,
    permissions:[],viewport:{width:1280,height:720},locale:'de-DE'});
@@ -84,11 +121,14 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
    try{await validatePublicUrl(u,{resolver});await route.continue()}catch{blocked++;await route.abort().catch(()=>{})}
   });
   page=await context.newPage();
-  page.on('request',()=>{diagnostics.requests++});
-  page.on('requestfailed',()=>{diagnostics.requestFailures++});
-  page.on('popup',popup=>{diagnostics.popupsClosed++;void popup.close().catch(()=>{})});
+  // BrowserContext events include responses from embedded player tabs.
+  // Keep Page fallbacks for minimal mocks and legacy single-page contexts.
+  const emitter=typeof context.on==='function'?context:page;
+  emitter.on('request',()=>{diagnostics.requests++});
+  emitter.on('requestfailed',()=>{diagnostics.requestFailures++});
+  page.on('popup',acceptPopup);
   page.on('dialog',dialog=>{diagnostics.dialogsDismissed++;void dialog.dismiss().catch(()=>{})});
-  page.on('response',response=>{
+  emitter.on('response',response=>{
    diagnostics.responses++;
    try{
     const type=String(response.headers()['content-type']||'').toLowerCase();
@@ -107,12 +147,16 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
   // Some player frames are injected after DOMContentLoaded. Re-check in short,
   // bounded intervals instead of assuming the initial DOM already contains video.
   for(let pass=0;pass<3;pass++){
+   // Newly opened real playback tabs are reviewed, not blindly closed.
+   const pages=await resolvedPages();
    // Human challenges always take precedence over ad cleanup or playback clicks.
-   challenge=await detectHumanChallenge(page);
+   for(const active of pages){challenge=await detectHumanChallenge(active);if(challenge.detected)break}
    if(challenge.detected)break;
-   try{await dismissAdOverlays(page,{state:overlayState})}catch{/* optional UI cleanup */}
+   for(const active of pages){
+    try{await dismissAdOverlays(active,{state:overlayState})}catch{/* optional UI cleanup */}
+   }
    if(autoPlay){
-    for(const frame of page.frames().slice(0,12)){
+    for(const active of pages)for(const frame of active.frames().slice(0,12)){
      try{
       const attempted=await frame.evaluate(async()=>{
        const videos=[...document.querySelectorAll('video')].slice(0,6);
@@ -132,7 +176,7 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
    // paused=false is NOT sufficient proof of playback: play() may be pending
    // while currentTime=0 and readyState=HAVE_NOTHING (observed on ZimaOS).
    if(autoPlay&&pass===1&&!sources.size&&diagnostics.videoGestureClicks===0){
-    for(const frame of page.frames().slice(0,12)){
+    for(const active of pages)for(const frame of active.frames().slice(0,12)){
      if(typeof frame.locator!=='function')continue;
      try{
       const video=frame.locator('video:visible').first();
@@ -159,14 +203,20 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
    // Only audit-listed controls inside real player containers are clickable.
    if(autoPlay&&pass>=1&&!sources.size){
     try{
-     playerState=await clickSafePlayerControl(page,{
-      ...(playerState?{state:playerState}:{}),maxClicks:pass===1?1:2
-     });
+     for(const active of pages){
+      playerState=await clickSafePlayerControl(active,{
+       ...(playerState?{state:playerState}:{}),maxClicks:pass===1?1:2
+      });
+      if(playerState.clicks>=(pass===1?1:2))break;
+     }
     }catch{/* Player DOM is optional; keep reporting media diagnostics */ }
    }
    await sleep(Math.ceil(waitMs/3));
   }
-  if(!challenge.detected)challenge=await detectHumanChallenge(page);
+  const finalPages=await resolvedPages();
+  if(!challenge.detected){
+   for(const active of finalPages){challenge=await detectHumanChallenge(active);if(challenge.detected)break}
+  }
   overlayState.popupsClosed=diagnostics.popupsClosed;
   overlayState.dialogsDismissed=diagnostics.dialogsDismissed;
   overlayState.captchaDetected=challenge.detected;
@@ -175,7 +225,7 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
   diagnostics.playerControls=sanitizePlayerMetrics(playerState||{});
   // A play() call is merely an attempt. Count playback only once a video's
   // currentTime advances and enough data is buffered; do not equate it with a click.
-  const frames=page.frames().slice(0,12);
+  const frames=finalPages.flatMap(active=>active.frames().slice(0,12));
   diagnostics.frames=frames.length;
   if(!challenge.detected)for(const frame of frames){
    try{
