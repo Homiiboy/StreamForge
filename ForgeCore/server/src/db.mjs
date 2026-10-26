@@ -67,7 +67,14 @@ export function openDatabase(path=':memory:'){
  if(v>MIGRATIONS.length)throw new Error('Database created by a newer ForgeCore version');
  for(;v<MIGRATIONS.length;v++){
   db.exec('BEGIN IMMEDIATE;');
-  try{db.exec(MIGRATIONS[v]);db.exec(`PRAGMA user_version=${v+1};`);db.exec('COMMIT;');}
+  try{
+   // Some recovery/import tests deliberately restore an earlier schema version
+   // while retaining a newer media table. Do not recreate an existing column.
+   const existingDestination=v===MIGRATIONS.length-1&&
+    db.prepare("PRAGMA table_info(media)").all().some(col=>col.name==='destination');
+   if(!existingDestination)db.exec(MIGRATIONS[v]);
+   db.exec(`PRAGMA user_version=${v+1};`);db.exec('COMMIT;');
+  }
   catch(e){db.exec('ROLLBACK;');throw e;}
  }
  db.prepare("UPDATE jobs SET state='queued',updated_at=? WHERE state='running'").run(utc());
