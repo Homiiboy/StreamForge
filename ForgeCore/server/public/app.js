@@ -12,6 +12,22 @@ async function api(path,{method='GET',body}={}){
  return data;
 }
 function node(tag,text='',klass=''){const element=document.createElement(tag);element.textContent=text;if(klass)element.className=klass;return element;}
+const DESTINATION_CHOICES={
+ series:[['auto','Automatisch'],['TV shows','TV shows'],['Animes','Anime'],['Animation','Animation'],['Cartoon','Cartoon']],
+ movie:[['auto','Automatisch (Movies)'],['Movies','Movies'],['Anime Movies','Anime Movies']]
+};
+function destinationPicker(kind,current='auto'){
+ const select=node('select');select.setAttribute('aria-label','Jellyfin-Zielordner');
+ for(const [value,label] of DESTINATION_CHOICES[kind]||[]){
+  const option=node('option',label);option.value=value;select.append(option);
+ }
+ select.value=(DESTINATION_CHOICES[kind]||[]).some(x=>x[0]===current)?current:'auto';
+ return select;
+}
+function discoverChosenDestination(kind,id){
+ const el=$('#discoverDetails'),select=el.querySelector('#discoverDestination');
+ return el.dataset.destinationKind===kind&&el.dataset.destinationId===String(id)&&select?select.value:undefined;
+}
 function action(text,fn,klass='outline'){const b=node('button',text,klass);b.type='button';b.addEventListener('click',async()=>{b.disabled=true;try{await fn();}catch(error){notify(error.message,true);}finally{b.disabled=false;}});return b;}
 function showView(view){for(const v of ['discover','library','downloads','radar','tasks','settings','system'])$('#'+v+'View').hidden=v!==view;document.querySelectorAll('nav .tab').forEach(t=>t.classList.toggle('selected',t.dataset.view===view));if(view==='discover'){refreshDiscover().catch(e=>notify(e.message,true));refreshDiscoverWatchlist().catch(e=>notify(e.message,true));}if(view==='downloads'){refreshDownloadDashboard().catch(e=>notify(e.message,true));}if(view==='radar'){refreshRadarDashboard().catch(e=>notify(e.message,true));}if(view==='tasks'){refreshJobs().catch(e=>notify(e.message,true));refreshTransfers().catch(e=>notify(e.message,true));refreshNotices().catch(e=>notify(e.message,true));refreshDiagnostics().catch(e=>notify(e.message,true));}if(view==='settings'){refreshSettings().catch(e=>notify(e.message,true));refreshSchedule().catch(e=>notify(e.message,true));refreshJellyfin().catch(e=>notify(e.message,true));}if(view==='system')refreshOperations().catch(e=>notify(e.message,true));}
 async function startup(){
@@ -24,10 +40,27 @@ $('#setupForm').addEventListener('submit',async e=>{e.preventDefault();try{await
 $('#loginForm').addEventListener('submit',async e=>{e.preventDefault();try{const result=await api('/api/auth/login',{method:'POST',body:{password:$('#loginPassword').value}});csrf=result.csrf;$('#loginPassword').value='';await startup();}catch(err){notify(err.message,true);}});
 $('#logout').addEventListener('click',async()=>{try{await api('/api/auth/logout',{method:'POST'});csrf='';await startup();}catch(e){notify(e.message,true);}});
 document.querySelectorAll('nav .tab').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
-$('#mediaForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/media',{method:'POST',body:{kind:$('#mediaKind').value,title:$('#mediaTitle').value,year:$('#mediaYear').value||null}});$('#mediaTitle').value='';$('#mediaYear').value='';await refreshLibrary();notify('Medienprojekt angelegt.');}catch(err){notify(err.message,true);}});
+function updateMediaDestination(){
+ const old=$('#mediaDestination').value,kind=$('#mediaKind').value,select=destinationPicker(kind,old);
+ $('#mediaDestination').replaceChildren(...select.children);
+ $('#mediaDestination').value=select.value;
+}
+$('#mediaKind').addEventListener('change',updateMediaDestination);
+updateMediaDestination();
+$('#mediaForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/media',{method:'POST',body:{kind:$('#mediaKind').value,destination:$('#mediaDestination').value,title:$('#mediaTitle').value,year:$('#mediaYear').value||null}});$('#mediaTitle').value='';$('#mediaYear').value='';await refreshLibrary();notify('Medienprojekt angelegt.');}catch(err){notify(err.message,true);}});
 $('#reloadLibrary').addEventListener('click',()=>refreshLibrary().catch(e=>notify(e.message,true)));
 async function refreshLibrary(){const data=await api('/api/media');const root=$('#mediaList');root.replaceChildren();if(!data.items.length){root.append(node('p','Noch keine Filme oder Serien angelegt.'));return;}
  for(const item of data.items){const article=node('article','','entry'),top=node('div','','entryhead');top.append(node('strong',item.title+(item.year?` (${item.year})`:'')));top.append(node('span',item.kind==='series'?'Serie':'Film','muted'));article.append(top);
+  const destinationRow=node('div','','formline');
+  const destinationLabel=node('label','Zielordner');
+  const destination=destinationPicker(item.kind,item.destination||'auto');
+  destinationLabel.append(destination);
+  destinationRow.append(destinationLabel,action('Zielordner speichern',async()=>{
+   await api('/api/media/'+item.id,{method:'PATCH',body:{destination:destination.value}});
+   notify('Zielordner für '+item.title+' gespeichert.');
+   await refreshLibrary();
+  }));
+  article.append(destinationRow);
   const actions=node('div','','actionrow');actions.append(action('Pfadvorschau',async()=>{const info=await api(`/api/media/${item.id}/preview`);notify(info.items.map(x=>`${x.directory}: ${x.exists?'bereits vorhanden':'noch nicht vorhanden'}`).join(' · ')||'Keine Episoden');}));actions.append(action('Löschen',async()=>{if(!confirm(`„${item.title}“ samt Episoden aus ForgeCore entfernen?`))return;await api(`/api/media/${item.id}`,{method:'DELETE'});await refreshLibrary();},'danger'));actions.append(action('Metadaten prüfen',async()=>{await api('/api/jobs',{method:'POST',body:{type:'metadata_check',mediaId:item.id}});notify('Prüfung zur Warteschlange hinzugefügt.');}));article.append(actions);
   if(item.kind==='series'){
    const section=node('div','','episodes'),list=node('div');section.append(node('h3','Episoden'));
@@ -675,11 +708,19 @@ async function showDiscoverDetail(kind,id){
  try{
   const detail=await api('/api/discover/detail?'+discoveryParams(kind,id));
   box.replaceChildren();
+  box.dataset.destinationKind=kind;box.dataset.destinationId=String(id);
   const head=node('div','','entryhead');
   head.append(node('h2',detail.title+(detail.year?' ('+detail.year+')':'')));
   head.append(action('Schließen',async()=>{box.hidden=true;},'outline'));
   box.append(head);
   box.append(discoverFlag('Kategorie',discoveryName(kind)+' · '+(detail.genres.join(', ')||'Genre unbekannt')));
+  const destRow=node('div','','formline');
+  const destLabel=node('label','Jellyfin-Zielordner');
+  const existing=(await api('/api/media')).items.find(x=>x.external_id==='tmdb:'+kind+':'+id);
+  const destSelect=destinationPicker(kind==='tv'?'series':'movie',existing?.destination||'auto');
+  destSelect.id='discoverDestination';destLabel.append(destSelect);
+  destRow.append(destLabel,node('p','Für Anime, Animation, Cartoon und Anime Movies gezielt wählen; sonst automatische Erkennung.','hint'));
+  box.append(destRow);
   box.append(discoverFlag('TMDB-Bewertung',detail.rating===null?'Nicht verfügbar':detail.rating.toFixed(1)+'/10'));
   if(detail.overview)box.append(node('p',detail.overview));
   const prov=node('section','','discoverMetadata');
@@ -700,7 +741,7 @@ async function showDiscoverDetail(kind,id){
    await refreshDiscoverWatchlist();notify('In Merkliste gespeichert.');
   }));
   actions.append(action('Serie/Film zur Bibliothek',async()=>{
-   const r=await api('/api/discover/add',{method:'POST',body:{kind,id}});
+   const r=await api('/api/discover/add',{method:'POST',body:{kind,id,destination:destSelect.value}});
    await refreshLibrary();
    notify(r.alreadyAdded?'Bereits in ForgeCore.':'Medienprojekt angelegt.');
   }));
@@ -809,9 +850,9 @@ async function renderDiscoverSources(host,request){
       'Download der deutschen Quelle planen? Der Import erfolgt nur bei bestätigter deutscher Audiospur.';
      if(!confirm(question))return;
      if(request.kind==='tv'){
-      await api('/api/discover/add',{method:'POST',body:{kind:'tv',id:request.id}});
+      await api('/api/discover/add',{method:'POST',body:{kind:'tv',id:request.id,...(discoverChosenDestination(request.kind,request.id)?{destination:discoverChosenDestination(request.kind,request.id)}:{})}});
       await api('/api/discover/plan/apply',{method:'POST',body:{id:request.id,season:request.season,episodes:[request.episode],confirm:'ADD_MISSING'}});
-     }else await api('/api/discover/add',{method:'POST',body:{kind:'movie',id:request.id}});
+     }else await api('/api/discover/add',{method:'POST',body:{kind:'movie',id:request.id,...(discoverChosenDestination(request.kind,request.id)?{destination:discoverChosenDestination(request.kind,request.id)}:{})}});
      const saved=await api('/api/discover/download',{method:'POST',body:{...request,siteId:result.siteId,url:result.url,confirm:'DOWNLOAD_GERMAN',confirmUnknownGerman:unknown}});
      notify('Downloadauftrag angelegt · '+(saved.language==='german'?'Deutsch laut Playlist':'Deutsch wird vor Import überprüft'));
      await refreshDownloadDashboard();
@@ -999,9 +1040,9 @@ async function showBrowserAgentResults(row,request,hit){
      throw Error('Download noch nicht möglich: '+reason);
     }
     if(request.kind==='tv'){
-     await api('/api/discover/add',{method:'POST',body:{kind:'tv',id:request.id}});
+     await api('/api/discover/add',{method:'POST',body:{kind:'tv',id:request.id,...(discoverChosenDestination(request.kind,request.id)?{destination:discoverChosenDestination(request.kind,request.id)}:{})}});
      await api('/api/discover/plan/apply',{method:'POST',body:{id:request.id,season:request.season,episodes:[request.episode],confirm:'ADD_MISSING'}});
-    }else await api('/api/discover/add',{method:'POST',body:{kind:'movie',id:request.id}});
+    }else await api('/api/discover/add',{method:'POST',body:{kind:'movie',id:request.id,...(discoverChosenDestination(request.kind,request.id)?{destination:discoverChosenDestination(request.kind,request.id)}:{})}});
     const queued=await api('/api/discover/browser-download',{method:'POST',body:{
      scanId:result.scanId,candidateId:candidate.id,confirm:'DOWNLOAD_GERMAN',confirmUnknownGerman:unknown
     }});

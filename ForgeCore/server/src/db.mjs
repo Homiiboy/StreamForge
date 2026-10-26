@@ -55,7 +55,8 @@ CREATE INDEX IF NOT EXISTS idx_discover_monitor ON discover_watchlist(monitored,
 CREATE INDEX IF NOT EXISTS idx_media_external_id ON media(external_id);`,
 `ALTER TABLE discover_watchlist ADD COLUMN auto_queue_german INTEGER NOT NULL DEFAULT 0 CHECK(auto_queue_german IN (0,1));
 ALTER TABLE discover_watchlist ADD COLUMN last_german_key TEXT;
-CREATE INDEX IF NOT EXISTS idx_discover_auto_german ON discover_watchlist(monitored,auto_queue_german);`
+CREATE INDEX IF NOT EXISTS idx_discover_auto_german ON discover_watchlist(monitored,auto_queue_german);`,
+`ALTER TABLE media ADD COLUMN destination TEXT NOT NULL DEFAULT 'auto' CHECK(destination IN ('auto','TV shows','Animes','Animation','Cartoon','Movies','Anime Movies'));`
 ];
 export const utc=()=>new Date().toISOString();
 export function openDatabase(path=':memory:'){
@@ -66,7 +67,14 @@ export function openDatabase(path=':memory:'){
  if(v>MIGRATIONS.length)throw new Error('Database created by a newer ForgeCore version');
  for(;v<MIGRATIONS.length;v++){
   db.exec('BEGIN IMMEDIATE;');
-  try{db.exec(MIGRATIONS[v]);db.exec(`PRAGMA user_version=${v+1};`);db.exec('COMMIT;');}
+  try{
+   // Some recovery/import tests deliberately restore an earlier schema version
+   // while retaining a newer media table. Do not recreate an existing column.
+   const existingDestination=v===MIGRATIONS.length-1&&
+    db.prepare("PRAGMA table_info(media)").all().some(col=>col.name==='destination');
+   if(!existingDestination)db.exec(MIGRATIONS[v]);
+   db.exec(`PRAGMA user_version=${v+1};`);db.exec('COMMIT;');
+  }
   catch(e){db.exec('ROLLBACK;');throw e;}
  }
  db.prepare("UPDATE jobs SET state='queued',updated_at=? WHERE state='running'").run(utc());

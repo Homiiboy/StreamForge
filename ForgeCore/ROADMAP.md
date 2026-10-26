@@ -1,5 +1,14 @@
 # ForgeCore – Entwicklungsroadmap
 
+## v1.8.5 – Getrennte Medienkategorien und sichere Zielauswahl
+
+- Auswahl in Discover, beim Hinzufügen und bei Bibliothekstiteln
+- Anime/Animes, Animation, Cartoon sowie Anime Movies als feste eigenständige Jellyfin-Unterordner
+- Pro Titel in SQLite sichern und auch im tatsächlichen Download-Pfad berücksichtigen
+- Ältere Datenbanken und Backups abwärtskompatibel beibehalten
+- Noch offen: Live-ZimaOS-Validierung des ersten tatsächlichen Downloads von einer zulässigen Quelle
+
+
 ## v1.8.4 – ZimaOS Jellyfin-Speicherziel
 
 - Vorhandene Animes/Animation/Cartoon/TV shows/Shows-Serienordner erkennen und weiterverwenden

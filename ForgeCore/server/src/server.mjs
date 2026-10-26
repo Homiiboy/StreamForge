@@ -8,7 +8,7 @@ import {fileURLToPath} from 'node:url';
 import {dirname,join,resolve} from 'node:path';
 import {openDatabase,newId,utc,rows,one,transaction} from './db.mjs';
 import {isSetup,setupAdmin,verifyAdmin,createSession,readSession,deleteSession,checkCsrf,sessionCookie,clearCookie} from './auth.mjs';
-import {checkMediaRoot,previewLibrary} from './library.mjs';
+import {checkMediaRoot,previewLibrary,validateDestination,DESTINATIONS} from './library.mjs';
 import {JobQueue} from './queue.mjs';
 import {TransferQueue} from './transfer-queue.mjs';
 import {SourceAutomation} from './source-automation.mjs';
@@ -31,7 +31,7 @@ import {downloadSubtitle,normalizeLanguage} from './subtitles.mjs';
 import {operationalStatus,diagnosticEvents} from './operations.mjs';
 
 export const APP_NAME='ForgeCore';
-export const APP_VERSION='1.8.4';
+export const APP_VERSION='1.8.5';
 const staticDir=resolve(dirname(fileURLToPath(import.meta.url)),'../public');
 const MAX_BODY=64*1024;
 const limitText=(v,max=150)=>typeof v==='string'?v.trim().slice(0,max):'';
@@ -44,7 +44,7 @@ function mediaInput(body){
  if(!title)fail('Title required');
  const year=body.year==null||body.year===''?null:Number(body.year);
  if(year!==null&&(!Number.isInteger(year)||year<1888||year>2200))fail('Invalid year');
- return {kind,title,year,external_id:limitText(body.external_id,120)||null,notes:limitText(body.notes,2000)};
+ return {kind,title,year,external_id:limitText(body.external_id,120)||null,notes:limitText(body.notes,2000),destination:validateDestination(kind,body.destination)};
 }
 function episodeInput(body){
  const season=Number(body.season),episode=Number(body.episode);
@@ -175,18 +175,29 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
    if(path==='/api/discover/add'&&method==='POST'){
     const body=await readJson(req);
     const detail=await discoverDetail({token:tmdbToken,id:body.id,kind:body.kind,...(discoverFetch?{fetcher:discoverFetch}:{})});
+    const kind=detail.kind==='tv'?'series':'movie';
+    const destination=body.destination===undefined?undefined:validateDestination(kind,body.destination);
     const existing=one(db,'SELECT * FROM media WHERE external_id=?',detail.externalId);
-    if(existing)return response(res,200,{item:existing,alreadyAdded:true});
-    const id=newId(),now=utc(),kind=detail.kind==='tv'?'series':'movie';
-    db.prepare('INSERT INTO media(id,kind,title,year,external_id,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)')
-     .run(id,kind,detail.title,detail.year,detail.externalId,'',now,now);
+    if(existing){
+     if(destination!==undefined&&destination!==existing.destination){
+      if(one(db,"SELECT id FROM transfer_jobs WHERE media_id=? AND state IN ('queued','running') LIMIT 1",existing.id))
+       fail('Zielordner während eines aktiven Downloads nicht änderbar',409);
+      db.prepare('UPDATE media SET destination=?,updated_at=? WHERE id=?').run(destination,utc(),existing.id);
+     }
+     return response(res,200,{item:one(db,'SELECT * FROM media WHERE id=?',existing.id),alreadyAdded:true});
+    }
+    const id=newId(),now=utc();
+    db.prepare('INSERT INTO media(id,kind,title,year,external_id,notes,destination,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)')
+     .run(id,kind,detail.title,detail.year,detail.externalId,'',destination||'auto',now,now);
     return response(res,201,{item:one(db,'SELECT * FROM media WHERE id=?',id),alreadyAdded:false});
    }
+   if(path==='/api/media/destinations'&&method==='GET')
+    return response(res,200,{series:DESTINATIONS.series,movie:DESTINATIONS.movie});
    if(path==='/api/media'){
     if(method==='GET')return response(res,200,{items:rows(db,'SELECT * FROM media ORDER BY title COLLATE NOCASE,created_at')});
     if(method==='POST'){
      const b=mediaInput(await readJson(req));const id=newId(),now=utc();
-     db.prepare('INSERT INTO media(id,kind,title,year,external_id,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').run(id,b.kind,b.title,b.year,b.external_id,b.notes,now,now);
+     db.prepare('INSERT INTO media(id,kind,title,year,external_id,notes,destination,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)').run(id,b.kind,b.title,b.year,b.external_id,b.notes,b.destination,now,now);
      return response(res,201,{item:one(db,'SELECT * FROM media WHERE id=?',id)});
     }
    }
@@ -211,7 +222,10 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
     }else if(!sub){
      if(method==='GET')return response(res,200,{item});
      if(method==='PATCH'){
-      const b=mediaInput({...item,...await readJson(req)});db.prepare('UPDATE media SET kind=?,title=?,year=?,external_id=?,notes=?,updated_at=? WHERE id=?').run(b.kind,b.title,b.year,b.external_id,b.notes,utc(),id);
+      const b=mediaInput({...item,...await readJson(req)});
+      if((item.destination!==b.destination||item.kind!==b.kind)&&one(db,"SELECT id FROM transfer_jobs WHERE media_id=? AND state IN ('queued','running') LIMIT 1",id))
+       fail('Zielordner und Medientyp während eines aktiven Downloads nicht änderbar',409);
+      db.prepare('UPDATE media SET kind=?,title=?,year=?,external_id=?,notes=?,destination=?,updated_at=? WHERE id=?').run(b.kind,b.title,b.year,b.external_id,b.notes,b.destination,utc(),id);
       return response(res,200,{item:one(db,'SELECT * FROM media WHERE id=?',id)});
      }
      if(method==='DELETE'){
@@ -508,7 +522,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
      db.exec('DELETE FROM discover_watchlist; DELETE FROM search_sites; DELETE FROM source_check_events; DELETE FROM source_automation; DELETE FROM transfer_jobs; DELETE FROM source_items; DELETE FROM sources; DELETE FROM jobs; DELETE FROM episodes; DELETE FROM media; DELETE FROM config;');
      for(const media of backup.media){
       const m=mediaInput(media);idCheck(media.id);
-      db.prepare('INSERT INTO media(id,kind,title,year,external_id,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').run(media.id,m.kind,m.title,m.year,m.external_id,m.notes,utc(),utc());
+      db.prepare('INSERT INTO media(id,kind,title,year,external_id,notes,destination,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)').run(media.id,m.kind,m.title,m.year,m.external_id,m.notes,m.destination,utc(),utc());
      }
      for(const ep of backup.episodes){
       const e=episodeInput(ep);idCheck(ep.id);idCheck(ep.media_id);
