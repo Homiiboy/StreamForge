@@ -1,5 +1,15 @@
 # ForgeCore – Changelog
 
+## v1.7.2 – Ehrliche Chromium-Wiedergabediagnose
+
+- Ein `video.play()`-Aufruf wird nicht mehr fälschlich als erfolgreich abgespieltes Video ausgegeben.
+- Browser-Agent zählt nachweisbar laufende Videos, Netzwerkantworten, Medienantworten und Medienantworten ohne direkt unterstützte Endung.
+- Discover zeigt diese Zähler bei der automatischen Browseranalyse an, ohne signierte Medien-URLs oder Cookies in Diagnosemeldungen auszugeben.
+- PlayerBridge filtert offensichtlich irrelevante Social-Media- und IP-Iframes, echte externe Player bleiben erhalten.
+- Die Downloadfreigabe und Deutschprüfung bleiben unverändert; die Diagnostik umgeht keine Schutzmechanismen.
+- Neue Regressionstests; ZimaOS-Praxistest ausstehend.
+
+
 ## v1.7.1 – Discover navigiert zur exakten Episode
 
 - Staffel- und Episodenlinks aus HTML-Katalogseiten erkennen, statt nach der Serienseite abzubrechen.
