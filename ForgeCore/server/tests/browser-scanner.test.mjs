@@ -62,7 +62,7 @@ test('v1.8.3 coordinator serializes scans and reports queue position',async()=>{
  await new Promise(resolve=>setImmediate(resolve));
  assert.deepEqual(queue.status(),{busy:true,queued:2,capacity:3});
  assert.deepEqual(order,['start:1']);
- await assert.rejects(queue.run(async()=>99),e=>e.status===429);
+ assert.throws(()=>queue.run(async()=>99),e=>e.status===429);
  callbacks.shift()();assert.equal(await first,1);
  await new Promise(resolve=>setImmediate(resolve));
  assert.deepEqual(order,['start:1','end:1','start:2']);
