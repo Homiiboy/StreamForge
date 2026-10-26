@@ -963,6 +963,15 @@ async function showBrowserAgentResults(row,request,hit){
    ' · Fehlgeschlagene Klicks: '+(pc.clickFailures??'unbekannt'),'hint'));
   if(pc.types?.length)root.append(node('p','Erkannte Player-Oberflächen: '+pc.types.join(', '),'hint'));
   if(pc.note)root.append(node('p',pc.note,'discoverSourceNotice'));
+  const guard=d.overlayGuard||{};
+  root.append(node('p','Geschlossene Browser-Pop-ups: '+(guard.popupsClosed??'unbekannt')+
+   ' · Geschlossene Werbe-Overlays: '+(guard.dismissalClicks??'unbekannt')+
+   ' · Verweigerte Overlay-Klicks: '+(guard.unsafeSkipped??'unbekannt')+
+   ' · Geschlossene Dialoge: '+(guard.dialogsDismissed??'unbekannt'),'hint'));
+  if(result.agentState==='human-verification-required'){
+   root.append(node('p','CAPTCHA / Sicherheitsprüfung erkannt: '+(guard.captchaType||'manuelle Prüfung')+
+    '. Keine automatische Lösung. Der Headless-Browser kann derzeit keine manuelle Eingabe in derselben Sitzung entgegennehmen; Browser-Sitzungen werden nicht zwischen deinem PC und ForgeCore geteilt.','discoverSourceNotice'));
+  }
   root.append(node('p','Netzwerkantworten: '+(d.responses??'unbekannt')+
    ' · Medienantworten: '+(d.mediaResponses??'unbekannt')+
    ' · Ohne unterstützte Dateiendung: '+(d.mediaWithoutExtension??'unbekannt')+
@@ -994,7 +1003,8 @@ async function showBrowserAgentResults(row,request,hit){
    }));
    root.append(card);
   }
-  if(!result.sources.length)root.append(node('p',d.playingVideos===0?
+  if(!result.sources.length&&result.agentState!=='human-verification-required')
+   root.append(node('p',d.playingVideos===0?
    'Kein direkter Mediastream erkannt und keine tatsächliche Videowiedergabe nachgewiesen. Der Browser-Agent kann notwendige Klicks, Captchas oder Zugriffsschutz nicht automatisch überwinden.':
    'Kein unterstützter direkter Mediastream erkennbar. Die zusätzlichen Netzwerkzahlen zeigen, ob andere Medienantworten beobachtet wurden.',
    'discoverSourceNotice'));
