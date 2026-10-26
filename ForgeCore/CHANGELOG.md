@@ -1,5 +1,13 @@
 # ForgeCore – Changelog
 
+## v1.7.1 – Discover navigiert zur exakten Episode
+
+- Staffel- und Episodenlinks aus HTML-Katalogseiten erkennen, statt nach der Serienseite abzubrechen.
+- Pro Suche höchstens vier Serienseiten und jeweils eine relevante Staffel folgen; gleiche Domain und Serienkennung erzwingen.
+- Keine URL-Vermutungen: nur belegte Episodenlinks werden als exakte Treffer angezeigt und für Browser-Scans zugelassen.
+- Regressionstests für genaue Folge, falsche Serien, Cross-Origin-Links, Weiterleitungen und Anfragelimits.
+- Keine Änderungen am bestehenden StreamForge-Connector; ZimaOS-/Website-Test steht weiterhin aus.
+
 ## v1.7.0 – Autonomer Browser-Agent
 
 - Separater, optionaler Playwright/Chromium-Agent im eigenen Docker-Container mit aktivierter Browser-Sandbox.
