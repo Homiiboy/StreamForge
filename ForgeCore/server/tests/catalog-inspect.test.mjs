@@ -82,3 +82,21 @@ test('catalog truncation only reports true when the cap is reached',async()=>{
  assert.equal(inspectCatalogHtml(make(250),'https://example.org/series/long').truncated,false);
  assert.equal(inspectCatalogHtml(make(MAX_CATALOG_EPISODES),'https://example.org/series/long').truncated,true);
 });
+
+
+test('v1.8.2 query episode matching requires named season and episode on the saved-site URL',async()=>{
+ const {linkedSeasons}=await import('../src/catalog-inspect.mjs');
+ const root='https://catalog.example/serie/stream/one-piece';
+ const html='<a href="'+root+'?staffel=1">Staffel 1</a>'+
+  '<a href="'+root+'?staffel=1&folge=49">Folge 49</a>'+
+  '<a href="'+root+'?staffel=1&folge=48">Folge 48</a>'+
+  '<a href="https://outside.example/?staffel=1&folge=49">Extern</a>'+
+  '<a href="'+root+'?season=1&episode=50">Folge 50</a>';
+ const data=inspectCatalogHtml(html,root);
+ assert.deepEqual(data.episodes.map(x=>[x.season,x.episode]),[[1,48],[1,49],[1,50]]);
+ assert.deepEqual(linkedSeasons(html,root).map(x=>x.url),[root+'?staffel=1']);
+ assert.deepEqual(episodeFromUrl(root+'?staffel=1&folge=49'),{season:1,episode:49});
+ assert.equal(episodeFromUrl(root+'?q=one-piece'),null);
+ assert.equal(episodeFromUrl(root+'?staffel=1&folge=0'),null);
+ assert.equal(episodeFromUrl(root+'?staffel=1&folge=10000'),null);
+});
