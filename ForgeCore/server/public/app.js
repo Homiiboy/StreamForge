@@ -1040,9 +1040,9 @@ async function showBrowserAgentResults(row,request,hit){
      throw Error('Download noch nicht möglich: '+reason);
     }
     if(request.kind==='tv'){
-     await api('/api/discover/add',{method:'POST',body:{kind:'tv',id:request.id,...(discoverChosenDestination(request.kind,request.id)?{destination:discoverChosenDestination(request.kind,request.id)}:{})}}});
+     await api('/api/discover/add',{method:'POST',body:{kind:'tv',id:request.id,...(discoverChosenDestination(request.kind,request.id)?{destination:discoverChosenDestination(request.kind,request.id)}:{})}});
      await api('/api/discover/plan/apply',{method:'POST',body:{id:request.id,season:request.season,episodes:[request.episode],confirm:'ADD_MISSING'}});
-    }else await api('/api/discover/add',{method:'POST',body:{kind:'movie',id:request.id,...(discoverChosenDestination(request.kind,request.id)?{destination:discoverChosenDestination(request.kind,request.id)}:{})}}});
+    }else await api('/api/discover/add',{method:'POST',body:{kind:'movie',id:request.id,...(discoverChosenDestination(request.kind,request.id)?{destination:discoverChosenDestination(request.kind,request.id)}:{})}});
     const queued=await api('/api/discover/browser-download',{method:'POST',body:{
      scanId:result.scanId,candidateId:candidate.id,confirm:'DOWNLOAD_GERMAN',confirmUnknownGerman:unknown
     }});
