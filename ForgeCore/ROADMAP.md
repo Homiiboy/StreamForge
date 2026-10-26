@@ -1,5 +1,13 @@
 # ForgeCore – Entwicklungsroadmap
 
+## v1.8.0 – Sicheres Klicken in eingebetteten Playern (Implementierung und CI)
+
+- Playwright bedient sichere, bekannte HTML5-Player-Steuerungen in eingebetteten Frames
+- Wiederholung begrenzt; Ad-/Popup-/Login-/CAPTCHA-Steuerungen werden übersprungen
+- Verbindung zu den vorhandenen Media-/Deutsch- und Downloadwegen bleibt bestehen
+- ZimaOS-Praxistest und reale VOE-Kompatibilität ausdrücklich noch offen
+
+
 ## v1.7.4 – Festhängender HTML5-Start und sichere Klickentscheidung
 
 - `paused=false` ohne Daten/Zeitfortschritt nicht mehr mit laufendem Video verwechseln
