@@ -146,7 +146,7 @@ test('v1.8.3 verified German HLS goes from Browser-Agent scan to transfer worker
   assert.equal(scan.sources.length,1);
   assert.equal(scan.sources[0].language,'german');
   const enqueued=await session.enqueue(db,queue,{scanId:scan.scanId,candidateId:scan.sources[0].id,confirm:'DOWNLOAD_GERMAN'},opts);
-  assert.ok(enqueued.id);
+  assert.ok(enqueued.item?.id);
   assert.equal(queue.list()[0].state,'queued');
   assert.equal(await queue.tick(),true);
   assert.equal(executed,1);
