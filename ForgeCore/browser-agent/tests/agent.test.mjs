@@ -21,7 +21,7 @@ test('browser media candidate is restricted to direct 2xx HTTPS playback file UR
  assert.equal(mediaCandidate({url:'http://media.example/video.m3u8',status:200}),null);
 });
 test('isolated chromium agent captures runtime video network responses without clicking popups',async()=>{
- const listeners={};let times=0;const frame={evaluate:async()=>++times===1?1:0};
+ const listeners={};let times=0;const frame={evaluate:async()=>++times===1?1:times<=3?0:[{paused:true,currentTime:0,readyState:0,error:false}]};
  let closed=false,continued=0;
  const page={
   on:(event,cb)=>{listeners[event]=cb;},
@@ -42,6 +42,32 @@ test('isolated chromium agent captures runtime video network responses without c
  assert.equal(data.state,'media-observed');
  assert.equal(data.sources.length,1);
  assert.equal(data.playAttempts,1);
+ assert.equal(data.diagnostics.videoElements,1);
+ assert.equal(data.diagnostics.playingVideos,0,'play() attempts must never count as confirmed playback');
+ assert.equal(data.diagnostics.mediaResponses,6);
+ assert.equal(data.diagnostics.mediaWithoutExtension,0);
  assert.equal(continued,1);
  assert.equal(closed,true);
+});
+
+
+test('browser agent shows MIME-typed media without file extension as diagnostic, never as download source',async()=>{
+ const listeners={},frame={evaluate:async()=>{
+  if(!frame.calls++)return 1;
+  if(frame.calls<=3)return 0;
+  return [{paused:false,currentTime:2.3,readyState:3,error:false}];
+ },calls:0};
+ const page={on:(event,fn)=>{listeners[event]=fn},goto:async()=>{},frames:()=>[frame]};
+ const ctx={route:async()=>{},newPage:async()=>page,close:async()=>{}};
+ const browser={newContext:async()=>ctx,close:async()=>{}};
+ const r=await inspectPage({url:'https://licensed.example/play',waitMs:2000},
+  {resolver,browserFactory:async()=>browser,sleep:async()=>{
+   listeners.response({url:()=> 'https://cdn.example/api/media?ref=opaque',
+    status:()=>200,headers:()=>({'content-type':'video/mp4'})});
+  }});
+ assert.equal(r.state,'no-media');
+ assert.equal(r.sources.length,0,'unverified extensionless media cannot enter existing downloader');
+ assert.equal(r.diagnostics.mediaWithoutExtension,3);
+ assert.equal(r.diagnostics.playingVideos,1);
+ assert.match(r.note,/ohne unterstützte Dateiendung/);
 });
