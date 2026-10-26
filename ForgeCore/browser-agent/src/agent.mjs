@@ -177,7 +177,7 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
   // currentTime advances and enough data is buffered; do not equate it with a click.
   const frames=page.frames().slice(0,12);
   diagnostics.frames=frames.length;
-  for(const frame of frames){
+  if(!challenge.detected)for(const frame of frames){
    try{
     const videos=await frame.evaluate(()=>[...document.querySelectorAll('video')].slice(0,6).map(v=>({
      paused:v.paused,currentTime:Number(v.currentTime)||0,readyState:v.readyState,
