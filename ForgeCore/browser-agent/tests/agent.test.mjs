@@ -77,7 +77,11 @@ test('v1.7.3 sends at most one actual video click and distinguishes it from a pl
  let gestureClicks=0,evaluations=0;
  const video={isVisible:async()=>true,evaluate:async()=>({paused:true,currentTime:0,readyState:0,hasSource:true}),click:async()=>{gestureClicks++}};
  const frame={locator:selector=>{assert.equal(selector,'video:visible');return{first:()=>video}},
-  evaluate:async()=>{evaluations++;return evaluations<=3?0:[{paused:false,currentTime:1.2,readyState:3,error:false}]}};
+  evaluate:async fn=>{
+   // The player-control scan now uses a separate "any playing" frame predicate.
+   if(String(fn).includes('.some('))return false;
+   evaluations++;return evaluations<=3?0:[{paused:false,currentTime:1.2,readyState:3,error:false}];
+  }};
  const page={on:()=>{},goto:async()=>{},frames:()=>[frame]};
  const ctx={route:async()=>{},newPage:async()=>page,close:async()=>{}};
  const factory=async()=>({newContext:async()=>ctx,close:async()=>{}});
