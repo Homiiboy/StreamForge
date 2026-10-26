@@ -1,9 +1,6 @@
 // Constrained playback-tab policy. A popup is NOT automatically an advertisement:
 // hosters sometimes launch a real player in a new tab. Only known HTTPS player
 // origins are eligible and must pass the same DNS/SSRF checks as main navigation.
-import {lookup} from 'node:dns/promises';
-import {validatePublicUrl} from './agent.mjs';
-
 const PLAYER_HOSTS=Object.freeze(['voe.sx','filemoon.sx','filemoon.to']);
 export const MAX_PLAYER_TABS=2;
 const NAV_TIMEOUT=4500;
@@ -17,7 +14,7 @@ export function classifyPlaybackTab(raw,{hosts=PLAYER_HOSTS}={}){
  return isPlayerHostname(url.hostname,hosts)?'known-player':'unrelated';
 }
 export async function reviewPopupTab(popup,{
- resolver=lookup,
+ validatePublicUrl,
  remaining=MAX_PLAYER_TABS,
  hosts=PLAYER_HOSTS
 }={}){
@@ -31,7 +28,8 @@ export async function reviewPopupTab(popup,{
   const current=popup.url?.()||'';
   if(classifyPlaybackTab(current,{hosts})!=='known-player')
    return {keep:false,reason:'unrelated'};
-  await validatePublicUrl(current,{resolver});
+  if(typeof validatePublicUrl!=='function')return {keep:false,reason:'no-validator'};
+  await validatePublicUrl(current);
   return {keep:true,reason:'known-player'};
  }catch{return {keep:false,reason:'unsafe-or-unavailable'}}
 }
