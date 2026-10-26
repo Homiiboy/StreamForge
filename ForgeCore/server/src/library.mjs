@@ -1,4 +1,4 @@
-import {stat,access,readdir} from 'node:fs/promises';
+import {stat,lstat,access,readdir} from 'node:fs/promises';
 import {join,resolve,relative,sep} from 'node:path';
 import {constants} from 'node:fs';
 export function safePart(value){
@@ -6,14 +6,49 @@ export function safePart(value){
  if(!v||v==='.'||v==='..')throw Object.assign(Error('Invalid filename segment'),{status:400});
  return v;
 }
-export function mediaRelative(media,episode){
+export function mediaRelative(media,episode,{seriesFolder='Shows',seriesName=null}={}){
  if(media.kind==='movie'){
   const name=safePart(media.title)+(media.year?` (${media.year})`:'');
   return join('Movies',name);
  }
- const name=safePart(media.title);
- if(!episode)return join('Shows',name);
- return join('Shows',name,'Season '+String(episode.season).padStart(2,'0'));
+ const folder=safeLibraryFolder(seriesFolder);
+ const name=seriesName?safePart(seriesName):safePart(media.title);
+ if(!episode)return join(folder,name);
+ return join(folder,name,'Season '+String(episode.season).padStart(2,'0'));
+}
+// Jellyfin installations often separate anime, animation, cartoons and TV series.
+// Reuse exactly one existing series directory instead of creating a new /Shows
+// tree that Jellyfin might not monitor. Never infer a category from the title.
+export const SERIES_LIBRARY_FOLDERS=Object.freeze(['Animes','Animation','Cartoon','TV shows','Shows','Series','Serien']);
+export function safeLibraryFolder(raw){
+ const name=String(raw??'').trim();
+ if(!name||name==='.'||name==='..'||name!==safePart(name)||/[\\/]/.test(name))
+  throw Object.assign(Error('Ungültiger Jellyfin-Serienordner'),{status:400});
+ return name;
+}
+export async function resolveSeriesHome(root,media,{folders=SERIES_LIBRARY_FOLDERS,
+ fallbackFolder=process.env.FORGECORE_SERIES_DEFAULT_FOLDER||'Shows'}={}){
+ const title=safePart(media.title),defaultFolder=safeLibraryFolder(fallbackFolder);
+ const year=Number(media.year);
+ const seriesNames=[title,...(Number.isInteger(year)&&year>=1888&&year<=2200?[title+' ('+year+')']:[])];
+ const matches=[];
+ for(const raw of [...new Set([...folders,defaultFolder])]){
+  const folder=safeLibraryFolder(raw);
+  const category=ensureWithin(root,join(root,folder));
+  let categoryStat;
+  try{categoryStat=await lstat(category)}catch(error){if(error.code==='ENOENT')continue;throw error}
+  if(!categoryStat.isDirectory()||categoryStat.isSymbolicLink())continue;
+  for(const name of seriesNames){
+   const candidate=ensureWithin(root,join(category,name));
+   try{
+    const info=await lstat(candidate);
+    if(info.isDirectory()&&!info.isSymbolicLink())matches.push({seriesFolder:folder,seriesName:name});
+   }catch(error){if(error.code!=='ENOENT')throw error}
+  }
+ }
+ if(matches.length>1)throw Object.assign(
+  Error('Serie ist in mehreren Medienordnern vorhanden. Speicherziel vor dem Download eindeutig festlegen.'),{status:409});
+ return matches[0]||{seriesFolder:defaultFolder,seriesName:title};
 }
 export function mediaBaseName(media,episode){
  if(media.kind==='movie')return safePart(media.title)+(media.year?` (${media.year})`:'');
@@ -22,13 +57,14 @@ export function mediaBaseName(media,episode){
 }
 export function ensureWithin(root,target){const r=resolve(root),t=resolve(target),rel=relative(r,t);if(rel==='..'||rel.startsWith('..'+sep)||rel.startsWith(sep))throw Error('Path outside media root');return t;}
 const extensions=new Set(['.mp4','.mkv','.ts','.webm','.m4v','.mov','.avi']);
-export async function previewLibrary(root,media,episode=null){
+export async function previewLibrary(root,media,episode=null,options={}){
  const base=mediaBaseName(media,episode);
- let target=ensureWithin(root,join(root,mediaRelative(media,episode)));
+ const home=media.kind==='series'?await resolveSeriesHome(root,media,options):null;
+ let target=ensureWithin(root,join(root,mediaRelative(media,episode,home||{})));
  // Respect existing German/Jellyfin season folders rather than assuming
  // every library uses English `Season NN` naming.
  if(episode&&media.kind==='series'){
-  const seriesDir=ensureWithin(root,join(root,'Shows',safePart(media.title)));
+  const seriesDir=ensureWithin(root,join(root,home.seriesFolder,home.seriesName));
   try{
    const seasonDirs=await readdir(seriesDir,{withFileTypes:true});
    const seasonCandidates=seasonDirs.filter(x=>x.isDirectory()).filter(x=>{
