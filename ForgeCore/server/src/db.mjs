@@ -55,7 +55,8 @@ CREATE INDEX IF NOT EXISTS idx_discover_monitor ON discover_watchlist(monitored,
 CREATE INDEX IF NOT EXISTS idx_media_external_id ON media(external_id);`,
 `ALTER TABLE discover_watchlist ADD COLUMN auto_queue_german INTEGER NOT NULL DEFAULT 0 CHECK(auto_queue_german IN (0,1));
 ALTER TABLE discover_watchlist ADD COLUMN last_german_key TEXT;
-CREATE INDEX IF NOT EXISTS idx_discover_auto_german ON discover_watchlist(monitored,auto_queue_german);`
+CREATE INDEX IF NOT EXISTS idx_discover_auto_german ON discover_watchlist(monitored,auto_queue_german);`,
+`ALTER TABLE media ADD COLUMN destination TEXT NOT NULL DEFAULT 'auto' CHECK(destination IN ('auto','TV shows','Animes','Animation','Cartoon','Movies','Anime Movies'));`
 ];
 export const utc=()=>new Date().toISOString();
 export function openDatabase(path=':memory:'){
