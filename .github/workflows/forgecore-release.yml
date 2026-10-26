@@ -35,15 +35,15 @@ jobs:
         run: |
           VERSION=$(node -p "require('./ForgeCore/server/package.json').version")
           TAG="forgecore-v${VERSION}"
-          test "$VERSION" = "1.7.3"
+          test "$VERSION" = "1.7.4"
           mkdir -p dist
           zip -qr "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
             ForgeCore/server ForgeCore/browser-agent ForgeCore/compose.yaml ForgeCore/.env.example ForgeCore/install.sh ForgeCore/manage.sh ForgeCore/upgrade.sh \
             ForgeCore/README.md ForgeCore/ROADMAP.md ForgeCore/CHANGELOG.md ForgeCore/ACCEPTANCE-v1.0.0.md
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
-              --title "ForgeCore ${VERSION} – Gezielter HTML5-Playerstart im Browser-Agenten" \
+              --title "ForgeCore ${VERSION} – Erkennung festhängender HTML5-Wiedergabe" \
               --prerelease \
               --target "$GITHUB_SHA" \
-              --notes "ForgeCore v1.7.3: Der autonome Chromium-Agent versucht zusätzlich zu video.play() genau einen gezielten Playwright-Klick auf ein sichtbares HTML5-Video. Kein Klick auf Werbung, externe Player-Buttons, CAPTCHA oder Zugriffsschutz. Discover meldet Klickversuche, Pausen- und Pufferzustände. ZimaOS-Hardwaretest und konkrete Website-Wiedergabe weiterhin nicht bestätigt."
+              --notes "ForgeCore v1.7.4: Korrigiert den Fall paused=false, aber keine geladenen Videodaten und kein Zeitfortschritt. Ein sichtbares HTML5-Video darf einmal gezielt angeklickt werden. Zusätzliche Diagnosen für uninitialisierte und unsichtbare Videos. Keine Klicks auf externe Hoster-Overlays, DRM, Captchas oder Zugriffsschutz. ZimaOS-Praxistest ausstehend."
           fi

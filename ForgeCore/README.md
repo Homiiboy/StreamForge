@@ -1,5 +1,14 @@
 # ForgeCore
 
+## ForgeCore v1.7.4 – Wiedergabe bleibt trotz paused=false hängen
+
+Bei einem konkreten ZimaOS-Test war `HTMLVideoElement.paused=false`, aber `readyState<2`, `currentTime=0` und keine Medienanfrage vorhanden. Frühere Versionen übersprangen den gezielten HTML5-Klick in diesem Zustand. Der Browser-Agent prüft nun **tatsächlichen Fortschritt und Videodaten**: bei einem sichtbaren, aber festhängenden Video kann er einen einzigen echten Klick versuchen. Bereits laufende Videos werden nicht angeklickt, und Werbe-/Hoster-Overlays, Anmeldung, CAPTCHA und Zugriffsschutz werden nicht automatisiert behandelt.
+
+Die Diagnose zeigt zusätzlich *Startversuch ohne Videodaten*, *kein sichtbares HTML5-Video* und *HTML5 ohne Quelladresse*. Damit bleibt erkennbar, ob der Klick nicht möglich war oder der Browser keinen echten Stream erhalten hat. Es gibt keine Garantie für die Wiedergabe auf externen Hostern.
+
+**Upgrade:** v1.7.4-ZimaOS-ZIP mittels `bash upgrade.sh /tmp/ForgeCore-v1.7.4.zip` im installierten ForgeCore-Verzeichnis, danach `docker compose --profile browser up -d --build forgecore-browser`; `.env` bleibt geschützt.
+
+
 ## v1.7.3 – gezielter HTML5-Startversuch im Browser-Agenten
 
 Beim expliziten Discover-Scan einer bestätigten Episodenseite versucht der isolierte Chromium-Agent zunächst wie bisher `video.play()`. Falls keine direkte Medienanfrage erscheint, versucht er **höchstens einen** echten, nicht erzwungenen Playwright-Klick auf ein sichtbares HTML5-`video`-Element. Er klickt keine willkürlichen Playerbuttons, Werbeseiten, Pop-ups, Captchas oder andere Zugriffssperren an.

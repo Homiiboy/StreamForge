@@ -1,5 +1,13 @@
 # ForgeCore – Entwicklungsroadmap
 
+## v1.7.4 – Festhängender HTML5-Start und sichere Klickentscheidung
+
+- `paused=false` ohne Daten/Zeitfortschritt nicht mehr mit laufendem Video verwechseln
+- Einen gezielten Klick auf sichtbare, noch nicht laufende HTML5-Videos erlauben
+- Unterschiede zu versteckten und quellenlosen Videos in Discover darstellen
+- ZimaOS-Praxistest und reale Website-Kompatibilität weiterhin offen
+
+
 ## v1.7.3 – Video-Klick und Wiedergabediagnostik (Code implementiert)
 
 - Browser-Agent macht einen begrenzten echten Klick auf sichtbares pausiertes HTML5-Video, wenn noch kein Medienlink beobachtet wurde

@@ -65,7 +65,8 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
  const sources=new Map(),warnings=[];let page,context,blocked=0,playAttempts=0;
  const diagnostics={requests:0,responses:0,requestFailures:0,mediaResponses:0,
   mediaWithoutExtension:0,videoElements:0,playingVideos:0,videoErrors:0,frames:0,webSocketsBlocked:0,
-  videoGestureClicks:0,videoGestureClickFailures:0,pausedVideos:0,unreadyVideos:0};
+  videoGestureClicks:0,videoGestureClickFailures:0,pausedVideos:0,unreadyVideos:0,
+  videoGestureHidden:0,videoGestureNoSource:0,videoGestureStalled:0,videoGestureAlreadyPlaying:0};
  try{
   context=await browser.newContext({acceptDownloads:false,ignoreHTTPSErrors:false,serviceWorkers:'block',javaScriptEnabled:true,
    permissions:[],viewport:{width:1280,height:720},locale:'de-DE'});
@@ -118,21 +119,30 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
      }catch{/* inaccessible/destroyed frame */ }
     }
    }
-   // A trusted Playwright click is different from element.play(): it produces
-   // a genuine user gesture. Limit to ONE visible HTML5 <video> per scan.
-   // Never click arbitrary buttons, ads, overlays, CAPTCHAs or external players.
+   // One real user gesture to a visible HTML5 video is allowed, but never
+   // click ad overlays, hoster buttons, logins, CAPTCHAs or hidden elements.
+   // paused=false is NOT sufficient proof of playback: play() may be pending
+   // while currentTime=0 and readyState=HAVE_NOTHING (observed on ZimaOS).
    if(autoPlay&&pass===1&&!sources.size&&diagnostics.videoGestureClicks===0){
     for(const frame of page.frames().slice(0,12)){
      if(typeof frame.locator!=='function')continue;
      try{
-      const video=frame.locator('video').first();
-      if(!await video.isVisible())continue;
-      if(!await video.evaluate(v=>v.paused))continue;
+      const video=frame.locator('video:visible').first();
+      if(!await video.isVisible()){diagnostics.videoGestureHidden++;continue}
+      const state=await video.evaluate(v=>({
+       paused:v.paused,currentTime:Number(v.currentTime)||0,readyState:v.readyState,
+       hasSource:!!(v.currentSrc||v.src||v.querySelector('source'))
+      }));
+      if(!state.hasSource)diagnostics.videoGestureNoSource++;
+      if(!state.paused&&state.readyState>=2&&state.currentTime>0.05){
+       diagnostics.videoGestureAlreadyPlaying++;continue;
+      }
+      if(!state.paused&&state.readyState<2)diagnostics.videoGestureStalled++;
       diagnostics.videoGestureClicks++;
       try{await video.click({timeout:1500})}
       catch{diagnostics.videoGestureClickFailures++}
       break;
-     }catch{/* frame changed, hidden video, or restricted DOM */ }
+     }catch{/* inaccessible iframe or page changed */ }
     }
    }
    await sleep(Math.ceil(waitMs/3));
@@ -159,7 +169,7 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
   if(sources.size)note='Unterstützte Medienanfragen beobachtet; Deutsch und Server-Erreichbarkeit müssen separat bestätigt werden.';
   else if(diagnostics.playingVideos===0)note=diagnostics.videoGestureClicks?
    'Weder automatischer Start noch ein gezielter Klick auf das sichtbare HTML5-Video haben eine bestätigte Wiedergabe ausgelöst. Externe Player/Anmeldungen/Captchas werden nicht umgangen.':
-   'Keine bestätigte Wiedergabe. Kein sichtbar anklickbares HTML5-Video gefunden oder Wiedergabe benötigt weitere zulässige Benutzerinteraktion.';
+   'Keine bestätigte Wiedergabe. Möglicherweise ist das Videofeld verborgen, uninitialisiert oder die externe Wiedergabe benötigt weitere zulässige Benutzerinteraktion.';
   else if(diagnostics.mediaWithoutExtension)note='Medienantworten ohne unterstützte Dateiendung beobachtet. Sie werden aus Sicherheitsgründen nicht als Downloadquelle übernommen.';
   else note='Wiedergabe erkannt, aber kein unterstützter direkter HLS-/DASH-/MP4-Link beobachtet.';
   return {state:sources.size?'media-observed':'no-media',sources:[...sources.values()],observed:sources.size,
