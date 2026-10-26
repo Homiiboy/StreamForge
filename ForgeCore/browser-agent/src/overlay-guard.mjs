@@ -26,9 +26,10 @@ export function safeAdDismissPredicate(element){
  if(!element||typeof element.closest!=='function')return false;
  if(element.closest('a,form,[role="link"],[disabled],[aria-disabled="true"]'))return false;
  if(element.closest('[class*="captcha"],[id*="captcha"],[data-sitekey],[class*="challenge"],[class*="login"],[class*="paywall"],[class*="consent"],[class*="cookie"]'))return false;
- const root=element.closest(AD_OVERLAY_SELECTORS.join(','));
+ // Evaluated in Chromium: no closure variables may be referenced.
+ const root=element.closest('.ad-overlay,.ads-overlay,.advert-overlay,.advertisement-overlay,.ad-popup,.ads-popup,.advert-popup,.popup-ad,.ad-modal,[data-ad-overlay],[data-ad-popup],[data-popup-type="advertisement"]');
  if(!root||typeof root.querySelector!=='function')return false;
- if(root.querySelector(SECURITY_MARKERS))return false;
+ if(root.querySelector('[data-sitekey],.g-recaptcha,.h-captcha,.cf-turnstile,iframe[src*="recaptcha"],iframe[src*="hcaptcha"],iframe[src*="challenges.cloudflare.com"],iframe[src*="captcha"],[id*="captcha"]'))return false;
  return true;
 }
 export async function detectHumanChallenge(page){
@@ -36,7 +37,9 @@ export async function detectHumanChallenge(page){
  for(const frame of page.frames().slice(0,FRAME_LIMIT)){
   try{
    const url=typeof frame.url==='function'?new URL(frame.url()):null;
-   if(url&&CAPTCHA_FRAME.test(url.hostname)&&typeof frame.frameElement==='function'){
+   if(url&&CAPTCHA_FRAME.test(url.hostname)&&
+     (url.hostname!=='google.com'&&!url.hostname.endsWith('.google.com')||url.pathname.includes('/recaptcha/'))&&
+     typeof frame.frameElement==='function'){
     const element=await frame.frameElement();
     if(await element.isVisible())return {detected:true,type:'CAPTCHA'};
    }
