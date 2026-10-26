@@ -75,8 +75,8 @@ test('browser agent shows MIME-typed media without file extension as diagnostic,
 
 test('v1.7.3 sends at most one actual video click and distinguishes it from a play() attempt',async()=>{
  let gestureClicks=0,evaluations=0;
- const video={isVisible:async()=>true,evaluate:async()=>true,click:async()=>{gestureClicks++}};
- const frame={locator:selector=>{assert.equal(selector,'video');return{first:()=>video}},
+ const video={isVisible:async()=>true,evaluate:async()=>({paused:true,currentTime:0,readyState:0,hasSource:true}),click:async()=>{gestureClicks++}};
+ const frame={locator:selector=>{assert.equal(selector,'video:visible');return{first:()=>video}},
   evaluate:async()=>{evaluations++;return evaluations<=3?0:[{paused:false,currentTime:1.2,readyState:3,error:false}]}};
  const page={on:()=>{},goto:async()=>{},frames:()=>[frame]};
  const ctx={route:async()=>{},newPage:async()=>page,close:async()=>{}};
@@ -92,7 +92,7 @@ test('v1.7.3 sends at most one actual video click and distinguishes it from a pl
 test('v1.7.3 does not click hidden videos or any buttons on external players',async()=>{
  let clicked=0;
  const frame={
-  locator:selector=>{assert.equal(selector,'video');return{first:()=>({
+  locator:selector=>{assert.equal(selector,'video:visible');return{first:()=>({
    isVisible:async()=>false,click:async()=>{clicked++}
   })}},
   evaluate:async function(){this.calls=(this.calls||0)+1;return this.calls<=3?0:[]}
@@ -103,4 +103,34 @@ test('v1.7.3 does not click hidden videos or any buttons on external players',as
   {resolver,browserFactory:async()=>({newContext:async()=>ctx,close:async()=>{}}),sleep:async()=>{}});
  assert.equal(clicked,0);
  assert.equal(data.diagnostics.videoGestureClicks,0);
+});
+
+
+test('v1.7.4 stalled video with paused=false and HAVE_NOTHING receives one real click',async()=>{
+ let clicks=0,attempts=0;
+ const video={isVisible:async()=>true,evaluate:async()=>({paused:false,currentTime:0,readyState:0,hasSource:true}),
+  click:async()=>{clicks++}};
+ const frame={locator:selector=>{assert.equal(selector,'video:visible');return{first:()=>video}},
+  evaluate:async()=>{attempts++;return attempts<4?0:[{paused:false,currentTime:0,readyState:0,error:false}]}};
+ const page={on:()=>{},goto:async()=>{},frames:()=>[frame]};
+ const ctx={route:async()=>{},newPage:async()=>page,close:async()=>{}};
+ const result=await inspectPage({url:'https://licensed.example/demo',waitMs:2000},{
+  resolver,browserFactory:async()=>({newContext:async()=>ctx,close:async()=>{}}),sleep:async()=>{}});
+ assert.equal(clicks,1);
+ assert.equal(result.diagnostics.videoGestureStalled,1);
+ assert.equal(result.diagnostics.videoGestureClicks,1);
+ assert.equal(result.diagnostics.playingVideos,0);
+});
+test('v1.7.4 does not click a video that has truly begun playing',async()=>{
+ let clicks=0;
+ const video={isVisible:async()=>true,evaluate:async()=>({paused:false,currentTime:5,readyState:3,hasSource:true}),
+  click:async()=>{clicks++}};
+ const frame={locator:()=>({first:()=>video}),evaluate:async()=>[]};
+ const page={on:()=>{},goto:async()=>{},frames:()=>[frame]};
+ const ctx={route:async()=>{},newPage:async()=>page,close:async()=>{}};
+ const result=await inspectPage({url:'https://licensed.example/demo',waitMs:2000},{
+  resolver,browserFactory:async()=>({newContext:async()=>ctx,close:async()=>{}}),sleep:async()=>{}});
+ assert.equal(clicks,0);
+ assert.equal(result.diagnostics.videoGestureAlreadyPlaying,1);
+ assert.equal(result.diagnostics.videoGestureClicks,0);
 });
