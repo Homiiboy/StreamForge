@@ -30,7 +30,7 @@ import {downloadSubtitle,normalizeLanguage} from './subtitles.mjs';
 import {operationalStatus,diagnosticEvents} from './operations.mjs';
 
 export const APP_NAME='ForgeCore';
-export const APP_VERSION='1.7.1';
+export const APP_VERSION='1.7.2';
 const staticDir=resolve(dirname(fileURLToPath(import.meta.url)),'../public');
 const MAX_BODY=64*1024;
 const limitText=(v,max=150)=>typeof v==='string'?v.trim().slice(0,max):'';

@@ -63,22 +63,37 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
  if(!Number.isInteger(waitMs)||waitMs<2000||waitMs>MAX_WAIT)throw error('Unzulässige Browser-Wartezeit');
  const browser=await browserFactory();
  const sources=new Map(),warnings=[];let page,context,blocked=0,playAttempts=0;
+ const diagnostics={requests:0,responses:0,requestFailures:0,mediaResponses:0,
+  mediaWithoutExtension:0,videoElements:0,playingVideos:0,videoErrors:0,frames:0,webSocketsBlocked:0};
  try{
   context=await browser.newContext({acceptDownloads:false,ignoreHTTPSErrors:false,serviceWorkers:'block',javaScriptEnabled:true,
    permissions:[],viewport:{width:1280,height:720},locale:'de-DE'});
   // Network interception must cover WebSockets too; they do not pass through HTTP routing.
-  if(typeof context.routeWebSocket==='function')await context.routeWebSocket('**/*',socket=>socket.close());
+  if(typeof context.routeWebSocket==='function')await context.routeWebSocket('**/*',socket=>{
+   diagnostics.webSocketsBlocked++;return socket.close();
+  });
   await context.route('**/*',async route=>{
    const u=route.request().url();
    if(!/^https:\/\//i.test(u)){blocked++;return route.abort().catch(()=>{})}
    try{await validatePublicUrl(u,{resolver});await route.continue()}catch{blocked++;await route.abort().catch(()=>{})}
   });
   page=await context.newPage();
+  page.on('request',()=>{diagnostics.requests++});
+  page.on('requestfailed',()=>{diagnostics.requestFailures++});
   page.on('popup',popup=>{void popup.close().catch(()=>{})});
   page.on('dialog',dialog=>{void dialog.dismiss().catch(()=>{})});
   page.on('response',response=>{
+   diagnostics.responses++;
    try{
-    const h=response.headers(),c=mediaCandidate({url:response.url(),contentType:h['content-type'],status:response.status()});
+    const type=String(response.headers()['content-type']||'').toLowerCase();
+    const isVideoMime=/^(?:video\/[\w.+-]+|application\/(?:vnd\.apple\.mpegurl|x-mpegurl|dash\+xml))(?:\s*;|$)/i.test(type.trim());
+    const kind=typeof response.request==='function'?response.request().resourceType():'';
+    if(isVideoMime||kind==='media'){
+     diagnostics.mediaResponses++;
+     if(!/\.(?:mp4|m4v|m3u8|mpd)$/i.test(new URL(response.url()).pathname))
+      diagnostics.mediaWithoutExtension++;
+    }
+    const c=mediaCandidate({url:response.url(),contentType:type,status:response.status()});
     if(c&&sources.size<MAX_ITEMS)sources.set(c.url,c);
    }catch{/* untrusted resource */ }
   });
@@ -104,10 +119,29 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
    }
    await sleep(Math.ceil(waitMs/3));
   }
+  // A play() call is merely an attempt. Count playback only once a video's
+  // currentTime advances and enough data is buffered; do not equate it with a click.
+  const frames=page.frames().slice(0,12);
+  diagnostics.frames=frames.length;
+  for(const frame of frames){
+   try{
+    const videos=await frame.evaluate(()=>[...document.querySelectorAll('video')].slice(0,6).map(v=>({
+     paused:v.paused,currentTime:Number(v.currentTime)||0,readyState:v.readyState,
+     error:!!v.error
+    })));
+    if(!Array.isArray(videos))continue;
+    diagnostics.videoElements+=videos.length;
+    diagnostics.playingVideos+=videos.filter(v=>!v.paused&&v.currentTime>0.05&&v.readyState>=2).length;
+    diagnostics.videoErrors+=videos.filter(v=>v.error).length;
+   }catch{/* removed/inaccessible frame */ }
+  }
+  let note;
+  if(sources.size)note='Unterstützte Medienanfragen beobachtet; Deutsch und Server-Erreichbarkeit müssen separat bestätigt werden.';
+  else if(diagnostics.playingVideos===0)note='Keine bestätigte Wiedergabe. Automatischer Play-Versuch allein bedeutet nicht, dass der Player gestartet ist.';
+  else if(diagnostics.mediaWithoutExtension)note='Medienantworten ohne unterstützte Dateiendung beobachtet. Sie werden aus Sicherheitsgründen nicht als Downloadquelle übernommen.';
+  else note='Wiedergabe erkannt, aber kein unterstützter direkter HLS-/DASH-/MP4-Link beobachtet.';
   return {state:sources.size?'media-observed':'no-media',sources:[...sources.values()],observed:sources.size,
-    playAttempts,blockedRequests:blocked,warning:warnings.slice(0,2),
-    note:sources.size?'Medienanfragen beobachtet; Deutsch und Server-Erreichbarkeit müssen separat bestätigt werden.':
-     'Keine direkte Medienanfrage beobachtet. Play-Klick, Captcha, Anmeldung oder Schutzmaßnahmen werden nicht automatisiert umgangen.'};
+    playAttempts,blockedRequests:blocked,diagnostics,warning:warnings.slice(0,2),note};
  }finally{await context?.close().catch(()=>{});await browser.close().catch(()=>{})}
 }
 const app=http.createServer(async(req,res)=>{

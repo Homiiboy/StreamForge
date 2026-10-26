@@ -1,14 +1,20 @@
 import {parseWebUrl,safeFetch} from './source-security.mjs';
+import {isIP} from 'node:net';
 
 const directMedia=/\.(?:mp4|m4v|m3u8|mpd)(?:$)/i;
 const hostnameLabel=host=>({
  'voe.sx':'VOE','doodstream.com':'Doodstream','filemoon.sx':'Filemoon','vidmoly.to':'Vidmoly'
 }[host]||host);
 const htmlDecode=s=>String(s||'').replace(/&amp;/gi,'&').replace(/&quot;/gi,'"').replace(/&#39;|&#x27;/gi,"'");
+// A foreign iframe is not sufficient evidence of a media player: ad widgets,
+// social embeds and direct IP addresses are often unrelated to the episode.
+const unrelatedHost=host=>isIP(host)!==0||
+  /(?:^|\.)(?:facebook\.com|fb\.com|twitter\.com|x\.com|instagram\.com|tiktok\.com|pinterest\.com|doubleclick\.net|googlesyndication\.com|google-analytics\.com|googletagmanager\.com)$/i.test(host);
 function candidate(raw,base,kind){
  let url;try{url=parseWebUrl(new URL(htmlDecode(raw),base).href)}catch{return null}
  if(url.searchParams.has('token')||url.searchParams.has('key'))return null;
  const host=url.hostname.replace(/^www\./,'').toLowerCase();
+ if(kind==='player'&&unrelatedHost(host))return null;
  return {url:url.href,hoster:hostnameLabel(host).slice(0,100),kind};
 }
 /** HTML-only, no script interpretation, no external requests, no stream extraction. */

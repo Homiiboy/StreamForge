@@ -55,7 +55,8 @@ export class BrowserScanSession{
   }
   this.scans.set(scanId,{expires:Date.now()+SCAN_TTL,request,siteId,url:requested.href,sources});
   return {scanId,expiresInSeconds:SCAN_TTL/1000,agentState:analysis.state,playAttempts:analysis.playAttempts,
-   blockedRequests:analysis.blockedRequests,warning:analysis.warning||[],
+   blockedRequests:analysis.blockedRequests,diagnostics:analysis.diagnostics||null,
+   warning:analysis.warning||[],
    sources:sources.map(x=>({id:x.id,host:x.host,format:x.format,language:x.language,reason:x.reason,canQueue:x.canQueue})),
    notice:analysis.note||'Browseranalyse abgeschlossen; Sprachnachweis und Download getrennt prüfen.'};
  }

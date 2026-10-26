@@ -22,3 +22,19 @@ test('PlayerBridge rejects unsaved and off-domain inspection and never fetches e
   assert.deepEqual(fetched,['https://example.org/episode']);
  }finally{db.close()}
 });
+
+
+test('PlayerBridge ignores social network widgets and unrelated raw-IP iframes',()=>{
+ const html=[
+  '<iframe src="https://186.2.175.5/stream"></iframe>',
+  '<iframe src="https://45.10.243.23/player"></iframe>',
+  '<iframe src="https://www.facebook.com/plugins/video.php"></iframe>',
+  '<iframe src="https://platform.twitter.com/widgets/tweet_button.html"></iframe>',
+  '<iframe src="https://onlinefilter.info/embed/id"></iframe>',
+  '<iframe src="https://voe.sx/e/episode"></iframe>',
+  '<a class="player" href="https://filemoon.sx/e/movie">Film ansehen</a>'
+ ].join('\n');
+ const out=discoverPlayers(html,'https://licensed.example/show/staffel-1/episode-49');
+ assert.deepEqual(out.map(x=>x.hoster),['onlinefilter.info','VOE','Filemoon']);
+ assert.equal(out.every(x=>x.kind==='player'),true);
+});
