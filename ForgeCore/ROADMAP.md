@@ -1,5 +1,14 @@
 # ForgeCore – Entwicklungsroadmap
 
+## v1.8.3 – Zuverlässige Analyse bis zum ersten Download
+
+- Begrenzte serielle Chromium-Scans statt konkurrierender Player-Anfragen
+- Beschäftigt / Offline / Zeitlimit / Fehler korrekt unterscheiden
+- Authentifizierte Vorabprüfung von ZimaOS-Medienvolume und FFmpeg/FFprobe vor der Downloadfreigabe
+- Die vorhandene Deutschprüfung und TransferQueue nutzen, ohne unbekannte Quellen automatisch zu laden
+- Noch offen: Live-Test einer ausdrücklich berechtigt herunterladbaren Medienquelle auf ZimaOS sowie reale Hoster-Kompatibilität
+
+
 ## v1.8.2 – Player-Tab-Lebenszyklus und sichere Katalogauflösung
 
 - Nicht alle neuen Browser-Tabs als Werbung behandeln
