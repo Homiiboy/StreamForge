@@ -65,10 +65,15 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
  if(typeof autoPlay!=='boolean')throw error('Ungültige Wiedergabeoption');
  if(!Number.isInteger(waitMs)||waitMs<2000||waitMs>MAX_WAIT)throw error('Unzulässige Browser-Wartezeit');
  const browser=await browserFactory();
- const sources=new Map(),warnings=[];let page,context,blocked=0,playAttempts=0,playerState=null;
+ const sources=new Map(),observedSources=[],warnings=[];let page,context,blocked=0,playAttempts=0,playerState=null;
  const overlayState=makeOverlayState();let challenge={detected:false,type:null};
  const playerTabs=new Set(),pendingTabs=new Set();
- const activePages=()=>[...playerTabs,page].filter(Boolean);
+ const collectApprovedSources=()=>{
+  for(const item of observedSources){
+   if((item.page===page||playerTabs.has(item.page))&&sources.size<MAX_ITEMS)
+    sources.set(item.media.url,item.media);
+  }
+ };
  const acceptPopup=popup=>{
   const task=(async()=>{
    try{
@@ -101,6 +106,7 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
     await tab.close().catch(()=>{});
    }else safe.push(tab);
   }
+  collectApprovedSources();
   return [...safe,page].filter(Boolean);
  };
  const diagnostics={requests:0,responses:0,requestFailures:0,mediaResponses:0,
@@ -139,8 +145,17 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
      if(!/\.(?:mp4|m4v|m3u8|mpd)$/i.test(new URL(response.url()).pathname))
       diagnostics.mediaWithoutExtension++;
     }
-    const c=mediaCandidate({url:response.url(),contentType:type,status:response.status()});
-    if(c&&sources.size<MAX_ITEMS)sources.set(c.url,c);
+    const candidate=mediaCandidate({url:response.url(),contentType:type,status:response.status()});
+    if(candidate&&observedSources.length<MAX_ITEMS*3){
+     // Buffer until a popup has passed hostname/DNS verification; unrelated
+     // ad-tab media responses must never become download candidates.
+     let owner=page;
+     if(typeof response.frame==='function'){
+      try{owner=response.frame().page()}catch{owner=null}
+     }
+     if(owner)observedSources.push({page:owner,media:candidate});
+     collectApprovedSources();
+    }
    }catch{/* untrusted resource */ }
   });
   await page.goto(target,{waitUntil:'domcontentloaded',timeout:14000}).catch(e=>warnings.push('Seite nicht vollständig geladen: '+String(e.message).slice(0,90)));
