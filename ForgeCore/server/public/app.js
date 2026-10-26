@@ -850,9 +850,9 @@ async function renderDiscoverSources(host,request){
       'Download der deutschen Quelle planen? Der Import erfolgt nur bei bestätigter deutscher Audiospur.';
      if(!confirm(question))return;
      if(request.kind==='tv'){
-      await api('/api/discover/add',{method:'POST',body:{kind:'tv',id:request.id,...(discoverChosenDestination(request.kind,request.id)?{destination:discoverChosenDestination(request.kind,request.id)}:{})}}});
+      await api('/api/discover/add',{method:'POST',body:{kind:'tv',id:request.id,...(discoverChosenDestination(request.kind,request.id)?{destination:discoverChosenDestination(request.kind,request.id)}:{})}});
       await api('/api/discover/plan/apply',{method:'POST',body:{id:request.id,season:request.season,episodes:[request.episode],confirm:'ADD_MISSING'}});
-     }else await api('/api/discover/add',{method:'POST',body:{kind:'movie',id:request.id,...(discoverChosenDestination(request.kind,request.id)?{destination:discoverChosenDestination(request.kind,request.id)}:{})}}});
+     }else await api('/api/discover/add',{method:'POST',body:{kind:'movie',id:request.id,...(discoverChosenDestination(request.kind,request.id)?{destination:discoverChosenDestination(request.kind,request.id)}:{})}});
      const saved=await api('/api/discover/download',{method:'POST',body:{...request,siteId:result.siteId,url:result.url,confirm:'DOWNLOAD_GERMAN',confirmUnknownGerman:unknown}});
      notify('Downloadauftrag angelegt · '+(saved.language==='german'?'Deutsch laut Playlist':'Deutsch wird vor Import überprüft'));
      await refreshDownloadDashboard();
