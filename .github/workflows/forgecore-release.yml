@@ -35,15 +35,15 @@ jobs:
         run: |
           VERSION=$(node -p "require('./ForgeCore/server/package.json').version")
           TAG="forgecore-v${VERSION}"
-          test "$VERSION" = "1.8.1"
+          test "$VERSION" = "1.8.2"
           mkdir -p dist
           zip -qr "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
             ForgeCore/server ForgeCore/browser-agent ForgeCore/compose.yaml ForgeCore/.env.example ForgeCore/install.sh ForgeCore/manage.sh ForgeCore/upgrade.sh \
             ForgeCore/README.md ForgeCore/ROADMAP.md ForgeCore/CHANGELOG.md ForgeCore/ACCEPTANCE-v1.0.0.md
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
-              --title "ForgeCore ${VERSION} – Werbe-Popup-Steuerung und CAPTCHA-Erkennung" \
+              --title "ForgeCore ${VERSION} – Echte Player-Tabs und Seriennavigation" \
               --prerelease \
               --target "$GITHUB_SHA" \
-              --notes "ForgeCore v1.8.1: Begrenztes, überprüftes Schließen von sichtbaren Werbe-Overlays und zusätzlichen Browser-Dialogen. Sichtbare CAPTCHA-Prüfungen werden erkannt und automatisierte Player-Klicks abgebrochen, nicht automatisch gelöst. Kein Zugangsschutz-Bypass. Die manuelle Lösung direkt im Headless-Browser ist noch nicht integriert; ZimaOS-Praxistest ausstehend."
+              --notes "ForgeCore v1.8.2: Browser-Agent behält verifizierte VOE-/Filemoon-Player-Tabs und untersucht ihre Frames sowie Netzwerkanfragen statt alle neuen Tabs zu schließen. Werbe-Pop-ups bleiben geschlossen; nur öffentliche HTTPS-Player-Domains sind erlaubt. Serien-Kataloge können auch explizite Query-Parameter für Staffel und Folge auflösen. Kein DRM-/CAPTCHA-Bypass. ZimaOS-/Hoster-Praxistest ausstehend."
           fi
