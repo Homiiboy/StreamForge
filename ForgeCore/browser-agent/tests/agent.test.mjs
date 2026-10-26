@@ -129,7 +129,7 @@ test('v1.7.4 does not click a video that has truly begun playing',async()=>{
  let clicks=0;
  const video={isVisible:async()=>true,evaluate:async()=>({paused:false,currentTime:5,readyState:3,hasSource:true}),
   click:async()=>{clicks++}};
- const frame={locator:()=>({first:()=>video}),evaluate:async()=>[]};
+ const frame={locator:selector=>({first:()=>selector==='video:visible'?video:{isVisible:async()=>false}}),evaluate:async()=>[]};
  const page={on:()=>{},goto:async()=>{},frames:()=>[frame]};
  const ctx={route:async()=>{},newPage:async()=>page,close:async()=>{}};
  const result=await inspectPage({url:'https://licensed.example/demo',waitMs:2000},{
@@ -137,4 +137,27 @@ test('v1.7.4 does not click a video that has truly begun playing',async()=>{
  assert.equal(clicks,0);
  assert.equal(result.diagnostics.videoGestureAlreadyPlaying,1);
  assert.equal(result.diagnostics.videoGestureClicks,0);
+});
+
+
+test('v1.8.1 visible human challenge immediately stops player interaction and media handoff',async()=>{
+ let playerCalls=0,autoplayCalls=0;
+ const frame={
+  url:()=> 'https://licensed.example/video',
+  locator:selector=>({first:()=>({isVisible:async()=>selector.startsWith('.cf-turnstile')})}),
+  evaluate:async()=>{autoplayCalls++;return 1}
+ };
+ const page={on:()=>{},goto:async()=>{},frames:()=>[frame]};
+ const ctx={route:async()=>{},newPage:async()=>page,close:async()=>{}};
+ const browser={newContext:async()=>ctx,close:async()=>{}};
+ const result=await inspectPage({url:'https://licensed.example/episode',waitMs:2000},
+  {resolver,browserFactory:async()=>browser,sleep:async()=>{playerCalls++}});
+ assert.equal(result.state,'human-verification-required');
+ assert.equal(result.playAttempts,0);
+ assert.equal(autoplayCalls,0,'CAPTCHA must stop automated clicks/JS playback');
+ assert.equal(playerCalls,0,'scan must not wait/retry through a challenge');
+ assert.equal(result.sources.length,0);
+ assert.equal(result.diagnostics.overlayGuard.captchaDetected,true);
+ assert.equal(result.diagnostics.overlayGuard.captchaType,'Turnstile');
+ assert.match(result.note,/Manuelle Sicherheitsprüfung/);
 });

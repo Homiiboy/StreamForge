@@ -4,6 +4,7 @@ import {lookup} from 'node:dns/promises';
 import {isIP} from 'node:net';
 import {chromium} from 'playwright';
 import {clickSafePlayerControl,sanitizePlayerMetrics} from './player-interaction.mjs';
+import {detectHumanChallenge,dismissAdOverlays,makeOverlayState,publicOverlayMetrics} from './overlay-guard.mjs';
 
 const PORT=Number(process.env.FORGECORE_BROWSER_PORT||8790);
 const DEFAULT_WAIT=9000;
@@ -64,11 +65,12 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
  if(!Number.isInteger(waitMs)||waitMs<2000||waitMs>MAX_WAIT)throw error('Unzulässige Browser-Wartezeit');
  const browser=await browserFactory();
  const sources=new Map(),warnings=[];let page,context,blocked=0,playAttempts=0,playerState=null;
+ const overlayState=makeOverlayState();let challenge={detected:false,type:null};
  const diagnostics={requests:0,responses:0,requestFailures:0,mediaResponses:0,
   mediaWithoutExtension:0,videoElements:0,playingVideos:0,videoErrors:0,frames:0,webSocketsBlocked:0,
   videoGestureClicks:0,videoGestureClickFailures:0,pausedVideos:0,unreadyVideos:0,
   videoGestureHidden:0,videoGestureNoSource:0,videoGestureStalled:0,videoGestureAlreadyPlaying:0,
-  popupsClosed:0,playerControls:null};
+  popupsClosed:0,dialogsDismissed:0,playerControls:null,overlayGuard:null};
  try{
   context=await browser.newContext({acceptDownloads:false,ignoreHTTPSErrors:false,serviceWorkers:'block',javaScriptEnabled:true,
    permissions:[],viewport:{width:1280,height:720},locale:'de-DE'});
@@ -85,7 +87,7 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
   page.on('request',()=>{diagnostics.requests++});
   page.on('requestfailed',()=>{diagnostics.requestFailures++});
   page.on('popup',popup=>{diagnostics.popupsClosed++;void popup.close().catch(()=>{})});
-  page.on('dialog',dialog=>{void dialog.dismiss().catch(()=>{})});
+  page.on('dialog',dialog=>{diagnostics.dialogsDismissed++;void dialog.dismiss().catch(()=>{})});
   page.on('response',response=>{
    diagnostics.responses++;
    try{
@@ -105,6 +107,10 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
   // Some player frames are injected after DOMContentLoaded. Re-check in short,
   // bounded intervals instead of assuming the initial DOM already contains video.
   for(let pass=0;pass<3;pass++){
+   // Human challenges always take precedence over ad cleanup or playback clicks.
+   challenge=await detectHumanChallenge(page);
+   if(challenge.detected)break;
+   try{await dismissAdOverlays(page,{state:overlayState})}catch{/* optional UI cleanup */}
    if(autoPlay){
     for(const frame of page.frames().slice(0,12)){
      try{
@@ -160,12 +166,18 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
    }
    await sleep(Math.ceil(waitMs/3));
   }
+  if(!challenge.detected)challenge=await detectHumanChallenge(page);
+  overlayState.popupsClosed=diagnostics.popupsClosed;
+  overlayState.dialogsDismissed=diagnostics.dialogsDismissed;
+  overlayState.captchaDetected=challenge.detected;
+  overlayState.captchaType=challenge.type;
+  diagnostics.overlayGuard=publicOverlayMetrics(overlayState);
   diagnostics.playerControls=sanitizePlayerMetrics(playerState||{});
   // A play() call is merely an attempt. Count playback only once a video's
   // currentTime advances and enough data is buffered; do not equate it with a click.
   const frames=page.frames().slice(0,12);
   diagnostics.frames=frames.length;
-  for(const frame of frames){
+  if(!challenge.detected)for(const frame of frames){
    try{
     const videos=await frame.evaluate(()=>[...document.querySelectorAll('video')].slice(0,6).map(v=>({
      paused:v.paused,currentTime:Number(v.currentTime)||0,readyState:v.readyState,
@@ -180,13 +192,15 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
    }catch{/* removed/inaccessible frame */ }
   }
   let note;
-  if(sources.size)note='Unterstützte Medienanfragen beobachtet; Deutsch und Server-Erreichbarkeit müssen separat bestätigt werden.';
+  if(challenge.detected)note='Manuelle Sicherheitsprüfung erforderlich. ForgeCore löst CAPTCHAs nicht automatisch und überträgt keine Challenge-Tokens. Die Browseranalyse wurde angehalten; der Scan kann anschließend erneut gestartet werden.';
+  else if(sources.size)note='Unterstützte Medienanfragen beobachtet; Deutsch und Server-Erreichbarkeit müssen separat bestätigt werden.';
   else if(diagnostics.playingVideos===0)note=(diagnostics.playerControls.clicks||diagnostics.videoGestureClicks)?
    'Auch nach begrenzten Klicks auf HTML5- und eingebettete Player-Steuerungen wurde keine Wiedergabe bestätigt. Geschützte Player und Werbe-/Anmeldebildschirme werden nicht umgangen.':
    'Keine bestätigte Wiedergabe. Keine sichere sichtbare Player-Steuerung gefunden oder der Player benötigt eine nicht automatisierbare Interaktion.';
   else if(diagnostics.mediaWithoutExtension)note='Medienantworten ohne unterstützte Dateiendung beobachtet. Sie werden aus Sicherheitsgründen nicht als Downloadquelle übernommen.';
   else note='Wiedergabe erkannt, aber kein unterstützter direkter HLS-/DASH-/MP4-Link beobachtet.';
-  return {state:sources.size?'media-observed':'no-media',sources:[...sources.values()],observed:sources.size,
+  return {state:challenge.detected?'human-verification-required':sources.size?'media-observed':'no-media',
+    sources:challenge.detected?[]:[...sources.values()],observed:challenge.detected?0:sources.size,
     playAttempts,blockedRequests:blocked,diagnostics,warning:warnings.slice(0,2),note};
  }finally{await context?.close().catch(()=>{});await browser.close().catch(()=>{})}
 }

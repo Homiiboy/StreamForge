@@ -1,12 +1,12 @@
 {
   "name": "forgecore-browser-agent",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node src/agent.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/agent.mjs && node --check src/player-interaction.mjs && node --check src/self-test.mjs"
+    "check": "node --check src/agent.mjs && node --check src/player-interaction.mjs && node --check src/self-test.mjs && node --check src/overlay-guard.mjs"
   },
   "dependencies": {
     "playwright": "1.64.0"

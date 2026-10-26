@@ -1,5 +1,14 @@
 # ForgeCore – Entwicklungsroadmap
 
+## v1.8.1 – Pop-up-Bereinigung und CAPTCHA-Status (implementiert, Live-Test offen)
+
+- Browser-Popups, Dialoge und erkennbare Werbe-Overlays sicher behandeln
+- Sichtbare Herausforderungen von normalen Wiedergabeschaltflächen trennen
+- Bei CAPTCHA keine unkontrollierte automatische Interaktion fortsetzen
+- **Nicht implementiert:** manuelle CAPTCHA-Eingabe direkt in derselben Headless-Browsersitzung
+- Keine automatische CAPTCHA-Lösung und kein Zugriffsschutz-Bypass
+
+
 ## v1.8.0 – Sicheres Klicken in eingebetteten Playern (Implementierung und CI)
 
 - Playwright bedient sichere, bekannte HTML5-Player-Steuerungen in eingebetteten Frames

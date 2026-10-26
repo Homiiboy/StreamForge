@@ -1,5 +1,14 @@
 # ForgeCore
 
+## ForgeCore v1.8.1 – Werbe-Popups und CAPTCHA-Erkennung
+
+Der isolierte Chromium-Agent schließt weiterhin neue Popup-Fenster sowie JavaScript-Dialoge. Zusätzlich kann er bei einem ausdrücklich gestarteten Medien-Scan bis zu drei eindeutig als **Werbung** gekennzeichnete In-Page-Overlays über ihre sichtbaren Schließen-Schaltflächen entfernen. Er klickt keine unbestimmten Elemente, Captcha-Frames, Loginfenster, Einwilligungsoptionen oder Sicherheitsdialoge. Die Discover-Diagnose zeigt nun getrennt, wie viele externe Browser-Pop-ups und Werbe-Overlays geschlossen wurden.
+
+Sichtbare reCAPTCHA-, hCaptcha- oder Cloudflare-Turnstile-Prüfungen werden erkannt. Sobald eine aktive Challenge sichtbar ist, werden weitere automatische Player-Klicks unterlassen und die Meldung **„Manuelle Sicherheitsprüfung erforderlich“** angezeigt. CAPTCHAs werden nicht automatisiert gelöst, es werden keine Challenge-Tokens weitergegeben und der derzeitige Headless-Agent besitzt noch keine interaktive Fernsteuerung, über die Nutzer eine Challenge in derselben Sitzung lösen könnten.
+
+**Update:** Geschütztes ForgeCore-ZIP v1.8.1 mit `bash upgrade.sh /tmp/ForgeCore-v1.8.1.zip` installieren und `docker compose --profile browser up -d --build forgecore-browser` ausführen. Die private `.env` mit TMDB-Token bleibt erhalten. Danach Discover → One Piece → S01E49 → „Deutsche Quelle suchen“ und die neuen Popup-/Challenge-Werte prüfen. Realer Hoster-Betrieb weiterhin nicht garantiert.
+
+
 ## ForgeCore v1.8.0 – Player-Interaktion in eingebetteten Frames
 
 Die optionale Chromium-Komponente kann bei einem ausdrücklich in Discover gestarteten Scan die normalen Wiedergabeschaltflächen in HTML5-Playern auch **innerhalb verschachtelter iFrames** bedienen. Aktuell unterstützte Oberflächen: Video.js, Plyr, JW Player, Clappr, Artplayer, Fluid Player, MediaElement.js sowie eindeutig beschriftete Play-Buttons innerhalb eines echten Player-Containers. ForgeCore benutzt pro Scan höchstens zwei unterschiedliche, sichtbare und nicht blockierte Player-Steuerungen; danach beobachtet es, ob Wiedergabe und Medienanfragen tatsächlich stattfinden. Bei verspätet geladenen Frames wird bei der nächsten Prüfrunde erneut gesucht.
