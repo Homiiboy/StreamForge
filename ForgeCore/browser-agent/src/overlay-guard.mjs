@@ -79,7 +79,10 @@ export async function dismissAdOverlays(page,{state=EMPTY(),maxClicks=OVERLAY_LI
     }
     state.used.add(key);
     state.dismissalClicks++;
-    try{await closer.click({timeout:1500})}
+    // A physical Playwright pointer click can land on a different element if
+    // an ad disappears during pointer movement. Dispatch only to the audited
+    // close button node; never click coordinates beneath a vanishing overlay.
+    try{await closer.evaluate(el=>el.click(),null,{timeout:1500})}
     catch{state.dismissalFailures++}
    }catch{/* detached/stale overlay; do not click random alternatives */ }
   }
