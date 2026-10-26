@@ -952,6 +952,10 @@ async function showBrowserAgentResults(row,request,hit){
    ' · Klickfehler: '+(d.videoGestureClickFailures??'unbekannt')+
    ' · Pausierte Videos: '+(d.pausedVideos??'unbekannt')+
    ' · Noch nicht abspielbereit: '+(d.unreadyVideos??'unbekannt'),'hint'));
+  root.append(node('p','Startversuch ohne Videodaten: '+(d.videoGestureStalled??'unbekannt')+
+   ' · Kein sichtbares HTML5-Video: '+(d.videoGestureHidden??'unbekannt')+
+   ' · HTML5 ohne Quelladresse: '+(d.videoGestureNoSource??'unbekannt')+
+   ' · Video bereits laufend: '+(d.videoGestureAlreadyPlaying??'unbekannt'),'hint'));
   root.append(node('p','Netzwerkantworten: '+(d.responses??'unbekannt')+
    ' · Medienantworten: '+(d.mediaResponses??'unbekannt')+
    ' · Ohne unterstützte Dateiendung: '+(d.mediaWithoutExtension??'unbekannt')+
