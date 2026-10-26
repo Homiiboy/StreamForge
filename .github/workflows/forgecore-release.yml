@@ -35,15 +35,15 @@ jobs:
         run: |
           VERSION=$(node -p "require('./ForgeCore/server/package.json').version")
           TAG="forgecore-v${VERSION}"
-          test "$VERSION" = "1.7.2"
+          test "$VERSION" = "1.7.3"
           mkdir -p dist
           zip -qr "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
             ForgeCore/server ForgeCore/browser-agent ForgeCore/compose.yaml ForgeCore/.env.example ForgeCore/install.sh ForgeCore/manage.sh ForgeCore/upgrade.sh \
             ForgeCore/README.md ForgeCore/ROADMAP.md ForgeCore/CHANGELOG.md ForgeCore/ACCEPTANCE-v1.0.0.md
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
-              --title "ForgeCore ${VERSION} – Wiedergabe- und Mediennetzwerkdiagnose" \
+              --title "ForgeCore ${VERSION} – Gezielter HTML5-Playerstart im Browser-Agenten" \
               --prerelease \
               --target "$GITHUB_SHA" \
-              --notes "ForgeCore v1.7.2: Chromiums tatsächliche Wiedergabe wird von reinen play()-Versuchen unterschieden. Die Diagnose zählt Medienantworten auch bei URLs ohne Dateiendung, die der vorhandene Downloader nicht unterstützt. PlayerBridge filtert Social-Media-Widgets und IP-Iframes. Kein Zugriffsschutz-Bypass, kein garantierter Hoster-Download. ZimaOS-Livetest ausstehend."
+              --notes "ForgeCore v1.7.3: Der autonome Chromium-Agent versucht zusätzlich zu video.play() genau einen gezielten Playwright-Klick auf ein sichtbares HTML5-Video. Kein Klick auf Werbung, externe Player-Buttons, CAPTCHA oder Zugriffsschutz. Discover meldet Klickversuche, Pausen- und Pufferzustände. ZimaOS-Hardwaretest und konkrete Website-Wiedergabe weiterhin nicht bestätigt."
           fi
