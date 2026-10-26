@@ -56,3 +56,20 @@ test('v1.7.1 bounds pages per scan and rejects malformed requests',async()=>{
  assert.equal(checks.length,4);
  await assert.rejects(resolveExactCatalogEpisodes(catalog,{season:-1,episode:49},{fetcher}),/Ungültige/);
 });
+
+
+test('v1.8.2 explicit season/episode query links work on seriesstream-like URLs',async()=>{
+ const root='https://catalog.example/serie/stream/one-piece';
+ const s=root+'?staffel=1';
+ const e=root+'?staffel=1&folge=49';
+ const fetcher=async url=>({url,body:Buffer.from(url===root?
+  '<a href="'+s+'">Staffel 1</a><a href="'+root+'?staffel=2">Staffel 2</a>':
+  '<a href="'+root+'?staffel=1&folge=48">Folge 48</a><a href="'+e+'">Folge 49</a>')});
+ const hits=[{kind:'catalog',mediaType:'series',siteId:'saved',siteLabel:'Serienkatalog',url:root,title:'One Piece'}];
+ const got=await resolveExactCatalogEpisodes(hits,{season:1,episode:49},{fetcher});
+ assert.equal(got.episodes.length,1,JSON.stringify(got));
+ assert.equal(got.episodes[0].url,e);
+ assert.equal(got.episodes[0].episode,49);
+ const other=await resolveExactCatalogEpisodes(hits,{season:1,episode:50},{fetcher});
+ assert.equal(other.episodes.length,0,'never fabricate a missing episode');
+});

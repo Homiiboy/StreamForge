@@ -1,5 +1,16 @@
 # ForgeCore
 
+## ForgeCore v1.8.2 – Player-Tabs und erweiterte Staffel-/Episodenerkennung
+
+Der optionale Browser-Agent **schließt jetzt nicht mehr pauschal alle neuen Tabs**. Ein neuer Tab darf nur dann für die Wiedergabe erhalten bleiben, wenn die endgültige URL zu einer bekannten Player-Domain (aktuell `voe.sx`, `filemoon.sx`, `filemoon.to` samt echten Subdomains) gehört **und** die öffentliche HTTPS-Adresse nach DNS-Prüfung zulässig ist. Maximal zwei zusätzliche Player-Tabs; andere Tabs werden geschlossen. Browserweit erkannte Medienantworten werden **nur** übernommen, wenn sie aus der Originalseite oder einem geprüften Player-Tab stammen. Playwright untersucht zusätzlich die Frames der zugelassenen Player-Tabs und kann dort dieselben begrenzten, normalen HTML5-Play-Steuerungen wie bisher bedienen.
+
+Der Katalog-Resolver erkennt nun auch eindeutig benannte Staffel-/Folgenparameter wie `?staffel=1&folge=49` bzw. `?season=1&episode=49`. Nur vorhandene Links zur richtigen Serie werden akzeptiert; keine geratenen Folgennummern, fremden Serien oder Domains. Dynamisch per JavaScript erzeugte Episodenlinks sind damit noch **nicht** vollständig unterstützt.
+
+**ZimaOS-Update:** ZIP `ForgeCore-v1.8.2-ZimaOS.zip` über das vorhandene geschützte `upgrade.sh` installieren; danach `docker compose --profile browser up -d --build forgecore-browser`. Deine lokale `.env`, TMDB-Token und die zuvor für Windows freigegebene Bind-Adresse bleiben erhalten.
+
+**Abnahmetest:** Discover → One Piece → S01E49 → „Deutsche Quelle suchen“. Prüfe, ob SerienStream jetzt eine eindeutig belegte Episode meldet und ob die Browserdiagnose neue Werte für *behaltene Player-Tabs* und *geschlossene fremde Pop-ups* liefert. Bei Filemoon können auf diese Weise legitime Player-Tabs offen bleiben. Echte VOE-/Filemoon-Wiedergabe, berechtigte Downloads und der ZimaOS-Praxistest sind **nicht** durch CI garantiert; Zugriffsschutz wird nicht umgangen.
+
+
 ## ForgeCore v1.8.1 – Werbe-Popups und CAPTCHA-Erkennung
 
 Der isolierte Chromium-Agent schließt weiterhin neue Popup-Fenster sowie JavaScript-Dialoge. Zusätzlich kann er bei einem ausdrücklich gestarteten Medien-Scan bis zu drei eindeutig als **Werbung** gekennzeichnete In-Page-Overlays über ihre sichtbaren Schließen-Schaltflächen entfernen. Er klickt keine unbestimmten Elemente, Captcha-Frames, Loginfenster, Einwilligungsoptionen oder Sicherheitsdialoge. Die Discover-Diagnose zeigt nun getrennt, wie viele externe Browser-Pop-ups und Werbe-Overlays geschlossen wurden.

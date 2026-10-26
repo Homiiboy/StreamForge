@@ -1,5 +1,14 @@
 # ForgeCore – Entwicklungsroadmap
 
+## v1.8.2 – Player-Tab-Lebenszyklus und sichere Katalogauflösung
+
+- Nicht alle neuen Browser-Tabs als Werbung behandeln
+- Nur überprüfte Wiedergabe-Tabs (VOE/Filemoon) weiter untersuchen, fremde Pop-ups weiter schließen
+- Medienbeobachtung über alle zugelassenen Browserseiten hinweg
+- Eindeutige Staffel-/Folgen-Links auch mit Query-Parametern auswerten
+- Verbleibend: dynamische SerienStream-Links und echter ZimaOS-/VOE-/Filemoon-Praxistest
+
+
 ## v1.8.1 – Pop-up-Bereinigung und CAPTCHA-Status (implementiert, Live-Test offen)
 
 - Browser-Popups, Dialoge und erkennbare Werbe-Overlays sicher behandeln
