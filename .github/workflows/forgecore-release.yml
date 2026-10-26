@@ -35,15 +35,15 @@ jobs:
         run: |
           VERSION=$(node -p "require('./ForgeCore/server/package.json').version")
           TAG="forgecore-v${VERSION}"
-          test "$VERSION" = "1.7.1"
+          test "$VERSION" = "1.7.2"
           mkdir -p dist
           zip -qr "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
             ForgeCore/server ForgeCore/browser-agent ForgeCore/compose.yaml ForgeCore/.env.example ForgeCore/install.sh ForgeCore/manage.sh ForgeCore/upgrade.sh \
             ForgeCore/README.md ForgeCore/ROADMAP.md ForgeCore/CHANGELOG.md ForgeCore/ACCEPTANCE-v1.0.0.md
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
-              --title "ForgeCore ${VERSION} – Staffel-/Episodennavigation in Discover" \
+              --title "ForgeCore ${VERSION} – Wiedergabe- und Mediennetzwerkdiagnose" \
               --prerelease \
               --target "$GITHUB_SHA" \
-              --notes "ForgeCore v1.7.1: Discover navigiert von erkannten Serien-Katalogseiten über die tatsächlich verlinkte Staffel zur exakten Episode, bevor der optionale Chromium-Agent die Medienanfragen prüft. Keine geratenen Episodenadressen und kein Umgehen von Zugriffsschutz. ZimaOS-Live-Validierung ausstehend."
+              --notes "ForgeCore v1.7.2: Chromiums tatsächliche Wiedergabe wird von reinen play()-Versuchen unterschieden. Die Diagnose zählt Medienantworten auch bei URLs ohne Dateiendung, die der vorhandene Downloader nicht unterstützt. PlayerBridge filtert Social-Media-Widgets und IP-Iframes. Kein Zugriffsschutz-Bypass, kein garantierter Hoster-Download. ZimaOS-Livetest ausstehend."
           fi
