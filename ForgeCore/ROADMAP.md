@@ -1,5 +1,11 @@
 # ForgeCore – Entwicklungsroadmap
 
+## v1.7.1 – Episodenauflösung in Discover (Code implementiert, Hardwaretest offen)
+
+- Aus Serien-Katalogtreffern die gewünschte Staffel und Folge anhand vorhandener Links ermitteln
+- Automatischer Browser-Agent nur auf eindeutig bestätigten Episodenseiten
+- Keine unbestätigten Staffeln/Folgen, keine vermuteten Links oder Zugangs-Umgehung
+
 ## v1.7.0 – Standalone Browser-Agent (implementiert, ZimaOS-Abnahme ausstehend)
 
 - Chromium per optionalem Docker-Compose-Profil `browser`, keine externen Ports/Volumes

@@ -5,6 +5,7 @@ import {discoverDetail} from './discover.mjs';
 import {validId,validKind,validSeason} from './discover-metadata.mjs';
 import {discoverEpisodePlan} from './discover-state.mjs';
 import {searchSites} from './site-search.mjs';
+import {resolveExactCatalogEpisodes} from './catalog-episode-resolver.mjs';
 import {inspectGermanSource,NOT_GERMAN} from './german-language.mjs';
 
 const fail=(message,status=400)=>{throw Object.assign(Error(message),{status})};
@@ -30,6 +31,17 @@ function mediaFor(db,req){return one(db,'SELECT * FROM media WHERE external_id=?
 async function discoverCandidates(db,request,{token,discoverFetch,sourceFetch,max=16}={}){
  const detail=await discoverDetail({kind:request.kind,id:request.id,token,...(discoverFetch?{fetcher:discoverFetch}:{})});
  const searches=await searchSites(db,detail.title,sourceFetch?{fetcher:sourceFetch}:{});
+ // When only the series page is known, follow actual same-site links to the
+ // requested season/episode (never invent an URL or pick another episode).
+ if(request.kind==='tv'){
+  const resolved=await resolveExactCatalogEpisodes(searches.results,request,
+   sourceFetch?{fetcher:sourceFetch}:{});
+  const seen=new Set(searches.results.map(x=>x.url));
+  for(const ep of resolved.episodes)if(!seen.has(ep.url)){
+   searches.results.unshift(ep);seen.add(ep.url);
+  }
+  searches.warnings.push(...resolved.warnings);
+ }
  const candidates=searches.results.filter(item=>matchResult(item,request)).slice(0,max);
  return {detail,searches,candidates};
 }

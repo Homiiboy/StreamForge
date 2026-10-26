@@ -46,7 +46,10 @@ export function linkedSeasons(html,base){
   const n=link.pathname.match(/(?:^|\/)(?:season|staffel)[-_\/]*(\d{1,3})(?:\/|$)/i);
   if(!n)continue;
   const season=Number(n[1]);if(season<0||season>100)continue;
-  out.set(season,link.href);
+  // An episode URL also contains "staffel-N/" and must never overwrite
+  // the actual season overview link (especially across unrelated series).
+  if(episodeFromUrl(link.href))continue;
+  if(!out.has(season))out.set(season,link.href);
   if(out.size>=40)break;
  }
  return [...out].sort((a,b)=>a[0]-b[0]).map(([season,url])=>({season,url}));

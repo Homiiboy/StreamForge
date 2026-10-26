@@ -1,5 +1,11 @@
 # ForgeCore
 
+## ForgeCore v1.7.1 – Staffel-/Episodennavigation in Discover
+
+Bei expliziter Suche nach einer TV-Episode folgt Discover nun ausgehend von höchstens vier gefundenen Serien-Katalogseiten den tatsächlich im HTML vorhandenen Links zur gewünschten Staffel und Episode. Es werden keine URLs geraten und keine externen Hosts besucht. Wenn der direkte Episodenlink eindeutig nachgewiesen ist, kann die automatische Browseranalyse starten. Findet die Navigation keinen belegten Link, bleibt die Episode ungeprüft; dies beweist keine fehlende deutsche Fassung.
+
+**Update:** Das geschützte `upgrade.sh` ab 1.7.0 übernimmt die bestehende `.env`. Nach dem Update den Browser-Agenten mit `docker compose --profile browser up -d --build forgecore-browser` starten.
+
 ## ForgeCore v1.7.0 – eigenständiger Chromium Browser-Agent
 
 Der optionale ForgeCore Browser-Agent beobachtet HLS-/DASH-/MP4-Netzwerkantworten während eines automatisch gestarteten HTML5-Videos. Er benötigt weder den Windows-StreamForge-Connector noch einen manuell gestarteten Player. Er **kann nicht gewährleisten**, dass dynamische Player mit Popup-, JavaScript- oder Benutzerinteraktionsschranken erfolgreich automatisch abspielen. Es werden keine CAPTCHAs, Anmeldungen, DRMs oder Zugangsrestriktionen umgangen.

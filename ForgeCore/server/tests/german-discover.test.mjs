@@ -136,3 +136,27 @@ test('v1.6.2 distinguishes episode catalogue hits from downloadable media and un
   assert.equal(other.results.length,0);
  }finally{db.close()}
 });
+
+
+test('v1.7.1 Discover resolves a series search hit into the requested episode for Browser-Agent',async()=>{
+ const {db,siteId}=seeded();
+ const series='https://licensed.example/anime/stream/one-piece';
+ const season=series+'/staffel-1';
+ const exact=season+'/episode-49';
+ const fetcher=async url=>({url,body:Buffer.from(url.includes('/search?')?
+  '<html><a href="'+series+'">One Piece</a></html>':
+  url===series?'<html><h1>One Piece</h1><a href="'+season+'">Staffel 1</a></html>':
+  url===season?'<html><h1>Staffel 1</h1><a href="'+exact+'">Episode 49</a></html>':
+  '<html><h1>Folge 49</h1></html>')});
+ try{
+  const result=await discoverDownloadSources(db,{kind:'tv',id:319,season:1,episode:49},
+   {...opts,sourceFetch:fetcher});
+  const hit=result.catalogHits.find(x=>x.exactEpisode);
+  assert.ok(hit,JSON.stringify(result));
+  assert.equal(hit.siteId,siteId);
+  assert.equal(hit.url,exact);
+  assert.equal(hit.mediaType,'episode');
+  assert.equal(result.results.length,0);
+  assert.match(result.notice,/Katalogseiten gefunden/);
+ }finally{db.close()}
+});
