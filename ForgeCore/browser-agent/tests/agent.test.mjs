@@ -161,3 +161,37 @@ test('v1.8.1 visible human challenge immediately stops player interaction and me
  assert.equal(result.diagnostics.overlayGuard.captchaType,'Turnstile');
  assert.match(result.note,/Manuelle Sicherheitsprüfung/);
 });
+
+
+test('v1.8.2 media from an ad popup is rejected, while a verified playback tab is scanned',async()=>{
+ const pageHandlers={},contextHandlers={};let sleeps=0,adClosed=0;
+ const playerTab={url:()=> 'https://filemoon.sx/e/play',on:()=>{},frames:()=>[],close:async()=>{}};
+ const adTab={url:()=> 'https://advertisements.example/ad',on:()=>{},frames:()=>[],close:async()=>{adClosed++}};
+ const parent={on:(e,fn)=>{pageHandlers[e]=fn},goto:async()=>{},frames:()=>[],url:()=> 'https://licensed.example/episode'};
+ const context={on:(e,fn)=>{contextHandlers[e]=fn},route:async()=>{},newPage:async()=>parent,close:async()=>{}};
+ const makeResponse=(url,owner)=>({
+  url:()=>url,status:()=>200,
+  headers:()=>({'content-type':'application/vnd.apple.mpegurl'}),
+  request:()=>({resourceType:()=> 'media'}),
+  frame:()=>({page:()=>owner})
+ });
+ const r=await inspectPage({url:'https://licensed.example/episode',waitMs:2000},{
+  resolver,
+  browserFactory:async()=>({newContext:async()=>context,close:async()=>{}}),
+  sleep:async()=>{
+   if(++sleeps!==1)return;
+   pageHandlers.popup(adTab);
+   pageHandlers.popup(playerTab);
+   contextHandlers.response(makeResponse('https://advertisements.example/ad.m3u8',adTab));
+   contextHandlers.response(makeResponse('https://cdn.licensed.example/good.m3u8',playerTab));
+   await new Promise(resolve=>setImmediate(resolve));
+  }
+ });
+ assert.equal(r.sources.length,1,JSON.stringify(r));
+ assert.equal(r.sources[0].url,'https://cdn.licensed.example/good.m3u8');
+ assert.equal(r.diagnostics.playerTabsKept,1);
+ assert.equal(r.diagnostics.playerTabsRejected,1);
+ assert.equal(r.diagnostics.popupsClosed,1);
+ assert.equal(adClosed,1);
+ assert.equal(r.diagnostics.responses,2);
+});
