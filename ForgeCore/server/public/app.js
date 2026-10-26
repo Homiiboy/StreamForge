@@ -993,6 +993,11 @@ async function showBrowserAgentResults(row,request,hit){
     const question=unknown?'Der Browser hat eine Medienadresse beobachtet, aber Deutsch ist noch nicht bestätigt. Nur nach erfolgreicher deutscher Sprachprüfung nach Jellyfin übernehmen?':
        'Deutsche Audiospur in Playlist ausgewiesen. Download verbindlich planen?';
     if(!confirm(question))return;
+    const readiness=await api('/api/downloads/readiness');
+    if(!readiness.ready){
+     const reason=(readiness.notices||[]).join(' ');
+     throw Error('Download noch nicht möglich: '+reason);
+    }
     if(request.kind==='tv'){
      await api('/api/discover/add',{method:'POST',body:{kind:'tv',id:request.id}});
      await api('/api/discover/plan/apply',{method:'POST',body:{id:request.id,season:request.season,episodes:[request.episode],confirm:'ADD_MISSING'}});
@@ -1004,6 +1009,8 @@ async function showBrowserAgentResults(row,request,hit){
    }));
    root.append(card);
   }
+  if(!result.sources.length&&result.agentState!=='human-verification-required')
+   root.append(node('p','Für einen Download fehlt noch eine unterstützte direkte Medienquelle. Eine gefundene Episodenseite allein reicht nicht.','hint'));
   if(!result.sources.length&&result.agentState!=='human-verification-required')
    root.append(node('p',d.playingVideos===0?
    'Kein direkter Mediastream erkannt und keine tatsächliche Videowiedergabe nachgewiesen. Der Browser-Agent kann notwendige Klicks, Captchas oder Zugriffsschutz nicht automatisch überwinden.':
