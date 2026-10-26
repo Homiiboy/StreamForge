@@ -129,7 +129,7 @@ test('v1.7.4 does not click a video that has truly begun playing',async()=>{
  let clicks=0;
  const video={isVisible:async()=>true,evaluate:async()=>({paused:false,currentTime:5,readyState:3,hasSource:true}),
   click:async()=>{clicks++}};
- const frame={locator:()=>({first:()=>video}),evaluate:async()=>[]};
+ const frame={locator:selector=>({first:()=>selector==='video:visible'?video:{isVisible:async()=>false}}),evaluate:async()=>[]};
  const page={on:()=>{},goto:async()=>{},frames:()=>[frame]};
  const ctx={route:async()=>{},newPage:async()=>page,close:async()=>{}};
  const result=await inspectPage({url:'https://licensed.example/demo',waitMs:2000},{
