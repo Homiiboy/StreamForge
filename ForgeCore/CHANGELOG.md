@@ -1,5 +1,16 @@
 # ForgeCore – Changelog
 
+## v1.8.0 – Eingebettete Player automatisch bedienen
+
+- Browser-Agent sucht Play-Steuerungen in bis zu 12 Browser-Frames, auch wenn Player dynamisch eingebettet werden.
+- Zulässige Buttons bekannter HTML5-Player werden über Playwright echt angeklickt; keine generischen Klicks auf Werbung, Overlays, Weiterleitungen oder geschützte Zugänge.
+- Höchstens zwei unterschiedliche Player-Steuerungsversuche; bereits laufende Videos werden nicht gestört.
+- Diagnose der untersuchten Frames, erkannten Controls, Klickversuche, Fehler und Player-Typen in Discover.
+- Neue Unit-Tests und echter Chromium-Sandbox-Integrationstest mit verschachteltem Frame und unbeachteter Fake-Play-Werbung.
+- Bestehende deutsche Sprachprüfung, TransferQueue, `.env` und der getrennte StreamForge-Connector unverändert.
+- Externe Provider einschließlich VOE **noch nicht live verifiziert**; Hosterspezifische Bedienung bleibt abhängig vom tatsächlichen HTML.
+
+
 ## v1.7.4 – Festhängende HTML5-Wiedergabe korrekt behandeln
 
 - Chromium erkennt auch bei `paused=false` fehlende Videodaten und ausbleibenden Zeitfortschritt.

@@ -3,6 +3,7 @@ import http from 'node:http';
 import {lookup} from 'node:dns/promises';
 import {isIP} from 'node:net';
 import {chromium} from 'playwright';
+import {clickSafePlayerControl,sanitizePlayerMetrics} from './player-interaction.mjs';
 
 const PORT=Number(process.env.FORGECORE_BROWSER_PORT||8790);
 const DEFAULT_WAIT=9000;
@@ -62,11 +63,12 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
  if(typeof autoPlay!=='boolean')throw error('Ungültige Wiedergabeoption');
  if(!Number.isInteger(waitMs)||waitMs<2000||waitMs>MAX_WAIT)throw error('Unzulässige Browser-Wartezeit');
  const browser=await browserFactory();
- const sources=new Map(),warnings=[];let page,context,blocked=0,playAttempts=0;
+ const sources=new Map(),warnings=[];let page,context,blocked=0,playAttempts=0,playerState=null;
  const diagnostics={requests:0,responses:0,requestFailures:0,mediaResponses:0,
   mediaWithoutExtension:0,videoElements:0,playingVideos:0,videoErrors:0,frames:0,webSocketsBlocked:0,
   videoGestureClicks:0,videoGestureClickFailures:0,pausedVideos:0,unreadyVideos:0,
-  videoGestureHidden:0,videoGestureNoSource:0,videoGestureStalled:0,videoGestureAlreadyPlaying:0};
+  videoGestureHidden:0,videoGestureNoSource:0,videoGestureStalled:0,videoGestureAlreadyPlaying:0,
+  popupsClosed:0,playerControls:null};
  try{
   context=await browser.newContext({acceptDownloads:false,ignoreHTTPSErrors:false,serviceWorkers:'block',javaScriptEnabled:true,
    permissions:[],viewport:{width:1280,height:720},locale:'de-DE'});
@@ -82,7 +84,7 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
   page=await context.newPage();
   page.on('request',()=>{diagnostics.requests++});
   page.on('requestfailed',()=>{diagnostics.requestFailures++});
-  page.on('popup',popup=>{void popup.close().catch(()=>{})});
+  page.on('popup',popup=>{diagnostics.popupsClosed++;void popup.close().catch(()=>{})});
   page.on('dialog',dialog=>{void dialog.dismiss().catch(()=>{})});
   page.on('response',response=>{
    diagnostics.responses++;
@@ -145,8 +147,20 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
      }catch{/* inaccessible iframe or page changed */ }
     }
    }
+   // The previous check operates on the raw HTML5 element. Embedded players
+   // (Video.js, Plyr, JW Player, Clappr, Artplayer, FluidPlayer, MediaElement)
+   // often need their own playback UI in a late-loaded iframe instead.
+   // Only audit-listed controls inside real player containers are clickable.
+   if(autoPlay&&pass>=1&&!sources.size){
+    try{
+     playerState=await clickSafePlayerControl(page,{
+      ...(playerState?{state:playerState}:{}),maxClicks:pass===1?1:2
+     });
+    }catch{/* Player DOM is optional; keep reporting media diagnostics */ }
+   }
    await sleep(Math.ceil(waitMs/3));
   }
+  diagnostics.playerControls=sanitizePlayerMetrics(playerState||{});
   // A play() call is merely an attempt. Count playback only once a video's
   // currentTime advances and enough data is buffered; do not equate it with a click.
   const frames=page.frames().slice(0,12);
@@ -167,9 +181,9 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
   }
   let note;
   if(sources.size)note='Unterstützte Medienanfragen beobachtet; Deutsch und Server-Erreichbarkeit müssen separat bestätigt werden.';
-  else if(diagnostics.playingVideos===0)note=diagnostics.videoGestureClicks?
-   'Weder automatischer Start noch ein gezielter Klick auf das sichtbare HTML5-Video haben eine bestätigte Wiedergabe ausgelöst. Externe Player/Anmeldungen/Captchas werden nicht umgangen.':
-   'Keine bestätigte Wiedergabe. Möglicherweise ist das Videofeld verborgen, uninitialisiert oder die externe Wiedergabe benötigt weitere zulässige Benutzerinteraktion.';
+  else if(diagnostics.playingVideos===0)note=(diagnostics.playerControls.clicks||diagnostics.videoGestureClicks)?
+   'Auch nach begrenzten Klicks auf HTML5- und eingebettete Player-Steuerungen wurde keine Wiedergabe bestätigt. Geschützte Player und Werbe-/Anmeldebildschirme werden nicht umgangen.':
+   'Keine bestätigte Wiedergabe. Keine sichere sichtbare Player-Steuerung gefunden oder der Player benötigt eine nicht automatisierbare Interaktion.';
   else if(diagnostics.mediaWithoutExtension)note='Medienantworten ohne unterstützte Dateiendung beobachtet. Sie werden aus Sicherheitsgründen nicht als Downloadquelle übernommen.';
   else note='Wiedergabe erkannt, aber kein unterstützter direkter HLS-/DASH-/MP4-Link beobachtet.';
   return {state:sources.size?'media-observed':'no-media',sources:[...sources.values()],observed:sources.size,

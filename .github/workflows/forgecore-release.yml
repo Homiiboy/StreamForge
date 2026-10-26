@@ -35,15 +35,15 @@ jobs:
         run: |
           VERSION=$(node -p "require('./ForgeCore/server/package.json').version")
           TAG="forgecore-v${VERSION}"
-          test "$VERSION" = "1.7.4"
+          test "$VERSION" = "1.8.0"
           mkdir -p dist
           zip -qr "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
             ForgeCore/server ForgeCore/browser-agent ForgeCore/compose.yaml ForgeCore/.env.example ForgeCore/install.sh ForgeCore/manage.sh ForgeCore/upgrade.sh \
             ForgeCore/README.md ForgeCore/ROADMAP.md ForgeCore/CHANGELOG.md ForgeCore/ACCEPTANCE-v1.0.0.md
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
-              --title "ForgeCore ${VERSION} – Erkennung festhängender HTML5-Wiedergabe" \
+              --title "ForgeCore ${VERSION} – Autonome Player-Klickinteraktion in iFrames" \
               --prerelease \
               --target "$GITHUB_SHA" \
-              --notes "ForgeCore v1.7.4: Korrigiert den Fall paused=false, aber keine geladenen Videodaten und kein Zeitfortschritt. Ein sichtbares HTML5-Video darf einmal gezielt angeklickt werden. Zusätzliche Diagnosen für uninitialisierte und unsichtbare Videos. Keine Klicks auf externe Hoster-Overlays, DRM, Captchas oder Zugriffsschutz. ZimaOS-Praxistest ausstehend."
+              --notes "ForgeCore v1.8.0: Eingebettete, gewöhnliche HTML5-Player lassen sich mit streng begrenzten Playwright-Klicks in iFrames starten. Unterstützung von Video.js, Plyr, JW Player, Clappr, Artplayer, Fluid Player und MediaElement; keine Werbe-/Login-/CAPTCHA-/DRM-Umgehung. Download nur über bestehende Deutschprüfung und Nutzerbestätigung. ZimaOS-/VOE-Praxisabnahme noch ausstehend."
           fi

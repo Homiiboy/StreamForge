@@ -1,5 +1,18 @@
 # ForgeCore
 
+## ForgeCore v1.8.0 – Player-Interaktion in eingebetteten Frames
+
+Die optionale Chromium-Komponente kann bei einem ausdrücklich in Discover gestarteten Scan die normalen Wiedergabeschaltflächen in HTML5-Playern auch **innerhalb verschachtelter iFrames** bedienen. Aktuell unterstützte Oberflächen: Video.js, Plyr, JW Player, Clappr, Artplayer, Fluid Player, MediaElement.js sowie eindeutig beschriftete Play-Buttons innerhalb eines echten Player-Containers. ForgeCore benutzt pro Scan höchstens zwei unterschiedliche, sichtbare und nicht blockierte Player-Steuerungen; danach beobachtet es, ob Wiedergabe und Medienanfragen tatsächlich stattfinden. Bei verspätet geladenen Frames wird bei der nächsten Prüfrunde erneut gesucht.
+
+**Keine Klicks** auf externe Seitenlinks, Login-/Werbe-Overlays, Interstitials, Pop-ups oder Captchas. Chromium wird weiter mit Sandbox betrieben; es werden keine DRM-/Zugriffsbeschränkungen umgangen. Nur geeignete direkte HLS/DASH/MP4-Quellen gehen nach der vorhandenen deutschen Sprachprüfung und nach ausdrücklicher Bestätigung in die Download-Warteschlange. Ein abspielbarer Stream ist noch keine Downloadgarantie.
+
+**ZimaOS-Upgrade:** Das GitHub Release ZIP `ForgeCore-v1.8.0-ZimaOS.zip` herunterladen, mit `bash upgrade.sh /tmp/ForgeCore-v1.8.0.zip` aktualisieren und den Agenten per `docker compose --profile browser up -d --build forgecore-browser` neu bauen. Die lokale `.env` mit dem TMDB-Token bleibt erhalten.
+
+**Testen:** Discover → One Piece → Staffel 1 → Episode 49 → „Deutsche Quelle suchen“. Die UI meldet nun auch „Externe Player-Frames untersucht“, „Erkannte Player-Steuerungen“ und „Play-Klicks in Playern“. Wenn kein Player-Frame klickbar ist, bleibt die Mediendateisuche erfolglos; das ist kein Beweis, dass eine deutsche Fassung fehlt.
+
+**Teststatus:** GitHub CI simuliert Eingebettete Player in Chromium inklusive echter iFrame-Klicks, begrenzter Wiederholungen und Werbeklick-Schutz. Der Live-Test auf AniWorld, VOE und dem ZimaOS-Host ist dadurch **nicht** ersetzt und die Unterstützung aller externen Player ist nicht zu 100 % garantierbar.
+
+
 ## ForgeCore v1.7.4 – Wiedergabe bleibt trotz paused=false hängen
 
 Bei einem konkreten ZimaOS-Test war `HTMLVideoElement.paused=false`, aber `readyState<2`, `currentTime=0` und keine Medienanfrage vorhanden. Frühere Versionen übersprangen den gezielten HTML5-Klick in diesem Zustand. Der Browser-Agent prüft nun **tatsächlichen Fortschritt und Videodaten**: bei einem sichtbaren, aber festhängenden Video kann er einen einzigen echten Klick versuchen. Bereits laufende Videos werden nicht angeklickt, und Werbe-/Hoster-Overlays, Anmeldung, CAPTCHA und Zugriffsschutz werden nicht automatisiert behandelt.

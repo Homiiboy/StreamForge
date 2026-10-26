@@ -956,6 +956,13 @@ async function showBrowserAgentResults(row,request,hit){
    ' · Kein sichtbares HTML5-Video: '+(d.videoGestureHidden??'unbekannt')+
    ' · HTML5 ohne Quelladresse: '+(d.videoGestureNoSource??'unbekannt')+
    ' · Video bereits laufend: '+(d.videoGestureAlreadyPlaying??'unbekannt'),'hint'));
+  const pc=d.playerControls||{};
+  root.append(node('p','Externe Player-Frames untersucht: '+(pc.framesScanned??'unbekannt')+
+   ' · Erkannte Player-Steuerungen: '+(pc.controlsFound??'unbekannt')+
+   ' · Play-Klicks in Playern: '+(pc.clicks??'unbekannt')+
+   ' · Fehlgeschlagene Klicks: '+(pc.clickFailures??'unbekannt'),'hint'));
+  if(pc.types?.length)root.append(node('p','Erkannte Player-Oberflächen: '+pc.types.join(', '),'hint'));
+  if(pc.note)root.append(node('p',pc.note,'discoverSourceNotice'));
   root.append(node('p','Netzwerkantworten: '+(d.responses??'unbekannt')+
    ' · Medienantworten: '+(d.mediaResponses??'unbekannt')+
    ' · Ohne unterstützte Dateiendung: '+(d.mediaWithoutExtension??'unbekannt')+
