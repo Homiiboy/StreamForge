@@ -1,5 +1,14 @@
 # ForgeCore – Changelog
 
+## v1.7.4 – Festhängende HTML5-Wiedergabe korrekt behandeln
+
+- Chromium erkennt auch bei `paused=false` fehlende Videodaten und ausbleibenden Zeitfortschritt.
+- Maximal ein Playwright-Klick auf ein sichtbares Video, solange es noch nicht tatsächlich läuft; unsichtbare und bereits laufende Videos werden übersprungen.
+- Neue Diagnosezähler: festhängender Start, kein sichtbares Video und HTML5 ohne Quelladresse.
+- Regressionstests für den ZimaOS-Fehlerfall sowie tatsächlich laufende Videos.
+- Kein Umgehen von CAPTCHA, Werbung, DRM oder externen Hosterschutzmaßnahmen; Echtbetrieb auf ZimaOS nicht verifiziert.
+
+
 ## v1.7.3 – echtes HTML5-Videoanklicken als begrenzter Browser-Fallback
 
 - Höchstens ein Playwright-Klick pro Scan auf ein sichtbares, pausiertes HTML5-Video.
