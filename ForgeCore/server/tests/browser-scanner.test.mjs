@@ -124,3 +124,33 @@ test('v1.8.3 agent busy is not incorrectly labelled offline after retries',async
    e=>e.status===429&&e.message.includes('beschäftigt'));
  }finally{db.close()}
 });
+
+
+test('v1.8.3 verified German HLS goes from Browser-Agent scan to transfer worker completion in a controlled fixture',async()=>{
+ const {mkdtemp,rm}=await import('node:fs/promises');
+ const {tmpdir}=await import('node:os');
+ const {join}=await import('node:path');
+ const root=await mkdtemp(join(tmpdir(),'forgecore-first-download-'));
+ const{db,siteId}=seed(),session=new BrowserScanSession();
+ let executed=0;
+ const queue=new TransferQueue(db,{mediaRoot:root,download:async ({sourceUrl,episode,root:destination})=>{
+  executed++;
+  assert.equal(sourceUrl,media);
+  assert.equal(episode.episode,49);
+  assert.equal(destination,root);
+  return {path:join(root,'verified-german-fixture.mkv'),germanAudioVerified:true};
+ }});
+ const opts={token:'fake',discoverFetch:tmdb,sourceFetch,languageFetch,agentFetch:fakeAgent};
+ try{
+  const scan=await session.scan(db,{kind:'tv',id:319,season:1,episode:49,siteId,url:page,confirm:'SCAN_MEDIA'},opts);
+  assert.equal(scan.sources.length,1);
+  assert.equal(scan.sources[0].language,'german');
+  const enqueued=await session.enqueue(db,queue,{scanId:scan.scanId,candidateId:scan.sources[0].id,confirm:'DOWNLOAD_GERMAN'},opts);
+  assert.ok(enqueued.id);
+  assert.equal(queue.list()[0].state,'queued');
+  assert.equal(await queue.tick(),true);
+  assert.equal(executed,1);
+  assert.equal(queue.list()[0].state,'complete');
+  assert.equal(db.prepare('SELECT status FROM episodes WHERE season=1 AND episode=49').get().status,'available');
+ }finally{db.close();await rm(root,{recursive:true,force:true})}
+});
