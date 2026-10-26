@@ -64,7 +64,8 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
  const browser=await browserFactory();
  const sources=new Map(),warnings=[];let page,context,blocked=0,playAttempts=0;
  const diagnostics={requests:0,responses:0,requestFailures:0,mediaResponses:0,
-  mediaWithoutExtension:0,videoElements:0,playingVideos:0,videoErrors:0,frames:0,webSocketsBlocked:0};
+  mediaWithoutExtension:0,videoElements:0,playingVideos:0,videoErrors:0,frames:0,webSocketsBlocked:0,
+  videoGestureClicks:0,videoGestureClickFailures:0,pausedVideos:0,unreadyVideos:0};
  try{
   context=await browser.newContext({acceptDownloads:false,ignoreHTTPSErrors:false,serviceWorkers:'block',javaScriptEnabled:true,
    permissions:[],viewport:{width:1280,height:720},locale:'de-DE'});
@@ -117,6 +118,23 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
      }catch{/* inaccessible/destroyed frame */ }
     }
    }
+   // A trusted Playwright click is different from element.play(): it produces
+   // a genuine user gesture. Limit to ONE visible HTML5 <video> per scan.
+   // Never click arbitrary buttons, ads, overlays, CAPTCHAs or external players.
+   if(autoPlay&&pass===1&&!sources.size&&diagnostics.videoGestureClicks===0){
+    for(const frame of page.frames().slice(0,12)){
+     if(typeof frame.locator!=='function')continue;
+     try{
+      const video=frame.locator('video').first();
+      if(!await video.isVisible())continue;
+      if(!await video.evaluate(v=>v.paused))continue;
+      diagnostics.videoGestureClicks++;
+      try{await video.click({timeout:1500})}
+      catch{diagnostics.videoGestureClickFailures++}
+      break;
+     }catch{/* frame changed, hidden video, or restricted DOM */ }
+    }
+   }
    await sleep(Math.ceil(waitMs/3));
   }
   // A play() call is merely an attempt. Count playback only once a video's
@@ -133,11 +151,15 @@ export async function inspectPage({url,waitMs=DEFAULT_WAIT,autoPlay=true}={},{
     diagnostics.videoElements+=videos.length;
     diagnostics.playingVideos+=videos.filter(v=>!v.paused&&v.currentTime>0.05&&v.readyState>=2).length;
     diagnostics.videoErrors+=videos.filter(v=>v.error).length;
+    diagnostics.pausedVideos+=videos.filter(v=>v.paused).length;
+    diagnostics.unreadyVideos+=videos.filter(v=>v.readyState<2).length;
    }catch{/* removed/inaccessible frame */ }
   }
   let note;
   if(sources.size)note='Unterstützte Medienanfragen beobachtet; Deutsch und Server-Erreichbarkeit müssen separat bestätigt werden.';
-  else if(diagnostics.playingVideos===0)note='Keine bestätigte Wiedergabe. Automatischer Play-Versuch allein bedeutet nicht, dass der Player gestartet ist.';
+  else if(diagnostics.playingVideos===0)note=diagnostics.videoGestureClicks?
+   'Weder automatischer Start noch ein gezielter Klick auf das sichtbare HTML5-Video haben eine bestätigte Wiedergabe ausgelöst. Externe Player/Anmeldungen/Captchas werden nicht umgangen.':
+   'Keine bestätigte Wiedergabe. Kein sichtbar anklickbares HTML5-Video gefunden oder Wiedergabe benötigt weitere zulässige Benutzerinteraktion.';
   else if(diagnostics.mediaWithoutExtension)note='Medienantworten ohne unterstützte Dateiendung beobachtet. Sie werden aus Sicherheitsgründen nicht als Downloadquelle übernommen.';
   else note='Wiedergabe erkannt, aber kein unterstützter direkter HLS-/DASH-/MP4-Link beobachtet.';
   return {state:sources.size?'media-observed':'no-media',sources:[...sources.values()],observed:sources.size,

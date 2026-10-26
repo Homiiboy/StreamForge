@@ -948,6 +948,10 @@ async function showBrowserAgentResults(row,request,hit){
   root.append(node('p','HTML5-Startversuche: '+result.playAttempts+
    ' · Wiedergabe tatsächlich bestätigt: '+(d.playingVideos??'unbekannt')+
    ' · Video-Elemente: '+(d.videoElements??'unbekannt'),'hint'));
+  root.append(node('p','Gezielter HTML5-Klick: '+(d.videoGestureClicks??'unbekannt')+
+   ' · Klickfehler: '+(d.videoGestureClickFailures??'unbekannt')+
+   ' · Pausierte Videos: '+(d.pausedVideos??'unbekannt')+
+   ' · Noch nicht abspielbereit: '+(d.unreadyVideos??'unbekannt'),'hint'));
   root.append(node('p','Netzwerkantworten: '+(d.responses??'unbekannt')+
    ' · Medienantworten: '+(d.mediaResponses??'unbekannt')+
    ' · Ohne unterstützte Dateiendung: '+(d.mediaWithoutExtension??'unbekannt')+

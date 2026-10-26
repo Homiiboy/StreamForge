@@ -1,5 +1,12 @@
 # ForgeCore – Entwicklungsroadmap
 
+## v1.7.3 – Video-Klick und Wiedergabediagnostik (Code implementiert)
+
+- Browser-Agent macht einen begrenzten echten Klick auf sichtbares pausiertes HTML5-Video, wenn noch kein Medienlink beobachtet wurde
+- Zusätzliche UI-Diagnose von Klicks, Fehlern, pausierten und nicht abspielbereiten Elementen
+- ZimaOS-Webseitentest offen; keine Gewähr für geschützte externe Player
+
+
 ## v1.7.2 – Browseranalyse mit überprüfbarem Wiedergabestatus
 
 - Erfolgreiche Wiedergabe nicht aus einem bloßen Play-Aufruf ableiten

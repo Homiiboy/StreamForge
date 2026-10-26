@@ -71,3 +71,36 @@ test('browser agent shows MIME-typed media without file extension as diagnostic,
  assert.equal(r.diagnostics.playingVideos,1);
  assert.match(r.note,/ohne unterstützte Dateiendung/);
 });
+
+
+test('v1.7.3 sends at most one actual video click and distinguishes it from a play() attempt',async()=>{
+ let gestureClicks=0,evaluations=0;
+ const video={isVisible:async()=>true,evaluate:async()=>true,click:async()=>{gestureClicks++}};
+ const frame={locator:selector=>{assert.equal(selector,'video');return{first:()=>video}},
+  evaluate:async()=>{evaluations++;return evaluations<=3?0:[{paused:false,currentTime:1.2,readyState:3,error:false}]}};
+ const page={on:()=>{},goto:async()=>{},frames:()=>[frame]};
+ const ctx={route:async()=>{},newPage:async()=>page,close:async()=>{}};
+ const factory=async()=>({newContext:async()=>ctx,close:async()=>{}});
+ const result=await inspectPage({url:'https://licensed.example/show',waitMs:2000},
+  {resolver,browserFactory:factory,sleep:async()=>{}});
+ assert.equal(gestureClicks,1);
+ assert.equal(result.playAttempts,0);
+ assert.equal(result.diagnostics.videoGestureClicks,1);
+ assert.equal(result.diagnostics.videoGestureClickFailures,0);
+ assert.equal(result.diagnostics.playingVideos,1);
+});
+test('v1.7.3 does not click hidden videos or any buttons on external players',async()=>{
+ let clicked=0;
+ const frame={
+  locator:selector=>{assert.equal(selector,'video');return{first:()=>({
+   isVisible:async()=>false,click:async()=>{clicked++}
+  })}},
+  evaluate:async function(){this.calls=(this.calls||0)+1;return this.calls<=3?0:[]}
+ };
+ const page={on:()=>{},goto:async()=>{},frames:()=>[frame]};
+ const ctx={route:async()=>{},newPage:async()=>page,close:async()=>{}};
+ const data=await inspectPage({url:'https://licensed.example/show',waitMs:2000},
+  {resolver,browserFactory:async()=>({newContext:async()=>ctx,close:async()=>{}}),sleep:async()=>{}});
+ assert.equal(clicked,0);
+ assert.equal(data.diagnostics.videoGestureClicks,0);
+});

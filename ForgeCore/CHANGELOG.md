@@ -1,5 +1,14 @@
 # ForgeCore – Changelog
 
+## v1.7.3 – echtes HTML5-Videoanklicken als begrenzter Browser-Fallback
+
+- Höchstens ein Playwright-Klick pro Scan auf ein sichtbares, pausiertes HTML5-Video.
+- Keine automatisierten Klicks auf Werbung, Player-Overlays, Captchas oder geschützte Zugriffskontrollen.
+- Zusätzliche Diagnosen für Klickversuch, fehlgeschlagenen Klick, pausierte und nicht abspielbereite Videos.
+- Unit-Tests für erfolgreiche Einzelinteraktion und nicht sichtbare Videos.
+- ZimaOS- und externe Hoster-Praxistests sind nicht Teil der CI und weiterhin offen.
+
+
 ## v1.7.2 – Ehrliche Chromium-Wiedergabediagnose
 
 - Ein `video.play()`-Aufruf wird nicht mehr fälschlich als erfolgreich abgespieltes Video ausgegeben.
