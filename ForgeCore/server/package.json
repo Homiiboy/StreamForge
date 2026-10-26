@@ -1,6 +1,6 @@
 {
   "name": "forgecore-server",
-  "version": "1.8.2",
+  "version": "1.8.3",
   "private": true,
   "type": "module",
   "engines": {
@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node src/server.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/server.mjs && node --check src/db.mjs && node --check src/auth.mjs && node --check src/library.mjs && node --check src/queue.mjs && node --check src/source-security.mjs && node --check src/source-adapters.mjs && node --check src/media-download.mjs && node --check src/transfer-queue.mjs && node --check public/app.js && node --check src/phase3.mjs && node --check src/subtitles.mjs && node --check src/transfer-recovery.mjs && node --check src/database-backup.mjs && node --check src/source-automation.mjs && node --check src/jellyfin.mjs && node --check src/jellyfin-sync.mjs && node --check src/operations.mjs && node --check src/site-search.mjs && node --check src/catalog-inspect.mjs && node --check src/player-bridge.mjs && node --check src/discover.mjs && node --check src/discover-metadata.mjs && node --check src/discover-state.mjs && node --check src/german-language.mjs && node --check src/discover-download.mjs && node --check src/browser-scanner.mjs && node --check src/catalog-episode-resolver.mjs"
+    "check": "node --check src/server.mjs && node --check src/db.mjs && node --check src/auth.mjs && node --check src/library.mjs && node --check src/queue.mjs && node --check src/source-security.mjs && node --check src/source-adapters.mjs && node --check src/media-download.mjs && node --check src/transfer-queue.mjs && node --check public/app.js && node --check src/phase3.mjs && node --check src/subtitles.mjs && node --check src/transfer-recovery.mjs && node --check src/database-backup.mjs && node --check src/source-automation.mjs && node --check src/jellyfin.mjs && node --check src/jellyfin-sync.mjs && node --check src/operations.mjs && node --check src/site-search.mjs && node --check src/catalog-inspect.mjs && node --check src/player-bridge.mjs && node --check src/discover.mjs && node --check src/discover-metadata.mjs && node --check src/discover-state.mjs && node --check src/german-language.mjs && node --check src/discover-download.mjs && node --check src/browser-scanner.mjs && node --check src/catalog-episode-resolver.mjs && node --check src/download-readiness.mjs"
   },
   "description": "ForgeCore ZimaOS – German-only StreamRadar Discover to Jellyfin downloads"
 }
