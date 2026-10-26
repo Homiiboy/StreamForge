@@ -522,7 +522,7 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
      db.exec('DELETE FROM discover_watchlist; DELETE FROM search_sites; DELETE FROM source_check_events; DELETE FROM source_automation; DELETE FROM transfer_jobs; DELETE FROM source_items; DELETE FROM sources; DELETE FROM jobs; DELETE FROM episodes; DELETE FROM media; DELETE FROM config;');
      for(const media of backup.media){
       const m=mediaInput(media);idCheck(media.id);
-      db.prepare('INSERT INTO media(id,kind,title,year,external_id,notes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').run(media.id,m.kind,m.title,m.year,m.external_id,m.notes,utc(),utc());
+      db.prepare('INSERT INTO media(id,kind,title,year,external_id,notes,destination,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)').run(media.id,m.kind,m.title,m.year,m.external_id,m.notes,m.destination,utc(),utc());
      }
      for(const ep of backup.episodes){
       const e=episodeInput(ep);idCheck(ep.id);idCheck(ep.media_id);
