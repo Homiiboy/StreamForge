@@ -8,11 +8,11 @@ import {createApp,APP_VERSION} from '../src/server.mjs';
 import {openDatabase,newId,utc} from '../src/db.mjs';
 import {operationalStatus} from '../src/operations.mjs';
 
-test('v1.8.3 release metadata keeps the frozen extension distinct',async()=>{
+test('v1.8.4 release metadata keeps the frozen extension distinct',async()=>{
  const root=resolve(dirname(fileURLToPath(import.meta.url)),'../../');
  const manifest=JSON.parse(await readFile(join(root,'browser-extension/manifest.json'),'utf8'));
  const pkg=JSON.parse(await readFile(join(root,'server/package.json'),'utf8'));
- assert.equal(APP_VERSION,'1.8.3');
+ assert.equal(APP_VERSION,'1.8.4');
  assert.equal(pkg.version,APP_VERSION);
  assert.equal(manifest.version,'1.8.11');
 });
@@ -30,7 +30,7 @@ test('release operations and diagnostics stay authenticated and redact credentia
   if(data?.csrf)csrf=data.csrf;return {status:res.status,data};
  };
  try{
-  assert.equal((await request('/api/health')).data.version,'1.8.3');
+  assert.equal((await request('/api/health')).data.version,'1.8.4');
   assert.equal((await request('/api/operations')).status,401);
   assert.equal((await request('/api/operations/errors')).status,401);
   assert.equal((await request('/api/backup/export')).status,401);
