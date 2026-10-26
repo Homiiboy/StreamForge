@@ -1,5 +1,16 @@
 # ForgeCore
 
+## ForgeCore v1.8.3 – Scan-Warteschlange und Download-Vorabprüfung
+
+Die Browser-Analyse ist jetzt **serverseitig serialisiert**: maximal eine aktive Chromium-Analyse, mit höchstens sechs gleichzeitig eingereihten Anfragen. Discover verwirft Scans nicht mehr wegen einer flüchtigen Statusabfrage, während der Agent gerade beschäftigt ist. Antworten unterscheiden einen **beschäftigten Agenten** von einer tatsächlich unterbrochenen Verbindung, einem Zeitlimit oder einem internen Fehler. Bei kurzzeitigen HTTP-429-Antworten versucht ForgeCore eine Analyse bis zu zweimal erneut. Ein fehlgeschlagener Scan blockiert nachfolgende Aufträge nicht.
+
+**Neu vor dem ersten Download:** Der authentifizierte Endpunkt `GET /api/downloads/readiness` prüft, ob der Medienordner **aus Sicht des ForgeCore-Containers** lesbar und beschreibbar ist und ob `ffmpeg` sowie `ffprobe` ausführbar sind. Bei einer im Browser erkannten, geeigneten direkten Medienquelle kontrolliert Discover diese Voraussetzungen noch **vor** dem Planen des Downloads und zeigt bei Fehlern einen verständlichen Hinweis. Die Vorabprüfung lädt selbst keine Medien herunter, veröffentlicht keine Secrets und garantiert keine erfolgreiche Wiedergabe externer Hoster.
+
+**ZimaOS-Upgrade:** Das Release ZIP `ForgeCore-v1.8.3-ZimaOS.zip` mit `bash upgrade.sh /tmp/ForgeCore-v1.8.3.zip` im ForgeCore-Verzeichnis aktualisieren. Danach optional den Chromium-Agenten mit `docker compose --profile browser up -d --build forgecore-browser` neu starten. Lokale `.env`, TMDB-Token, Datenbank und die Windows-LAN-Adresse bleiben erhalten.
+
+**Abnahme:** In Discover eine eindeutig erkannte Episode suchen. Bei mehreren Websites werden Browseranalysen nacheinander verarbeitet; kein vorheriger separater „Online“-Status ist erforderlich. Sobald ein zulässiger direkter HLS-/DASH-/MP4-Link vorliegt, dessen deutsche Audiosprache nachweisbar oder nach Download streng prüfbar ist, kann der Auftrag nach ausdrücklicher Bestätigung in Downloads erscheinen. Prüfe außerdem `GET /api/downloads/readiness` im angemeldeten ForgeCore und die TransferQueue. **Wichtig:** Ein Katalogeintrag allein ist keine downloadbare Quelle. ForgeCore kann DRM/CAPTCHA/Zugriffsschutz nicht umgehen und kann keine funktionierende AniWorld-/SerienStream-/VOE-Wiedergabe garantieren.
+
+
 ## ForgeCore v1.8.2 – Player-Tabs und erweiterte Staffel-/Episodenerkennung
 
 Der optionale Browser-Agent **schließt jetzt nicht mehr pauschal alle neuen Tabs**. Ein neuer Tab darf nur dann für die Wiedergabe erhalten bleiben, wenn die endgültige URL zu einer bekannten Player-Domain (aktuell `voe.sx`, `filemoon.sx`, `filemoon.to` samt echten Subdomains) gehört **und** die öffentliche HTTPS-Adresse nach DNS-Prüfung zulässig ist. Maximal zwei zusätzliche Player-Tabs; andere Tabs werden geschlossen. Browserweit erkannte Medienantworten werden **nur** übernommen, wenn sie aus der Originalseite oder einem geprüften Player-Tab stammen. Playwright untersucht zusätzlich die Frames der zugelassenen Player-Tabs und kann dort dieselben begrenzten, normalen HTML5-Play-Steuerungen wie bisher bedienen.
