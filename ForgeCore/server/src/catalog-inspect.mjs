@@ -11,13 +11,21 @@ const episodePattern=/(?:^|[\/_.-])s(\d{1,3})[._-]*e(\d{1,4})(?:[\/_.-]|$)/i;
 export const MAX_CATALOG_EPISODES=2500;
 const explicitPattern=/(?:^|\/)(?:season|staffel)[-_/ ]*(\d{1,3})\/(?:episode|folge)[-_/ ]*(\d{1,4})(?:\/|$)/i;
 export function episodeFromUrl(url){
- let path;try{path=new URL(url).pathname}catch{return null}
+ let parsed;try{parsed=new URL(url)}catch{return null}
+ const path=parsed.pathname;
  if(/(?:^|\/)(?:comments?|kommentare?|forum|forums|discussion|diskussion|support|hilfe|blog|posts?)(?:\/|$)/i.test(path))return null;
  const match=path.match(episodePattern)||path.match(explicitPattern);
- if(!match)return null;
- const season=Number(match[1]),episode=Number(match[2]);
- if(season>999||episode>9999)return null;
- return {season,episode};
+ if(match){
+  const season=Number(match[1]),episode=Number(match[2]);
+  return season<=999&&episode>=1&&episode<=9999?{season,episode}:null;
+ }
+ // Some series catalogues use URLs with explicit season and episode query
+ // parameters rather than a /staffel-N/episode-N path. Require BOTH names.
+ const p=parsed.searchParams;
+ const s=p.get('staffel')??p.get('season'),e=p.get('folge')??p.get('episode');
+ if(!s||!e||!/^[0-9]{1,3}$/.test(s)||!/^[0-9]{1,4}$/.test(e))return null;
+ const season=Number(s),episode=Number(e);
+ return season<=999&&episode>=1&&episode<=9999?{season,episode}:null;
 }
 export function inspectCatalogHtml(html,base){
  const origin=new URL(base).origin,episodes=new Map(),seasons=new Set();
@@ -42,10 +50,16 @@ export function linkedSeasons(html,base){
  for(const m of String(html).matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)){
   const raw=m[1].match(/\bhref\s*=\s*["']([^"']+)["']/i)?.[1];if(!raw)continue;
   let link;try{link=new URL(raw.replace(/&amp;/g,'&'),base)}catch{continue}
-  if(link.origin!==baseUrl.origin||link.search||link.hash)continue;
+  if(link.origin!==baseUrl.origin||link.hash)continue;
+  // Explicit query season links are supported without guessing URLs.
+  // Ignore any query path that already identifies a specific episode.
+  if(episodeFromUrl(link.href))continue;
   const n=link.pathname.match(/(?:^|\/)(?:season|staffel)[-_\/]*(\d{1,3})(?:\/|$)/i);
-  if(!n)continue;
-  const season=Number(n[1]);if(season<0||season>100)continue;
+  const params=link.searchParams;
+  const querySeason=params.get('staffel')??params.get('season');
+  if(!n&&(!querySeason||!/^[0-9]{1,3}$/.test(querySeason)))continue;
+  const season=Number(n?n[1]:querySeason);if(season<0||season>100)continue;
+  if(link.search&&[...params.keys()].some(key=>!['season','staffel'].includes(key)))continue;
   // An episode URL also contains "staffel-N/" and must never overwrite
   // the actual season overview link (especially across unrelated series).
   if(episodeFromUrl(link.href))continue;
