@@ -1,5 +1,17 @@
 # ForgeCore – Changelog
 
+## v1.8.3 – Browser-Warteschlange und Downloadbereitschaft
+
+- FIFO-Scan-Warteschlange in ForgeCore: genau ein Browser-Scan aktiv, höchstens sechs ausstehende Analysen.
+- Keine fehleranfällige Browser-Online-Vorabkontrolle in Discover; nachfolgende Scans bleiben beim vorübergehend beschäftigten Agenten möglich.
+- Eindeutige 429-/503-/504-Fehlermeldungen, begrenzte Retry-Logik für 429 und erhöhte maximale Antwortzeit.
+- Authentifizierte Download-Vorabprüfung für beschreibbares Medienziel, FFmpeg und FFprobe.
+- Vor einem bestätigten Download aus Discover prüft ForgeCore die lokalen Voraussetzungen, bevor ein Transfer geplant wird.
+- Tests für Scan-Reihenfolge, Fehlerbehandlung, HTTP-429-Retry, Readiness-API/Authentifizierung und deutsche HLS-Quelle.
+- Geschützte `.env`, bestehende Player-Tabs, Connector und Jellyfin-Einstellungen unverändert.
+- Live-Hoster-Kompatibilität und erster tatsächlicher ZimaOS-Mediendownload weiter offen.
+
+
 ## v1.8.2 – Verifizierte Player-Tabs und SerienStream-Navigation
 
 - Bekannte externe Wiedergabe-Tabs werden nach öffentlicher HTTPS-/DNS-Prüfung geöffnet gehalten; höchstens zwei Tabs pro Scan, andere Pop-ups werden geschlossen.
