@@ -3,6 +3,7 @@
 import {chromium} from 'playwright';
 import {clickSafePlayerControl,sanitizePlayerMetrics} from './player-interaction.mjs';
 import {detectHumanChallenge,dismissAdOverlays,makeOverlayState} from './overlay-guard.mjs';
+import {reviewPopupTab} from './player-tabs.mjs';
 const assert=(ok,msg)=>{if(!ok)throw Error(msg)};
 const browser=await chromium.launch({headless:true,chromiumSandbox:true,args:['--disable-dev-shm-usage']});
 try{
@@ -38,6 +39,26 @@ try{
  await page.setContent('<div class="cf-turnstile" style="height:55px;width:220px">Mensch bestätigen</div>');
  const captcha=await detectHumanChallenge(page);
  assert(captcha.detected&&captcha.type==='Turnstile','Visible CAPTCHA challenge not detected');
+ // Test actual new-tab playback routing without contacting an external hoster.
+ const context=page.context();
+ await context.route('https://filemoon.sx/**',route=>route.fulfill({
+  status:200,contentType:'text/html',
+  body:'<!doctype html><title>Embedded Player Tab</title><div class="video-js"><video></video><button class="vjs-big-play-button" onclick="document.title=\'Video Started\'">Play</button></div>'
+ }));
+ await page.setContent('<button id="open-player" onclick="window.open(\'https://filemoon.sx/e/fixture\', \'_blank\')">Open player</button>');
+ const popupPromise=page.waitForEvent('popup');
+ await page.locator('#open-player').click();
+ const popup=await popupPromise;
+ const verdict=await reviewPopupTab(popup,{validatePublicUrl:async url=>{
+  assert(url.startsWith('https://filemoon.sx/'),'Wrong player host');
+  return url;
+ }});
+ assert(verdict.keep,'Known playback tab was incorrectly closed');
+ await popup.locator('.video-js .vjs-big-play-button').waitFor();
+ const popupState=await clickSafePlayerControl(popup);
+ assert(popupState.clicks===1,'Player tab did not receive Playwright click');
+ assert(await popup.title()==='Video Started','Player tab control not invoked');
+ await popup.close();
  const metrics=sanitizePlayerMetrics(state);
  assert(!JSON.stringify(metrics).includes('http'),'Leaked embedded URLs in diagnostics');
  process.stdout.write('Sandboxed Chromium frame playback-button click, popup-safe interaction and no-repeat checks OK\\n');
