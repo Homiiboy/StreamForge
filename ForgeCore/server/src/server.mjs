@@ -157,7 +157,9 @@ export function createApp({dbPath=':memory:',mediaRoot='',startWorker=true,stati
    // v1.7.0: optional isolated Chromium agent. The agent cannot publish media.
    // Login and CSRF are required, even for browser scanning.
    if(path==='/api/browser-agent/status'&&method==='GET')
-    return response(res,200,await browserAgentStatus(browserAgentFetch?{fetcher:browserAgentFetch}:{}));
+    return response(res,200,await browserAgentStatus({
+     coordinator:browserScans.coordinator,...(browserAgentFetch?{fetcher:browserAgentFetch}:{})
+    }));
    if(path==='/api/discover/browser-scan'&&method==='POST')
     return response(res,200,await browserScans.scan(db,await readJson(req),
      {...downloadOpts,...(browserAgentFetch?{agentFetch:browserAgentFetch}:{})}));
