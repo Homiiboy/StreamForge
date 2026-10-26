@@ -1,5 +1,13 @@
 # ForgeCore – Entwicklungsroadmap
 
+## v1.7.2 – Browseranalyse mit überprüfbarem Wiedergabestatus
+
+- Erfolgreiche Wiedergabe nicht aus einem bloßen Play-Aufruf ableiten
+- Sichtbare Netzwerk-/Medienzähler, auch bei nicht unterstützten Medien-URLs
+- Irrelevante Social-Media-Embeds von externen Playern trennen
+- ZimaOS-/Website-Praxistest offen; keine Garantie für externe Hoster oder automatisch abspielbare Inhalte
+
+
 ## v1.7.1 – Episodenauflösung in Discover (Code implementiert, Hardwaretest offen)
 
 - Aus Serien-Katalogtreffern die gewünschte Staffel und Folge anhand vorhandener Links ermitteln
