@@ -18,7 +18,10 @@ test('popup-close filter accepts only ad overlays, never arbitrary buttons or ca
 });
 test('only visible recognized ad close buttons may be clicked, max three per scan',async()=>{
  let clicks=0;
- const closer={isVisible:async()=>true,evaluate:async()=>true,click:async()=>{clicks++}};
+ const closer={isVisible:async()=>true,evaluate:async fn=>{
+  if(fn===safeAdDismissPredicate)return true;
+  clicks++;return true;
+ }};
  const overlay={isVisible:async()=>true,locator:()=>({first:()=>closer})};
  const frame={url:()=> 'https://licensed.example/episode',locator:s=>({first:()=>s==='.ad-overlay'?overlay:{isVisible:async()=>false}})};
  const state=makeOverlayState(),page={frames:()=>[frame]};
