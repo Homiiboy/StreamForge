@@ -1,5 +1,14 @@
 # ForgeCore
 
+## ForgeCore v1.7.2 – Browser-Agent: Wiedergabe- und Netzwerkdiagnose
+
+Nach einer Browseranalyse zeigt Discover jetzt **HTML5-Startversuche getrennt von tatsächlich bestätigter Wiedergabe** (Videoposition und Wiedergabestatus). Zusätzlich werden Netzwerkantworten und Medienantworten gezählt, inklusive Medien-MIME-Typen ohne unterstützte Dateiendung. Das dient ausschließlich der Diagnose; URLs ohne unterstützte Dateiendung werden weiterhin **nicht** an die Download-Warteschlange übergeben.
+
+Die PlayerBridge ignoriert Social-Media-Widgets und IP-Iframes, die bisher irreführend als Player erschienen. Andere externe Player bleiben sichtbar, ohne dass ForgeCore diese Anbieter automatisch entschlüsselt oder deren Zugriffsschutz umgeht.
+
+**Praxisprobe:** Discover → One Piece → Staffel 1 → Folge 49 → Deutsche Quelle suchen. Prüfe die Werte „HTML5-Startversuche“, „Wiedergabe tatsächlich bestätigt“ und „Medienantworten“. Eine Wiedergabe bei AniWorld/externen Hostern ist technisch nicht zugesichert. Browser-Service aktivieren: `docker compose --profile browser up -d --build forgecore-browser`. Die bestehende `.env` bleibt beim sicheren ZIP-Update erhalten.
+
+
 ## ForgeCore v1.7.1 – Staffel-/Episodennavigation in Discover
 
 Bei expliziter Suche nach einer TV-Episode folgt Discover nun ausgehend von höchstens vier gefundenen Serien-Katalogseiten den tatsächlich im HTML vorhandenen Links zur gewünschten Staffel und Episode. Es werden keine URLs geraten und keine externen Hosts besucht. Wenn der direkte Episodenlink eindeutig nachgewiesen ist, kann die automatische Browseranalyse starten. Findet die Navigation keinen belegten Link, bleibt die Episode ungeprüft; dies beweist keine fehlende deutsche Fassung.
