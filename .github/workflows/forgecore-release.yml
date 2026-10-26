@@ -35,15 +35,15 @@ jobs:
         run: |
           VERSION=$(node -p "require('./ForgeCore/server/package.json').version")
           TAG="forgecore-v${VERSION}"
-          test "$VERSION" = "1.8.3"
+          test "$VERSION" = "1.8.4"
           mkdir -p dist
           zip -qr "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
             ForgeCore/server ForgeCore/browser-agent ForgeCore/compose.yaml ForgeCore/.env.example ForgeCore/install.sh ForgeCore/manage.sh ForgeCore/upgrade.sh \
             ForgeCore/README.md ForgeCore/ROADMAP.md ForgeCore/CHANGELOG.md ForgeCore/ACCEPTANCE-v1.0.0.md
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
-              --title "ForgeCore ${VERSION} – Browser-Scan-Warteschlange und Download-Vorabprüfung" \
+              --title "ForgeCore ${VERSION} – Jellyfin-Bibliotheksordner korrekt auswählen" \
               --prerelease \
               --target "$GITHUB_SHA" \
-              --notes "ForgeCore v1.8.3: Beschränkte FIFO-Scanwarteschlange verhindert parallele Chromium-Analysen. Bessere Statusanzeige für beschäftigt, offline und Zeitüberschreitung, 429-Wiederholungen und keine irreführende UI-Vorabablehnung. Authentifizierte Vorabprüfung von Jellyfin-Speicher und ffmpeg/ffprobe vor Downloadstart. Keine DRM-/CAPTCHA-Umgehung; externe Hoster und erster realer Download weiterhin nur auf ZimaOS validierbar."
+              --notes "ForgeCore v1.8.4: ForgeCore findet bestehende Serienordner in Animes, Animation, Cartoon, TV shows, Shows, Series oder Serien und nutzt vorhandene Staffel-/Season-Verzeichnisse. Neue Serien verwenden optional FORGECORE_SERIES_DEFAULT_FOLDER (Standard Shows, änderbar auf TV shows). Keine automatischen Umzüge oder pauschalen Berechtigungsänderungen. Genau ein Treffer nötig; bei Mehrdeutigkeit wird der Download abgelehnt. Sicherheitschecks und Browser-Warteschlange unverändert. ZimaOS-Livetest erforderlich."
           fi
