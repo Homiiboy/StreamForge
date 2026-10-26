@@ -944,7 +944,15 @@ async function showBrowserAgentResults(row,request,hit){
    ...request,siteId:hit.siteId,url:hit.url,confirm:'SCAN_MEDIA'
   }});
   root.replaceChildren(node('h4','Browser-Agent – '+result.sources.length+' Medienanfragen erkannt'));
-  root.append(node('p','Chromium hat '+result.playAttempts+' HTML5-Video(s) gestartet · '+result.blockedRequests+' gesperrte Browser-Anfragen.','hint'));
+  const d=result.diagnostics||{};
+  root.append(node('p','HTML5-Startversuche: '+result.playAttempts+
+   ' · Wiedergabe tatsächlich bestätigt: '+(d.playingVideos??'unbekannt')+
+   ' · Video-Elemente: '+(d.videoElements??'unbekannt'),'hint'));
+  root.append(node('p','Netzwerkantworten: '+(d.responses??'unbekannt')+
+   ' · Medienantworten: '+(d.mediaResponses??'unbekannt')+
+   ' · Ohne unterstützte Dateiendung: '+(d.mediaWithoutExtension??'unbekannt')+
+   ' · Gesperrte Anfragen: '+result.blockedRequests,'hint'));
+  if(d.videoErrors)root.append(node('p','Chromium meldet Fehler bei '+d.videoErrors+' Video-Element(en).','discoverSourceNotice'));
   root.append(node('p',result.notice||'', 'muted'));
   for(const warning of result.warning||[])root.append(node('p',warning,'hint'));
   for(const candidate of result.sources){
@@ -971,6 +979,9 @@ async function showBrowserAgentResults(row,request,hit){
    }));
    root.append(card);
   }
-  if(!result.sources.length)root.append(node('p','Kein direkter Mediastream erkennbar. Automatische Wiedergabe kann bei Playern mit manueller Interaktion oder Zugriffsschutz scheitern.','discoverSourceNotice'));
+  if(!result.sources.length)root.append(node('p',d.playingVideos===0?
+   'Kein direkter Mediastream erkannt und keine tatsächliche Videowiedergabe nachgewiesen. Der Browser-Agent kann notwendige Klicks, Captchas oder Zugriffsschutz nicht automatisch überwinden.':
+   'Kein unterstützter direkter Mediastream erkennbar. Die zusätzlichen Netzwerkzahlen zeigen, ob andere Medienantworten beobachtet wurden.',
+   'discoverSourceNotice'));
  }catch(e){root.replaceChildren(node('p','Browser-Agent: '+e.message,'discoverSourceNotice'));throw e}
 }
