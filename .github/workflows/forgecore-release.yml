@@ -35,15 +35,15 @@ jobs:
         run: |
           VERSION=$(node -p "require('./ForgeCore/server/package.json').version")
           TAG="forgecore-v${VERSION}"
-          test "$VERSION" = "1.8.4"
+          test "$VERSION" = "1.8.5"
           mkdir -p dist
           zip -qr "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
             ForgeCore/server ForgeCore/browser-agent ForgeCore/compose.yaml ForgeCore/.env.example ForgeCore/install.sh ForgeCore/manage.sh ForgeCore/upgrade.sh \
             ForgeCore/README.md ForgeCore/ROADMAP.md ForgeCore/CHANGELOG.md ForgeCore/ACCEPTANCE-v1.0.0.md
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" "dist/ForgeCore-v${VERSION}-ZimaOS.zip" \
-              --title "ForgeCore ${VERSION} – Jellyfin-Bibliotheksordner korrekt auswählen" \
+              --title "ForgeCore ${VERSION} – Separate Jellyfin-Zielordner für Anime und Animation" \
               --prerelease \
               --target "$GITHUB_SHA" \
-              --notes "ForgeCore v1.8.4: ForgeCore findet bestehende Serienordner in Animes, Animation, Cartoon, TV shows, Shows, Series oder Serien und nutzt vorhandene Staffel-/Season-Verzeichnisse. Neue Serien verwenden optional FORGECORE_SERIES_DEFAULT_FOLDER (Standard Shows, änderbar auf TV shows). Keine automatischen Umzüge oder pauschalen Berechtigungsänderungen. Genau ein Treffer nötig; bei Mehrdeutigkeit wird der Download abgelehnt. Sicherheitschecks und Browser-Warteschlange unverändert. ZimaOS-Livetest erforderlich."
+              --notes "ForgeCore v1.8.5: Pro Serie/Film eigenständige sichere Zielordner-Auswahl im Discover-Detail, bei neuen Projekten und in der Bibliothek. Serien: auto, TV shows, Animes, Animation, Cartoon. Filme: auto, Movies, Anime Movies. Ziele werden in SQLite und JSON-Backups gesichert, im Download/Preview/Untertitelpfad berücksichtigt und nicht bei aktiven Transfers verändert. Bestehende Medien bleiben unberührt. Browser-Hoster-Livetest ausstehend."
           fi
