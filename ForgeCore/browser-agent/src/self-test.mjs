@@ -26,6 +26,5 @@ try{
  assert((await page.frameLocator('#player').locator('#clicks').textContent())==='1','Repeated the same player control');
  const metrics=sanitizePlayerMetrics(state);
  assert(!JSON.stringify(metrics).includes('http'),'Leaked embedded URLs in diagnostics');
- process.stdout.write('Sandboxed Chromium frame playback-button click, popup-safe interaction and no-repeat checks OK
-');
+ process.stdout.write('Sandboxed Chromium frame playback-button click, popup-safe interaction and no-repeat checks OK\\n');
 }finally{await browser.close()}
