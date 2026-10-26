@@ -1,5 +1,16 @@
 # ForgeCore
 
+## ForgeCore v1.8.4 – Vorhandene Jellyfin-Medienbibliotheken wiederverwenden
+
+ForgeCore kann ab sofort bestehende Serienordner unter `Animes`, `Animation`, `Cartoon`, `TV shows`, `Shows`, `Series` oder `Serien` auf dem konfigurierten Medienlaufwerk wiederfinden. Bei einer eindeutigen Übereinstimmung mit dem Titel bzw. `Titel (Jahr)` werden **der bestehende Serienordner und vorhandene deutsche/englische Staffelordner** weitergenutzt. Doppelvorkommen werden zur Sicherheit mit einer Fehlermeldung blockiert. Kein Verschieben und keine Änderung existierender Jellyfin-Mediendateien.
+
+Neue, noch nicht vorhandene Serien können über `FORGECORE_SERIES_DEFAULT_FOLDER` in der privaten lokalen `.env` untergebracht werden. Bleibt die Variable leer, wird aus Gründen der Abwärtskompatibilität `Shows` verwendet. Für die bestehende ZimaOS-Bibliothek mit `TV shows` empfiehlt sich `FORGECORE_SERIES_DEFAULT_FOLDER="TV shows"`. Der Standard wird in `compose.yaml` in die Serverumgebung weitergereicht; bestehende lokale `.env` wird beim Update nicht überschrieben.
+
+**ZimaOS-Medienvolume:** `FORGECORE_MEDIA_HOST_PATH=/media/Jellyfin/Jellyfin/Media` weist auf den bestätigten Medien-Hauptordner mit `Movies`, `Animes`, `TV shows` usw. Nach der Änderung im ForgeCore-Installationsverzeichnis `docker compose config --quiet` und `docker compose up -d --no-deps --force-recreate forgecore` ausführen. Das Volume wird `:rw` gemountet; die tatsächlichen Rechte müssen im Container geprüft werden. Browser-Agent muss für reine Volume-Änderungen nicht neu erstellt werden. Nicht `docker compose down -v` verwenden.
+
+**Kontrolle vor dem ersten Download:** `docker compose exec -T forgecore sh -c 'id; ls -ld /media; test -w /media && echo Schreibbar'`, dann nur eine nicht vorhandene Testdatei unter `/media` anlegen und entfernen; anschließend den Vorschau-Endpunkt der jeweiligen Episode nutzen, um das konkrete Ziel `Animes/One Piece/...` zu prüfen. Ein Download ist weiterhin nur möglich, wenn eine zulässige direkte Medienquelle nachgewiesen wurde.
+
+
 ## ForgeCore v1.8.3 – Scan-Warteschlange und Download-Vorabprüfung
 
 Die Browser-Analyse ist jetzt **serverseitig serialisiert**: maximal eine aktive Chromium-Analyse, mit höchstens sechs gleichzeitig eingereihten Anfragen. Discover verwirft Scans nicht mehr wegen einer flüchtigen Statusabfrage, während der Agent gerade beschäftigt ist. Antworten unterscheiden einen **beschäftigten Agenten** von einer tatsächlich unterbrochenen Verbindung, einem Zeitlimit oder einem internen Fehler. Bei kurzzeitigen HTTP-429-Antworten versucht ForgeCore eine Analyse bis zu zweimal erneut. Ein fehlgeschlagener Scan blockiert nachfolgende Aufträge nicht.

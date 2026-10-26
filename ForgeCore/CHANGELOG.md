@@ -1,5 +1,16 @@
 # ForgeCore – Changelog
 
+## v1.8.4 – Bestehende Jellyfin-Anime-/Serienordner sicher nutzen
+
+- Library-Preview und Downloads erkennen vorhandene Serienordner unter Animes, Animation, Cartoon, TV shows, Shows, Series und Serien.
+- Vorhandene Serientitel mit `(Jahr)` und Staffel-Verzeichnisse `Staffel NN` oder `Season NN` werden respektiert.
+- Mehrdeutige Zuordnungen werden abgelehnt, Symlink-Ordner nicht automatisch ausgewählt.
+- `FORGECORE_SERIES_DEFAULT_FOLDER` wählt das Fallback-Verzeichnis für neue Serien. Der bisherige Default `Shows` bleibt ohne Einstellung erhalten.
+- Die bestätigte externe Jellyfin-Festplatte lässt sich über `FORGECORE_MEDIA_HOST_PATH` weiterhin als `/media` einbinden.
+- Tests für Anime-/TV-Zielordner, Mehrdeutigkeit, Jahrgangsordner und Schreibziel-Vorschau.
+- Keine DRM-/CAPTCHA-Umgehung oder garantierte Medienquelle; ZimaOS-Livetest noch erforderlich.
+
+
 ## v1.8.3 – Browser-Warteschlange und Downloadbereitschaft
 
 - FIFO-Scan-Warteschlange in ForgeCore: genau ein Browser-Scan aktiv, höchstens sechs ausstehende Analysen.

@@ -3,7 +3,7 @@ services:
   forgecore:
     build:
       context: ./server
-    image: forgecore:1.8.3
+    image: forgecore:1.8.4
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -11,6 +11,7 @@ services:
       FORGECORE_DB_PATH: /data/forgecore.sqlite
       FORGECORE_STAGING_ROOT: /data
       FORGECORE_MEDIA_ROOT: /media
+      FORGECORE_SERIES_DEFAULT_FOLDER: ${FORGECORE_SERIES_DEFAULT_FOLDER:-Shows}
       FORGECORE_HOST: 0.0.0.0
       FORGECORE_PORT: 8787
       FORGECORE_SECURE_COOKIE: ${FORGECORE_SECURE_COOKIE:-0}
@@ -42,7 +43,7 @@ services:
     profiles: ["browser"]
     build:
       context: ./browser-agent
-    image: forgecore-browser:1.8.3
+    image: forgecore-browser:1.8.4
     restart: unless-stopped
     init: true
     shm_size: 512m
