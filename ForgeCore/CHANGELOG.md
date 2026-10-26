@@ -1,5 +1,16 @@
 # ForgeCore – Changelog
 
+## v1.8.5 – Separate Zielordner für Anime, Animation, Cartoon und Anime Movies
+
+- Persistenter Zielordner **pro Film und Serie** im Discover-Titeldetail, beim manuellen Hinzufügen und in Meine Bibliothek.
+- Seriendestinationen: `auto`, `TV shows`, `Animes`, `Animation`, `Cartoon`. Filmdestinationen: `auto`, `Movies`, `Anime Movies`.
+- Echte Pfadvorschau und Download-/Untertitel-Zielermittlung nutzen dieselbe gespeicherte Zuordnung.
+- SQLite-Migration für bestehende Nutzer: alter Bestand bekommt `auto` und ändert damit sein Verhalten nicht.
+- JSON-Export und -Import erhalten Zielordner; ungültige Pfade und Kategorien abgewiesen.
+- Kategorie-Wechsel während laufender oder bereits wartender Transfers blockiert.
+- Kein bestehender Medienordner wird verändert; ZimaOS-Praxistest des Downloads weiterhin offen.
+
+
 ## v1.8.4 – Bestehende Jellyfin-Anime-/Serienordner sicher nutzen
 
 - Library-Preview und Downloads erkennen vorhandene Serienordner unter Animes, Animation, Cartoon, TV shows, Shows, Series und Serien.
