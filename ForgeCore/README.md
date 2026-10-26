@@ -1,5 +1,19 @@
 # ForgeCore
 
+## ForgeCore v1.8.5 – Zielordner separat je Film/Serie wählen
+
+Im **Discover-Titeldetail**, bei **Film oder Serie hinzufügen** und in **Meine Bibliothek** steht nun eine echte, persistent gespeicherte Auswahl **Jellyfin-Zielordner** bereit.
+
+- Serien: **Automatisch**, `TV shows`, `Animes` (Anime), `Animation`, `Cartoon`.
+- Filme: **Automatisch** (bisher `Movies`), `Movies` oder `Anime Movies`.
+
+Die Zuordnung erfolgt **pro Titel**, nicht pro Download-Datei. Für One Piece kann `Animes`, für Slugterra `Animation`, für eine Cartoon-Serie `Cartoon` und für einen Anime-Film `Anime Movies` ausgewählt werden. „Automatisch“ erhält die bisherige v1.8.4-Zuordnung und erkennt vorhandene Serienordner. Die Angabe gilt für **Pfadvorschau, tatsächlichen Transfer und Untertitel** und wird in SQLite sowie vollständigen/JSON-Backups gesichert. Das bestehende Medienvolume `FORGECORE_MEDIA_HOST_PATH` und Standardordner für neue normale Serien bleiben unverändert.
+
+Zulässig sind ausschließlich diese festen Unterordner innerhalb des bestehenden `/media`-Volume. Absolute Pfade, `../` und falsche Kombinationen aus Film und Serie werden abgewiesen. Während ein Titel einen anstehenden oder laufenden Transfer hat, ist ein Wechsel des Zielordners nicht möglich. Bestehende Medien werden nicht verschoben oder gelöscht.
+
+**ZimaOS:** Release `ForgeCore-v1.8.5-ZimaOS.zip` mit `bash upgrade.sh /tmp/ForgeCore-v1.8.5.zip` aktualisieren; anschließend Browser mit `Strg + F5` neu laden. Es ist keine Änderung an `.env` nötig, sofern der echte Jellyfin-Hauptordner bereits eingebunden ist. Der Live-Download von Drittanbieter-Hostern ist weiterhin nicht bestätigt.
+
+
 ## ForgeCore v1.8.4 – Vorhandene Jellyfin-Medienbibliotheken wiederverwenden
 
 ForgeCore kann ab sofort bestehende Serienordner unter `Animes`, `Animation`, `Cartoon`, `TV shows`, `Shows`, `Series` oder `Serien` auf dem konfigurierten Medienlaufwerk wiederfinden. Bei einer eindeutigen Übereinstimmung mit dem Titel bzw. `Titel (Jahr)` werden **der bestehende Serienordner und vorhandene deutsche/englische Staffelordner** weitergenutzt. Doppelvorkommen werden zur Sicherheit mit einer Fehlermeldung blockiert. Kein Verschieben und keine Änderung existierender Jellyfin-Mediendateien.
