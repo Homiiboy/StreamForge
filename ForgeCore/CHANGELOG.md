@@ -1,5 +1,16 @@
 # ForgeCore – Changelog
 
+## v1.8.1 – Werbe-Popups und CAPTCHA-Status
+
+- Neue, strikt begrenzte Overlay-Steuerung: höchstens drei sichtbare Werbe-Overlays können über explizite Close-Buttons geschlossen werden.
+- Bestehende Popup- und JavaScript-Dialogbehandlung nun mit eigenen Diagnosezählern.
+- reCAPTCHA, hCaptcha und Turnstile werden nur bei sichtbarer Herausforderung erkannt; dann werden automatische Player-Klicks abgebrochen.
+- Keine automatische CAPTCHA-Lösung, kein Übernehmen von Challenge-Tokens und keine allgemeine Fernsteuerung des Browser-Agents.
+- Neue Unit- und echte Chromium-Sandbox-Integrationstests für Werbe-Overlay-Schließen und CAPTCHA-Erkennung.
+- Die deutsche Sprachprüfung, die Download-Bestätigung und das getrennte StreamForge-Connector-Projekt bleiben unverändert.
+- ZimaOS und externe Player noch nicht live validiert.
+
+
 ## v1.8.0 – Eingebettete Player automatisch bedienen
 
 - Browser-Agent sucht Play-Steuerungen in bis zu 12 Browser-Frames, auch wenn Player dynamisch eingebettet werden.
